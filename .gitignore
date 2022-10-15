@@ -33,7 +33,7 @@
 
 #shaders
 *.spv
-shaders/headers/*.hpp
+#shaders/headers/*.hpp
 
 #cmake
 build
