@@ -59,8 +59,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/gpu)
 
 
-#SET(CMAKE_CXX_FLAGS "-pthread -march=native -fPIC -LTO" CACHE STRING "POGGERS" FORCE)
-SET(CMAKE_CXX_FLAGS "-pthread -fPIC -LTO")
+SET(CMAKE_CXX_FLAGS "-pthread -fPIC -LTO" CACHE STRING "C++ flags" FORCE)
 
 #Resulting .so should be placed into $ENV{HOME}/.local/lib/python3.10/site-packages/tensorflow-plugins
 #or it should be packaged into a wheel
