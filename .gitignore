@@ -30,3 +30,17 @@
 *.exe
 *.out
 *.app
+
+#shaders
+*.spv
+shaders/headers/*.hpp
+
+#cmake
+build
+
+#vnev
+venv
+
+#package
+package/tensorflow-plugins/*.so
+package/dist

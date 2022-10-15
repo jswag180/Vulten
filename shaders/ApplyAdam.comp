@@ -1,0 +1,35 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+//layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0)  buffer a { mediump float var[]; };
+layout(set = 0, binding = 1)  buffer b { readonly mediump float m[]; };
+layout(set = 0, binding = 2)  buffer c { readonly mediump float v[]; };
+layout(set = 0, binding = 3)  buffer e { readonly  mediump float beta1_power; };
+layout(set = 0, binding = 4)  buffer f { readonly  mediump float beta2_power; };
+layout(set = 0, binding = 5)  buffer g { readonly  mediump float lr; };
+layout(set = 0, binding = 6)  buffer h { readonly  mediump float beta1; };
+layout(set = 0, binding = 7)  buffer i { readonly  mediump float beta2; };
+layout(set = 0, binding = 8)  buffer j { readonly  mediump float epsilon; };
+layout(set = 0, binding = 9)  buffer k { readonly  mediump float grad[]; };
+
+layout(constant_id = 0) const uint use_nesterov = 0;
+
+void main(){
+    
+
+    mediump float lr_t = lr * (sqrt(1 - pow(beta2_power, max(1, gl_GlobalInvocationID.x))) / (1 - pow(beta1_power, max(1, gl_GlobalInvocationID.x))));
+    mediump float m_t  = beta1 * m[max(0, gl_GlobalInvocationID.x - 1)] + (1 - beta1) * grad[gl_GlobalInvocationID.x];
+    mediump float v_t  = beta2 * v[max(0, gl_GlobalInvocationID.x - 1)] + (1 - beta2) * pow(grad[gl_GlobalInvocationID.x], 2);
+    
+
+    if(bool(use_nesterov)){
+        var[gl_GlobalInvocationID.x] = var[gl_GlobalInvocationID.x] - (m_t * beta1 + grad[gl_GlobalInvocationID.x] * (1 - beta1)) * lr_t / (sqrt(v_t) + epsilon);
+    }else{
+        var[gl_GlobalInvocationID.x] = var[gl_GlobalInvocationID.x] - m_t * lr_t / (sqrt(v_t) + epsilon);
+    }
+
+    
+
+}

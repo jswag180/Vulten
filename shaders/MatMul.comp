@@ -1,0 +1,30 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+//#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+
+//layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer a { readonly  mediump float aData[]; };
+layout(set = 0, binding = 1) buffer b { readonly  mediump float bData[]; };
+layout(set = 0, binding = 2) buffer c { writeonly mediump float outData[]; };
+
+
+layout(constant_id = 0) const uint aX = 0;
+layout(constant_id = 1) const uint aY = 0;
+layout(constant_id = 2) const uint bX = 0;
+layout(constant_id = 3) const uint bY = 0;
+
+uint unFlatToFlat(in uint x, in uint y, in uint width){
+    return x * width + y;
+}
+
+void main() {
+
+    mediump float dotProd = 0.0;
+
+    for(uint i = 0; i < aY; i++){
+        dotProd += aData[unFlatToFlat(gl_GlobalInvocationID.x, i, aY)] * bData[unFlatToFlat(i, gl_GlobalInvocationID.y, bY)];
+    }
+
+    outData[gl_GlobalInvocationID.x * gl_NumWorkGroups.y + gl_GlobalInvocationID.y] = dotProd;
+}

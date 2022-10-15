@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "tensorflow-vulten"
+version = "0.0.1"
+description = "Vulkan pluggable device for Tensorflow"
+authors = ["Jeffery Cole <jefferycole@duck.com>"]
+readme = "README.md"
+packages = [{include = "tensorflow-plugins"}]
+include = ["tensorflow-plugins/libVulten.so"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

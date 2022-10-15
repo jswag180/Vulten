@@ -1,0 +1,59 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+//layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer a { readonly float inData[]; };
+layout(set = 0, binding = 1) buffer b { readonly float filters[]; };
+layout(set = 0, binding = 2) buffer c {
+    readonly int batches;
+    readonly int hight, width, channels;
+    readonly int filterH, filterW, filterIn, filterOut;
+    readonly int strideH, strideW;
+    readonly int dilationH, dilationW;
+    readonly int resHight, resWidth;
+};
+//could pad the outData with 0s so that it evely fits into vec4 for that simd power
+layout(set = 0, binding = 3) buffer d { writeonly float outData[]; };
+
+shared int filterArea;
+shared int filterChannelRaito;
+
+// x:batch y:i z:dist
+void main(){
+    //int filterArea = filterH * filterW;
+    //int filterChannelRaito = int(ceil(float(filterOut) / channels));
+    if(gl_LocalInvocationID.x == 0){
+        filterArea = filterH * filterW;
+        filterChannelRaito = int(ceil(float(filterOut) / channels));
+    }
+    memoryBarrierShared();
+    barrier();
+
+    int index = int(gl_GlobalInvocationID.y);
+    int dist  = int(gl_GlobalInvocationID.z);
+    int waitSelect = ((index * filterChannelRaito) + dist) % filterOut;
+    
+
+    int outBatchoffset = int(gl_GlobalInvocationID.x) * (resHight * resWidth * filterOut);
+    int inBatchOffset  = int(gl_GlobalInvocationID.x) * (int(gl_NumWorkGroups.y) * filterArea);
+    
+    float dotProd = 0.0;
+
+    //int j = 0;//filterIn
+
+    //for(int j = 0; j < 1; j++){
+        for(int i = 0; i < filterArea; i++){
+            dotProd += inData[inBatchOffset + (index * filterArea) + i] * filters[waitSelect + i * filterOut];
+            ///dotProd += inData[inBatchOffset + (index * filterArea) + i] * filters[(waitSelect + i * (filterOut * filterIn)) + (j * filterOut)];
+        }
+    //}
+
+    outData[outBatchoffset + (index * filterChannelRaito) + dist] = dotProd;
+
+    //int i = 0;
+    //int j = 0;
+    
+
+    //outData[outBatchoffset + (index * filterChannelRaito) + dist] = inData[inBatchOffset + (index * filterArea) + i];
+}

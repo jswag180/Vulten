@@ -1,0 +1,58 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+//#extension GL_KHR_shader_subgroup_vote: enable
+
+//layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer a { readonly  mediump float x[]; };
+layout(set = 0, binding = 1) buffer b { readonly  mediump float y[]; };
+layout(set = 0, binding = 2) buffer c { writeonly mediump float outData[]; };
+
+void power(in mediump float val, in mediump float ex, inout mediump float result){
+    //mediump float res = val;
+    result = val;
+
+    if(ex == 0.0){
+        //return 1.0;
+        result = 1.0;
+        return;
+    }else if (val == 0.0){
+        //return 0.0;
+        result = 0.0;
+        return;
+    }
+
+    for(uint i = 0; i < ex - 1; i++){
+        //res *= val;
+        result *= val;
+    }
+
+
+    //return res;
+}
+
+void main(){
+    //outData[gl_GlobalInvocationID.x] = pow(x[gl_GlobalInvocationID.x], y[gl_GlobalInvocationID.x]);
+    //outData[gl_GlobalInvocationID.x] = power(x[gl_GlobalInvocationID.x], y[gl_GlobalInvocationID.x]);
+    power(x[gl_GlobalInvocationID.x], y[gl_GlobalInvocationID.x], outData[gl_GlobalInvocationID.x]);
+
+    // bool isZeroZero = x[gl_GlobalInvocationID.x] == 0 && y[gl_GlobalInvocationID.x] == 0;
+
+    // if (subgroupAll(isZeroZero)) {
+    //     // all invocations in the subgroup are performing x
+    //     outData[gl_GlobalInvocationID.x] = 1.0;
+    // } else if (!subgroupAny(isZeroZero)) {
+    //     // all invocations in the subgroup are performing y
+    //     outData[gl_GlobalInvocationID.x] = pow(x[gl_GlobalInvocationID.x], y[gl_GlobalInvocationID.x]);
+    // } else {
+    //     // Invocations that get here are doing a mix of x & y so have a fallback
+
+    //     if(x[gl_GlobalInvocationID.x] == 0 && y[gl_GlobalInvocationID.x] == 0){
+    //         outData[gl_GlobalInvocationID.x] = 1.0;
+    //     }else{
+    //         outData[gl_GlobalInvocationID.x] = pow(x[gl_GlobalInvocationID.x], y[gl_GlobalInvocationID.x]);
+    //     }
+        
+    // }
+
+}
