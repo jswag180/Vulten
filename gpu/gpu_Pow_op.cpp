@@ -79,13 +79,6 @@ void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     // std::cout << TF_Dim(x_safe_ptr.get(), i) << "\n";
   }
 
-  // absl::InlinedVector<int64_t, 4> y_dims = absl::InlinedVector<int64_t,
-  // 4>(TF_NumDims(y_safe_ptr.get())); std::cout << "Y: \n"; for (auto i = 0; i
-  // < TF_NumDims(y_safe_ptr.get()); ++i) {
-  //     x_dims[i] = TF_Dim(y_safe_ptr.get(), i);
-  //     std::cout << TF_Dim(y_safe_ptr.get(), i) << "\n";
-  // }
-
   TensorSafePtr output_safe_ptr(TF_AllocateOutput(
       ctx, 0, TF_ExpectedOutputDataType(ctx, 0), x_dims.data(), x_dims.size(),
       TF_TensorElementCount(x_safe_ptr.get()) * sizeof(T), status.get()));
@@ -98,7 +91,6 @@ void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       TF_TensorData(output_safe_ptr.get()));
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
-  // std::lock_guard<std::mutex> guard(stream->instance->testMutex);
   MutexScopeLock guard = MutexScopeLock(&stream->instance->mainQueueMutex);
 
   std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(

@@ -16,25 +16,6 @@
 #include "tensorflow/c/tf_tensor.h"
 #include "vulten_device.h"
 
-// struct StatusDeleter {
-//     void operator()(TF_Status *s) {
-//         if (s != nullptr) {
-//             TF_DeleteStatus(s);
-//         }
-//     }
-// };
-
-// struct TensorDeleter {
-//     void operator()(TF_Tensor *t) {
-//         if (t != nullptr) {
-//             TF_DeleteTensor(t);
-//         }
-//     }
-// };
-
-// using StatusSafePtr = std::unique_ptr<TF_Status, StatusDeleter>;
-// using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
-
 namespace vulten_plugin {
 
 static std::vector<uint32_t> spirv;
@@ -44,30 +25,22 @@ void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
   // utills::ScopeTimer timer("AssignAddVariableOp");
   StatusSafePtr status(TF_NewStatus());
 
-  // TF_GetInputTensorFromVariable()
-  // TF_AssignVariable()
   TF_AssignUpdateVariable(
       ctx, 0, 1, 0, 0, &varHelpers::copyFunc,
       [](TF_OpKernelContext *ctx, TF_Tensor *tensor, TF_Tensor *value, int Op) {
         StatusSafePtr status(TF_NewStatus());
         SP_Stream stream = TF_GetStream(ctx, status.get());
 
-        // std::lock_guard<std::mutex> guard(stream->instance->testMutex);
         MutexScopeLock guard =
             MutexScopeLock(&stream->instance->mainQueueMutex);
 
         TensorSafePtr tensor_safe_ptr(tensor);
         auto tensor_ptr = static_cast<std::shared_ptr<kp::TensorT<float>> *>(
             TF_TensorData(tensor_safe_ptr.get()));
-        // std::cout << "tensor: " << tensor_ptr << "\n";
 
         TensorSafePtr value_safe_ptr(value);
         auto value_ptr = static_cast<std::shared_ptr<kp::TensorT<float>> *>(
             TF_TensorData(value_safe_ptr.get()));
-        // std::cout << "value: " << value_ptr << "\n";
-
-        // std::cout <<
-        // "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n";
 
         std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
             {*tensor_ptr, *value_ptr}, spirv,
@@ -76,11 +49,8 @@ void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
             ->record<kp::OpAlgoDispatch>(algo)
             ->eval();
 
-        // std::cout <<
-        // "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n";
       },
       status.get());
-  // TF_AssignRefVariable()
 }
 
 template <typename T>
@@ -89,10 +59,6 @@ void RegisterAssignAddVariableOp(const char *device_type) {
   auto *builder =
       TF_NewKernelBuilder("AssignAddVariableOp", device_type, nullptr,
                           &AssignAddVariableOp_Compte<T>, nullptr);
-  // TF_KernelBuilder_TypeConstraint(builder, "T", TF_FLOAT, status.get());
-  // if (TF_OK != TF_GetCode(status.get()))
-  //     std::cout << " Error while registering AssignAddVariable kernel with
-  //     attribute T";
   TF_RegisterKernelBuilder("AssignAddVariableOp", builder, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering AssignAddVariable kernel";

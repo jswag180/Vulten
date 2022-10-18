@@ -18,7 +18,6 @@ void plugin_get_device_count(const SP_Platform* platform, int* device_count,
 void plugin_create_device(const SP_Platform* platform,
                           SE_CreateDeviceParams* params,
                           TF_Status* const status) {
-  // gpuBackend::instances.push_back(gpuBackend(params->ordinal));
 
   params->device->struct_size = SP_DEVICE_STRUCT_SIZE;
   params->device->device_handle = new gpuBackend(params->ordinal);
@@ -44,7 +43,6 @@ void plugin_destroy_device(const SP_Platform* platform, SP_Device* device) {
       << "\n";
 #endif
 
-  // static_cast<gpuBackend*>(device->device_handle)->~gpuBackend();
   delete static_cast<gpuBackend*>(device->device_handle);
   device->device_handle = nullptr;
   device->ordinal = -1;
@@ -58,7 +56,7 @@ void plugin_create_device_fns(const SP_Platform* platform,
 }
 void plugin_destroy_device_fns(const SP_Platform* platform,
                                SP_DeviceFns* device_fns) {
-  //
+  
 }
 
 /*StreamExecutor Backend Impl*/
@@ -66,9 +64,6 @@ void plugin_allocate(const SP_Device* device, uint64_t size,
                      int64_t memory_space, SP_DeviceMemoryBase* mem) {
   // utills::ScopeTimer timer("ALLOC");
   mem->struct_size = SP_DEVICE_MEMORY_BASE_STRUCT_SIZE;
-  // mem->opaque = aligned_alloc(64, size);
-  // std::lock_guard<std::mutex>
-  // guard(static_cast<gpuBackend*>(device->device_handle)->testMutex);
 
   MutexScopeLock guard = MutexScopeLock();
   if (HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->hasMemQueue) {
@@ -79,8 +74,7 @@ void plugin_allocate(const SP_Device* device, uint64_t size,
         &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->mainQueueMutex);
   }
 
-  // int8 is not impplemnted and bools don't work. hope it never needs soming
-  // else....
+  // int8 is not impplemnted and bools don't work. rounding to up the nearest float
   mem->opaque =
       static_cast<gpuBackend*>(device->device_handle)->addBuffer(size);
   mem->size = size;
@@ -94,7 +88,6 @@ void plugin_allocate(const SP_Device* device, uint64_t size,
 
 void plugin_deallocate(const SP_Device* device, SP_DeviceMemoryBase* mem) {
 // utills::ScopeTimer timer("DEALLOC");
-// delete mem->opaque;
 #ifndef NDEBUG
   std::cout << "Vulten [INFO]: "
             << "DEALLOC: " << device->ordinal << " addr: " << mem->opaque
@@ -240,7 +233,6 @@ void plugin_memcpy_dtoh(const SP_Device* device, SP_Stream stream,
                         void* host_dst, const SP_DeviceMemoryBase* device_src,
                         uint64_t size, TF_Status* status) {
 // utills::ScopeTimer timer("DTH Transfer");
-// memcpy(host_dst, device_src->opaque, size);
 #ifndef NDEBUG
   std::cout << "Vulten [INFO]: "
             << "Device to host transfer Size: " << size << "\n";
@@ -281,7 +273,6 @@ void plugin_memcpy_htod(const SP_Device* device, SP_Stream stream,
                         SP_DeviceMemoryBase* device_dst, const void* host_src,
                         uint64_t size, TF_Status* status) {
   // utills::ScopeTimer timer("HTD Transfer");
-  // memcpy(device_dst->opaque, host_src, size);
 
 #ifndef NDEBUG
   std::cout << "Vulten [INFO]: "
@@ -311,7 +302,6 @@ void plugin_memcpy_htod(const SP_Device* device, SP_Stream stream,
   auto hostTen =
       static_cast<gpuBackend*>(device->device_handle)
           ->mngr->tensorT<float>(stageVec, kp::Tensor::TensorTypes::eHost);
-  // static_cast<gpuBackend*>(device->device_handle)->mngr->sequence()->record<kp::OpTensorSyncDevice>({hostTen})->eval();
 
   static_cast<gpuBackend*>(device->device_handle)
       ->mngr->sequence(queue)
@@ -328,7 +318,6 @@ void plugin_memcpy_dtod(const SP_Device* device, SP_Stream stream,
                         const SP_DeviceMemoryBase* device_src, uint64_t size,
                         TF_Status* status) {
 // utills::ScopeTimer timer("DTD Transfer");
-// memcpy(device_dst->opaque, device_src->opaque, size);
 #ifndef NDEBUG
   std::cout << "Vulten [INFO]: " << device->ordinal
             << " Device to device transfer "

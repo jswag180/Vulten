@@ -66,7 +66,6 @@ static std::vector<uint32_t> spirv_cast_9;
 static std::vector<uint32_t> spirv_cast_10;
 static std::map<std::pair<TF_DataType, TF_DataType>, std::vector<uint32_t>*>
     shaders;
-// static std::map<std::string, std::vector<uint32_t>> shaders;
 
 std::string makeTypePair(TF_DataType source, TF_DataType destination) {
   return source + "," + destination;
@@ -86,8 +85,6 @@ void* CastOp_Create(TF_OpKernelConstruction* ctx) {
 
   TF_OpKernelConstruction_GetAttrType(ctx, "DstT", &kernel->dstT_,
                                       status.get());
-
-  // std::cout << "DstT: " << kernel->dstT_ << " \n";
 
   return kernel;
 }
@@ -119,8 +116,6 @@ void CastOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     dims[i] = TF_Dim(input_safe_ptr.get(), i);
   }
 
-  // std::cout << TF_DataTypeSize(inType) << "\n";
-
   TensorSafePtr output_safe_ptr(TF_AllocateOutput(
       ctx, 0, TF_ExpectedOutputDataType(ctx, 0), dims.data(), dims.size(),
       TF_TensorElementCount(input_safe_ptr.get()) * TF_DataTypeSize(D),
@@ -130,12 +125,8 @@ void CastOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     return;
   }
 
-  // std::cout << "Cast In: " << TF_TensorType(input_safe_ptr.get()) << " Cast
-  // Out: " << castOp->dstT_ << "\n"; std::cout << "Cast Out: " << castOp->dstT_
-  // << "\n";
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
-  // std::lock_guard<std::mutex> guard(stream->instance->testMutex);
   MutexScopeLock guard = MutexScopeLock(&stream->instance->mainQueueMutex);
 
   auto in_ptr = static_cast<std::shared_ptr<kp::TensorT<float>>*>(
@@ -157,10 +148,7 @@ void RegisterCastOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder("Cast", device_type, CastOp_Create<S, D>,
                                       &CastOp_Compute<S, D>, &CastOp_Delete);
-  // TF_KernelBuilder_TypeConstraint(builder, "T", TF_FLOAT, status.get());
-  //[DstT=DT_INT32, SrcT=DT_FLOAT, Truncate=false]
 
-  // TF_KernelBuilder_Priority(builder, 100);
   TF_KernelBuilder_TypeConstraint(builder, "SrcT", S, status.get());
   TF_KernelBuilder_TypeConstraint(builder, "DstT", D, status.get());
 

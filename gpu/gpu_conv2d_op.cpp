@@ -350,10 +350,6 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
   // filter's in_depth.
   const int64_t in_depth = GetTensorDim(
       input, static_cast<Conv2dOp<T> *>(kernel)->data_format_, 'C');
-  // if (in_depth != TF_Dim(filter, 3)) {
-  //     std::cerr << "input and filter must have the same depth" << std::endl;
-  //     return;
-  // }
 
   // The last dimension for filter is out_depth.
   const int out_depth = static_cast<int>(TF_Dim(filter, 3));
@@ -499,10 +495,7 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
 
   int resChannels = 0;
   if (im2colInfo.getfilterIn() > 1) {
-    resChannels = im2colInfo.getChannels();  // im2colInfo.getChannels() >=
-                                             // im2colInfo.getfilterOut() ?
-                                             // im2colInfo.getfilterOut() :
-                                             // im2colInfo.getChannels();
+    resChannels = im2colInfo.getChannels();
   } else {
     resChannels = im2colInfo.getChannels() >= im2colInfo.getfilterOut()
                       ? im2colInfo.getfilterOut()
@@ -513,16 +506,12 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
   int im2colRes = im2colInfo.getresHight() * im2colInfo.getresWidth() *
                   (filterArea * resChannels);
   im2colRes *= im2colInfo.getBatches();
-  // std::cout << "im2col len: " << im2colRes << "\n";
-  // std::cout << "Res Channeles " << resChannels << "\n";
   std::vector<float> stageVec(im2colRes);
   auto im2colTen = stream->instance->mngr->tensorT<float>(
       {stageVec}, kp::Tensor::TensorTypes::eDevice);
-  // stream->instance->mngr->sequence()->record<kp::OpTensorSyncDevice>({im2colTen})->eval();
 
   std::shared_ptr<kp::Algorithm> im2colAlgo;
   if (static_cast<Conv2dOp<T> *>(kernel)->padding_ == Padding::VALID) {
-    // std::cout << "padding: " << "VALID" << "\n";
     im2colAlgo = stream->instance->mngr->algorithm(
         {*in_ptr, im2colInfoTen, im2colTen}, spirv_im2col_valid,
         kp::Workgroup({uint32_t(im2colInfo.getBatches()),
@@ -530,7 +519,6 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
                        uint32_t(im2colInfo.getresWidth())}));
 
   } else if (static_cast<Conv2dOp<T> *>(kernel)->padding_ = Padding::SAME) {
-    // std::cout << "padding: " << "SAME" << "\n";
     im2colAlgo = stream->instance->mngr->algorithm(
         {*in_ptr, im2colInfoTen, im2colTen}, spirv_im2col_same,
         kp::Workgroup({uint32_t(im2colInfo.getBatches()),
@@ -541,18 +529,6 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
   stream->instance->mngr->sequence(stream->instance->mainQueue)
       ->record<kp::OpAlgoDispatch>(im2colAlgo)
       ->eval();
-
-  // stream->instance->mngr->sequence()->record<kp::OpTensorSyncLocal>({im2colTen})->eval();
-  // for(int i = 0; i < im2colTen->size(); i++){
-  //     std::cout << im2colTen->vector()[i] << "|";
-
-  // }
-  // std::cout << "\n";
-  // std::cout << "Filter IN: " << im2colInfo.getfilterIn() << "\n";
-  // std::cout << "Pad top  : " << im2colInfo.getPadTop() << "\n";
-  // std::cout << "Pad bot  : " << im2colInfo.getPadBottom() << "\n";
-  // std::cout << "Pad left : " << im2colInfo.getPadLeft() << "\n";
-  // std::cout << "Pad right: " << im2colInfo.getPadRight() << "\n";
 
   std::shared_ptr<kp::Algorithm> conv2dAlgo;
   if (im2colInfo.getfilterIn() == 1) {
@@ -571,15 +547,11 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
              uint32_t(im2colInfo.getresHight() * im2colInfo.getresWidth()),
              uint32_t(im2colInfo.getfilterOut())}));
   }
-  // std::cout << "ASDASD: " << int((im2colRes / im2colInfo.getBatches()) /
-  // filterArea) << "\n";
 
   stream->instance->mngr->sequence(stream->instance->mainQueue)
       ->record<kp::OpAlgoDispatch>(conv2dAlgo)
       ->eval();
 
-  // im2colInfo.printInfo();
-  // std::cout << "Using device: " << stream->deviceNum << "\n";
 }
 
 template <typename T>
@@ -588,8 +560,6 @@ void RegisterConvOpKernel(const char *device_type) {
   auto *builder =
       TF_NewKernelBuilder("Conv2D", device_type, Conv2dOp_Create<T>,
                           &Conv2dOp_Compute<T>, &Conv2dOp_Delete<T>);
-  // TF_DataType::TF_FLOAT
-
   TF_KernelBuilder_TypeConstraint(builder, "T", TF_DataType::TF_FLOAT,
                                   status.get());
   if (TF_OK != TF_GetCode(status.get()))

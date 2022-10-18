@@ -49,8 +49,6 @@ void* MatMulOp_Create(TF_OpKernelConstruction* ctx) {
   int32_t list_size = 0;
   int32_t total_size = 0;
 
-  // TF_OpKernelConstruction_GetAttrSize(ctx, "transpose_a", &list_size,
-  //                                     &total_size, status.get());
   unsigned char trans[] = {0, 0};
   TF_OpKernelConstruction_GetAttrBool(ctx, "transpose_a", &trans[0],
                                       status.get());
@@ -119,11 +117,6 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     return;
   }
 
-  // std::cout << "ax: " << ax << "\n";
-  // std::cout << "ay: " << ay << "\n";
-  // std::cout << "bx: " << bx << "\n";
-  // std::cout << "by: " << by << "\n";
-
   int64_t outDims[] = {ax, by};
 
   TensorSafePtr output_safe_ptr(TF_AllocateOutput(
@@ -142,7 +135,6 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       TF_TensorData(output_safe_ptr.get()));
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
-  // std::lock_guard<std::mutex> guard(stream->instance->testMutex);
   MutexScopeLock guard = MutexScopeLock(&stream->instance->mainQueueMutex);
 
   std::shared_ptr<kp::TensorT<float>> transA;
@@ -151,12 +143,6 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     std::vector<float> transVec(ax * ay);
     transA = stream->instance->mngr->tensorT<float>(
         {transVec}, kp::Tensor::TensorTypes::eDevice);
-    // stream->instance->mngr->sequence(stream->instance->mainQueue)->record<kp::OpAlgoDispatch>(
-    //     stream->instance->mngr->algorithm({*a_ptr, transA}, spirv_transpose,
-    //     kp::Workgroup({uint32_t(transVec.size())}),
-    //         std::vector<uint32_t>{uint32_t(aDims[0]), uint32_t(aDims[1])},
-    //         {})
-    // )->eval();
 
     transASeq =
         stream->instance->mngr->sequence(stream->instance->mainQueue)
@@ -174,12 +160,6 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     std::vector<float> transVec(bx * by);
     transB = stream->instance->mngr->tensorT<float>(
         {transVec}, kp::Tensor::TensorTypes::eDevice);
-    // stream->instance->mngr->sequence(stream->instance->mainQueue)->record<kp::OpAlgoDispatch>(
-    //     stream->instance->mngr->algorithm({*b_ptr, transB}, spirv_transpose,
-    //     kp::Workgroup({uint32_t(transVec.size())}),
-    //         std::vector<uint32_t>{uint32_t(bDims[0]), uint32_t(bDims[1])},
-    //         {})
-    // )->eval();
 
     transBSeq =
         stream->instance->mngr->sequence(stream->instance->mainQueue)

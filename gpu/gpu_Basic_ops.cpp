@@ -87,15 +87,12 @@ void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   absl::InlinedVector<int64_t, 4> res_dims =
       absl::InlinedVector<int64_t, 4>(4, 1);
-  // std::cout << "x: " << TF_NumDims(x_safe_ptr.get()) << " y: " <<
-  // TF_NumDims(y_safe_ptr.get()) << " res: " << res_dims.size() << "\n";
   int64_t resNumElements = 1;
   int64_t numOfResDims =
       std::max(TF_NumDims(x_safe_ptr.get()), TF_NumDims(y_safe_ptr.get()));
   for (int64_t i = 3; i >= 0; i--) {
     res_dims[i] = std::max(x_dims[i], y_dims[i]);
     resNumElements *= res_dims[i];
-    // std::cout << x << " | " << y << " | " << res_dims[i] << "\n";
   }
 
   TensorSafePtr output_safe_ptr(
@@ -111,7 +108,6 @@ void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
       TF_TensorData(output_safe_ptr.get()));
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
-  // std::lock_guard<std::mutex> guard(stream->instance->testMutex);
   MutexScopeLock guard = MutexScopeLock(&stream->instance->mainQueueMutex);
 
   std::vector<std::shared_ptr<kp::Sequence>> sequences(res_dims[0]);
@@ -125,7 +121,6 @@ void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
             uint32_t(x_dims[2]), uint32_t(x_dims[3]), uint32_t(y_dims[0]),
             uint32_t(y_dims[1]), uint32_t(y_dims[2]), uint32_t(y_dims[3]), OP},
         {});
-    // stream->instance->mngr->sequence(stream->instance->mainQueue)->record<kp::OpAlgoDispatch>(algo)->eval();
     sequences[i] = stream->instance->mngr->sequence(stream->instance->mainQueue)
                        ->record<kp::OpAlgoDispatch>(algo)
                        ->evalAsync();

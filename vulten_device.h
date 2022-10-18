@@ -10,10 +10,8 @@ void SE_InitPluginFns(SE_PlatformRegistrationParams* const params,
                       TF_Status* const status);
 
 struct SP_Stream_st {
-  // explicit SP_Stream_st(void* stream_h) : stream_handle(stream_h) {}
   explicit SP_Stream_st(int devNum, gpuBackend* manager)
       : deviceNum(devNum), instance(manager) {}
-  // void* stream_handle;
   int deviceNum;
   gpuBackend* instance;
 };

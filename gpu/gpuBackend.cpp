@@ -38,20 +38,15 @@ int gpuBackend::listDevices() {
 
         for (int i = 0; i < queueProps.size(); i++) {
           QueueProps prop = QueueProps();
-          // std::cout << "Prop: " << i << "\n";
           prop.family = i;
-          // std::cout << "  Queue count: " << queueProps[i].queueCount << "\n";
           prop.queues = queueProps[i].queueCount;
           if (queueProps[i].queueFlags & vk::QueueFlagBits::eCompute) {
-            // std::cout << "  Has compute \n";
             prop.hasCompute = true;
           }
           if (queueProps[i].queueFlags & vk::QueueFlagBits::eTransfer) {
-            // std::cout << "  Has transfer \n";
             prop.hasTransfer = true;
           }
           if (queueProps[i].queueFlags & vk::QueueFlagBits::eGraphics) {
-            // std::cout << "  Has graphics \n";
             prop.hasGraphics = true;
           }
 
@@ -71,34 +66,16 @@ int gpuBackend::listDevices() {
 
 kp::Manager* gpuBackend::getManager() { return mngr; }
 
-std::vector<uint32_t> gpuBackend::compileSource(const std::string& source) {
-  std::ofstream fileOut("tmp_kp_shader.comp");
-  fileOut << source;
-  fileOut.close();
-  if (system(std::string("glslangValidator -V tmp_kp_shader.comp -o "
-                         "tmp_kp_shader.comp.spv")
-                 .c_str()))
-    throw std::runtime_error("Error running glslangValidator command");
-  std::ifstream fileStream("tmp_kp_shader.comp.spv", std::ios::binary);
-  std::vector<char> buffer;
-  buffer.insert(buffer.begin(), std::istreambuf_iterator<char>(fileStream), {});
-  return {(uint32_t*)buffer.data(), (uint32_t*)(buffer.data() + buffer.size())};
-}
-
 std::shared_ptr<kp::TensorT<float>>* gpuBackend::addBuffer(uint64_t size) {
   std::unique_lock lock(buffers_mutex);
 
   // size / 4 to go from bytes to floats of 4 bytes
-  // auto ten = backend->mngr->tensorT<float>(std::vector<float>(size / 4, 0),
-  // kp::Tensor::TensorTypes::eDevice);
   std::shared_ptr<kp::TensorT<float>> ten =
       mngr->tensorT<float>(std::vector<float>(std::ceil(size / 4.0F), 0),
                            kp::Tensor::TensorTypes::eDevice);
 
-  // std::cout << "PTR: " << ten.get() << " | " << ten.get()->size() << "\n";
   tensors.insert(std::make_pair(ten.get(), ten));
 
-  // return &tensors[&ten];
   return &tensors[ten.get()];
 }
 
@@ -110,7 +87,7 @@ bool gpuBackend::isDeviceBuffer(void* tensorPtr) {
   std::unique_lock lock(buffers_mutex);
 
   if (tensors.count(tensorPtr) ==
-      0) {  // tensors.find(tensorPtr) == tensors.end()
+      0) {
     return false;
   } else {
     return true;
@@ -147,8 +124,6 @@ gpuBackend::gpuBackend(int deviceNum) {
 
   mngr = new kp::Manager(device, familyIndices,
                          deviceProps[device].deviceExtentions);
-
-  // std::shared_ptr<kp::TensorT<float>> inTen = mngr->tensor({0.0, 0.0});
 
   instances.push_back(this);
 }

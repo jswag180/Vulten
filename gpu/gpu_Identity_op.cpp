@@ -14,7 +14,6 @@
 #include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_tensor.h"
 #include "vulten_device.h"
-//#include "gpu_variable_helpers.h"
 
 struct StatusDeleter {
   void operator()(TF_Status* s) {
@@ -35,7 +34,6 @@ struct TensorDeleter {
 using StatusSafePtr = std::unique_ptr<TF_Status, StatusDeleter>;
 using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
-// https://www.tensorflow.org/api_docs/python/tf/raw_ops/AssignVariableOp
 namespace vulten_plugin {
 
 template <typename T>
@@ -73,7 +71,6 @@ void IdentityOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
       TF_TensorData(output_safe_ptr.get()));
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
-  // std::lock_guard<std::mutex> guard(stream->instance->testMutex);
   MutexScopeLock guard = MutexScopeLock(&stream->instance->mainQueueMutex);
 
   stream->instance->mngr->sequence(stream->instance->mainQueue)
@@ -86,10 +83,6 @@ void RegisterIdentityOp(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder("Identity", device_type, nullptr,
                                       &IdentityOp_Compte<T>, nullptr);
-  // TF_KernelBuilder_TypeConstraint(builder, "T", TF_VARIANT, status.get());
-  // if (TF_OK != TF_GetCode(status.get()))
-  //     std::cout << " Error while registering Identity kernel with attribute
-  //     T";
   TF_RegisterKernelBuilder("Identity", builder, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering Identity kernel";

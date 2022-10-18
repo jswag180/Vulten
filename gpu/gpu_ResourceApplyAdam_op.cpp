@@ -16,25 +16,6 @@
 #include "tensorflow/c/tf_tensor.h"
 #include "vulten_device.h"
 
-// struct StatusDeleter {
-//     void operator()(TF_Status *s) {
-//         if (s != nullptr) {
-//             TF_DeleteStatus(s);
-//         }
-//     }
-// };
-
-// struct TensorDeleter {
-//     void operator()(TF_Tensor *t) {
-//         if (t != nullptr) {
-//             TF_DeleteTensor(t);
-//         }
-//     }
-// };
-
-// using StatusSafePtr = std::unique_ptr<TF_Status, StatusDeleter>;
-// using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
-
 //#define debugAdam 1
 
 namespace vulten_plugin {
@@ -222,8 +203,6 @@ void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
       ->record<kp::OpAlgoDispatch>(algo)
       ->eval();
 
-  // TF_AssignVariable()
-  // TF_AssignUpdateVariable()
   delete var_ref;
   delete m_ref;
   delete v_ref;

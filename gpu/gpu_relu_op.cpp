@@ -35,17 +35,6 @@ struct TensorDeleter {
 using StatusSafePtr = std::unique_ptr<TF_Status, StatusDeleter>;
 using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
-// struct ReluOp {
-//   float alpha_;
-//   float beta_;
-// };
-
-// void* ReluOp_Create(ReluOp* kernel, float alpha, float beta) {
-//   kernel->alpha_ = alpha;
-//   kernel->beta_ = beta;
-//   return kernel;
-// }
-
 template <typename T>
 void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   // ReluOp* relu = static_cast<ReluOp*>(kernel);
@@ -79,7 +68,6 @@ void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       TF_TensorData(output_safe_ptr.get()));
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
-  // std::lock_guard<std::mutex> guard(stream->instance->testMutex);
   MutexScopeLock guard = MutexScopeLock(&stream->instance->mainQueueMutex);
 
   std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
