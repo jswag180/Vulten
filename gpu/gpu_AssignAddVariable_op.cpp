@@ -48,7 +48,6 @@ void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
         stream->instance->mngr->sequence(stream->instance->mainQueue)
             ->record<kp::OpAlgoDispatch>(algo)
             ->eval();
-
       },
       status.get());
 }

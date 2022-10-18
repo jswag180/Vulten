@@ -15,7 +15,6 @@
 #include "tensorflow/c/tf_tensor.h"
 #include "vulten_device.h"
 
-
 namespace vulten_plugin {
 
 template <typename T>
@@ -23,7 +22,6 @@ void AssignVariableOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   StatusSafePtr status(TF_NewStatus());
 
   TF_AssignVariable(ctx, 0, 1, false, &varHelpers::copyFunc, status.get());
-
 }
 
 template <typename T>

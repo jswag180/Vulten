@@ -18,7 +18,6 @@ void plugin_get_device_count(const SP_Platform* platform, int* device_count,
 void plugin_create_device(const SP_Platform* platform,
                           SE_CreateDeviceParams* params,
                           TF_Status* const status) {
-
   params->device->struct_size = SP_DEVICE_STRUCT_SIZE;
   params->device->device_handle = new gpuBackend(params->ordinal);
   params->device->ordinal = params->ordinal;
@@ -55,9 +54,7 @@ void plugin_create_device_fns(const SP_Platform* platform,
   params->device_fns->struct_size = {SP_DEVICE_FNS_STRUCT_SIZE};
 }
 void plugin_destroy_device_fns(const SP_Platform* platform,
-                               SP_DeviceFns* device_fns) {
-  
-}
+                               SP_DeviceFns* device_fns) {}
 
 /*StreamExecutor Backend Impl*/
 void plugin_allocate(const SP_Device* device, uint64_t size,
@@ -74,7 +71,8 @@ void plugin_allocate(const SP_Device* device, uint64_t size,
         &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->mainQueueMutex);
   }
 
-  // int8 is not impplemnted and bools don't work. rounding to up the nearest float
+  // int8 is not impplemnted and bools don't work. rounding to up the nearest
+  // float
   mem->opaque =
       static_cast<gpuBackend*>(device->device_handle)->addBuffer(size);
   mem->size = size;

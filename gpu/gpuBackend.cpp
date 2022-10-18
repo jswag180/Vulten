@@ -86,8 +86,7 @@ std::shared_ptr<kp::TensorT<float>>* gpuBackend::getBuffer(void* tensorPtr) {
 bool gpuBackend::isDeviceBuffer(void* tensorPtr) {
   std::unique_lock lock(buffers_mutex);
 
-  if (tensors.count(tensorPtr) ==
-      0) {
+  if (tensors.count(tensorPtr) == 0) {
     return false;
   } else {
     return true;

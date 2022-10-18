@@ -551,7 +551,6 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
   stream->instance->mngr->sequence(stream->instance->mainQueue)
       ->record<kp::OpAlgoDispatch>(conv2dAlgo)
       ->eval();
-
 }
 
 template <typename T>

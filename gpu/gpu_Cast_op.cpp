@@ -125,7 +125,6 @@ void CastOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     return;
   }
 
-
   SP_Stream stream = TF_GetStream(ctx, status.get());
   MutexScopeLock guard = MutexScopeLock(&stream->instance->mainQueueMutex);
 
