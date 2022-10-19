@@ -44,3 +44,6 @@ venv
 #package
 package/tensorflow-plugins/*.so
 package/dist
+
+#vscode
+.vscode
