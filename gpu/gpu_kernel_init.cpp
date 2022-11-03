@@ -14,7 +14,7 @@ void RegisterDeviceKernels(const char* device_type) {
   RegisterResourceApplyAdam(device_type);
 
   // Misc
-  // RegisterDeviceAssignVariable(device_type);
+  RegisterDeviceAssignVariable(device_type);
   // RegisterDeviceReadVariableOp(device_type);
   RegisterAssignAddVariable(device_type);
   // RegisterDeviceIdentityOp(device_type);
