@@ -40,7 +40,7 @@ static std::vector<uint32_t> spirv_softmax;
 static std::vector<uint32_t> spirv_exp;
 static std::vector<uint32_t> spirv_batch_add;
 
-template <typename T>
+template <TF_DataType T>
 void SoftmaxOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   StatusSafePtr status(TF_NewStatus());
   TF_Tensor* input = nullptr;
@@ -60,7 +60,8 @@ void SoftmaxOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   TensorSafePtr output_safe_ptr(TF_AllocateOutput(
       ctx, 0, TF_ExpectedOutputDataType(ctx, 0), dims.data(), dims.size(),
-      TF_TensorElementCount(input_safe_ptr.get()) * sizeof(T), status.get()));
+      TF_TensorElementCount(input_safe_ptr.get()) * TF_DataTypeSize(T),
+      status.get()));
   if (TF_GetCode(status.get()) != TF_OK) {
     TF_OpKernelContext_Failure(ctx, status.get());
     std::cout << "Error: softmax 2\n";
@@ -108,12 +109,12 @@ void SoftmaxOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       ->eval();
 }
 
-template <typename T>
+template <TF_DataType T>
 void RegisterSoftmaxOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder("Softmax", device_type, nullptr,
                                       &SoftmaxOp_Compute<T>, nullptr);
-  TF_KernelBuilder_TypeConstraint(builder, "T", TF_FLOAT, status.get());
+  TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering Softmax kernel with attribute T";
   TF_RegisterKernelBuilder("Softmax", builder, status.get());
@@ -124,22 +125,14 @@ void RegisterSoftmaxOpKernel(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceSoftmax(const char* device_type) {
-  vulten_plugin::spirv_softmax.resize(
-      kp::shader_data::___shaders_Softmax_comp_spv_len / 4);
-  memcpy(&vulten_plugin::spirv_softmax[0],
-         kp::shader_data::___shaders_Softmax_comp_spv,
-         kp::shader_data::___shaders_Softmax_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_softmax,
+                     kp::shader_data::___shaders_Softmax_comp_spv)
 
-  vulten_plugin::spirv_exp.resize(kp::shader_data::___shaders_Exp_comp_spv_len /
-                                  4);
-  memcpy(&vulten_plugin::spirv_exp[0], kp::shader_data::___shaders_Exp_comp_spv,
-         kp::shader_data::___shaders_Exp_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_exp,
+                     kp::shader_data::___shaders_Exp_comp_spv)
 
-  vulten_plugin::spirv_batch_add.resize(
-      kp::shader_data::___shaders_BatchAdd_comp_spv_len / 4);
-  memcpy(&vulten_plugin::spirv_batch_add[0],
-         kp::shader_data::___shaders_BatchAdd_comp_spv,
-         kp::shader_data::___shaders_BatchAdd_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_batch_add,
+                     kp::shader_data::___shaders_BatchAdd_comp_spv)
 
-  vulten_plugin::RegisterSoftmaxOpKernel<float>(device_type);
+  vulten_plugin::RegisterSoftmaxOpKernel<TF_FLOAT>(device_type);
 }

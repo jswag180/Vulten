@@ -18,7 +18,6 @@
 
 namespace vulten_plugin {
 
-template <typename T>
 void ReadVariableOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   // utills::ScopeTimer timer("ReadVariableOp");
   StatusSafePtr status(TF_NewStatus());
@@ -39,11 +38,10 @@ void ReadVariableOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   delete ref;
 }
 
-template <typename T>
 void RegisterReadVariableOp(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder("ReadVariableOp", device_type, nullptr,
-                                      &ReadVariableOp_Compte<T>, nullptr);
+                                      &ReadVariableOp_Compte, nullptr);
   TF_RegisterKernelBuilder("ReadVariableOp", builder, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering ReadVariableOp kernel";
@@ -52,5 +50,5 @@ void RegisterReadVariableOp(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceReadVariableOp(const char* device_type) {
-  vulten_plugin::RegisterReadVariableOp<float>(device_type);
+  vulten_plugin::RegisterReadVariableOp(device_type);
 }

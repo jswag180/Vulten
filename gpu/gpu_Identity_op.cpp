@@ -36,7 +36,7 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
 namespace vulten_plugin {
 
-template <typename T>
+template <TF_DataType T>
 void IdentityOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   // utills::ScopeTimer timer("ReadVariableOp");
   StatusSafePtr status(TF_NewStatus());
@@ -58,7 +58,8 @@ void IdentityOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
 
   TensorSafePtr output_safe_ptr(TF_AllocateOutput(
       ctx, 0, TF_ExpectedOutputDataType(ctx, 0), dims.data(), dims.size(),
-      TF_TensorElementCount(input_safe_ptr.get()) * sizeof(T), status.get()));
+      TF_TensorElementCount(input_safe_ptr.get()) * TF_DataTypeSize(T),
+      status.get()));
   if (TF_GetCode(status.get()) != TF_OK) {
     TF_OpKernelContext_Failure(ctx, status.get());
     std::cout << "Error: e\n";
@@ -78,7 +79,7 @@ void IdentityOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
       ->eval();
 }
 
-template <typename T>
+template <TF_DataType T>
 void RegisterIdentityOp(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder("Identity", device_type, nullptr,
@@ -91,5 +92,5 @@ void RegisterIdentityOp(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceIdentityOp(const char* device_type) {
-  vulten_plugin::RegisterIdentityOp<float>(device_type);
+  vulten_plugin::RegisterIdentityOp<TF_FLOAT>(device_type);
 }

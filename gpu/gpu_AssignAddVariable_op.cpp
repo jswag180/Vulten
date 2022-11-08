@@ -20,7 +20,7 @@ namespace vulten_plugin {
 
 static std::vector<uint32_t> spirv;
 
-template <typename T>
+template <TF_DataType T>
 void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
   // utills::ScopeTimer timer("AssignAddVariableOp");
   StatusSafePtr status(TF_NewStatus());
@@ -52,12 +52,16 @@ void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
       status.get());
 }
 
-template <typename T>
+template <TF_DataType T>
 void RegisterAssignAddVariableOp(const char *device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto *builder =
       TF_NewKernelBuilder("AssignAddVariableOp", device_type, nullptr,
                           &AssignAddVariableOp_Compte<T>, nullptr);
+  TF_KernelBuilder_TypeConstraint(builder, "dtype", T, status.get());
+  if (TF_OK != TF_GetCode(status.get()))
+    std::cout
+        << " Error while registering AssignAddVariable kernel with attribute T";
   TF_RegisterKernelBuilder("AssignAddVariableOp", builder, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering AssignAddVariable kernel";
@@ -66,11 +70,8 @@ void RegisterAssignAddVariableOp(const char *device_type) {
 }  // namespace vulten_plugin
 
 void RegisterAssignAddVariable(const char *device_type) {
-  vulten_plugin::spirv.resize(
-      kp::shader_data::___shaders_AddInPlace_comp_spv_len / 4);
-  memcpy(&vulten_plugin::spirv[0],
-         kp::shader_data::___shaders_AddInPlace_comp_spv,
-         kp::shader_data::___shaders_AddInPlace_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv,
+                     kp::shader_data::___shaders_AddInPlace_comp_spv)
 
-  vulten_plugin::RegisterAssignAddVariableOp<float>(device_type);
+  vulten_plugin::RegisterAssignAddVariableOp<TF_FLOAT>(device_type);
 }

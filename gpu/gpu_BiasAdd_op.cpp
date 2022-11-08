@@ -32,14 +32,14 @@ struct TensorDeleter {
 using StatusSafePtr = std::unique_ptr<TF_Status, StatusDeleter>;
 using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
-template <class T>
+template <TF_DataType T>
 struct BiasAddOp {
   BiasAddOp() : data_format_("") {}
   std::string data_format_;
   uint32_t channelIndx_;
 };
 
-template <typename T>
+template <TF_DataType T>
 void* BiasAddOp_Create(TF_OpKernelConstruction* ctx) {
   auto kernel = new BiasAddOp<T>();
 
@@ -67,14 +67,14 @@ void* BiasAddOp_Create(TF_OpKernelConstruction* ctx) {
   return kernel;
 }
 
-template <typename T>
+template <TF_DataType T>
 void BiasAddOp_Delete(void* kernel) {
   if (kernel != nullptr) {
     delete static_cast<BiasAddOp<T>*>(kernel);
   }
 }
 
-template <typename T>
+template <TF_DataType T>
 void BiasAddOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   BiasAddOp<T>* biasAddOp = static_cast<BiasAddOp<T>*>(kernel);
 
@@ -103,7 +103,8 @@ void BiasAddOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   TensorSafePtr output_safe_ptr(TF_AllocateOutput(
       ctx, 0, TF_ExpectedOutputDataType(ctx, 0), dims.data(), dims.size(),
-      TF_TensorElementCount(input_safe_ptr.get()) * sizeof(T), status.get()));
+      TF_TensorElementCount(input_safe_ptr.get()) * TF_DataTypeSize(T),
+      status.get()));
   if (TF_GetCode(status.get()) != TF_OK) {
     TF_OpKernelContext_Failure(ctx, status.get());
     return;
@@ -142,13 +143,13 @@ void BiasAddOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       ->eval();
 }
 
-template <typename T>
+template <TF_DataType T>
 void RegisterBiasAddOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder =
       TF_NewKernelBuilder("BiasAdd", device_type, BiasAddOp_Create<T>,
                           &BiasAddOp_Compute<T>, &BiasAddOp_Delete<T>);
-  TF_KernelBuilder_TypeConstraint(builder, "T", TF_FLOAT, status.get());
+  TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering bias add kernel with attribute T";
   TF_RegisterKernelBuilder("BiasAddOp", builder, status.get());
@@ -159,10 +160,8 @@ void RegisterBiasAddOpKernel(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceBiasAdd(const char* device_type) {
-  vulten_plugin::spirv.resize(kp::shader_data::___shaders_BiasAdd_comp_spv_len /
-                              4);
-  memcpy(&vulten_plugin::spirv[0], kp::shader_data::___shaders_BiasAdd_comp_spv,
-         kp::shader_data::___shaders_BiasAdd_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv,
+                     kp::shader_data::___shaders_BiasAdd_comp_spv)
 
-  vulten_plugin::RegisterBiasAddOpKernel<float>(device_type);
+  vulten_plugin::RegisterBiasAddOpKernel<TF_FLOAT>(device_type);
 }

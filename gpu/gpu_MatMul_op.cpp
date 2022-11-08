@@ -34,13 +34,13 @@ struct TensorDeleter {
 using StatusSafePtr = std::unique_ptr<TF_Status, StatusDeleter>;
 using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
-template <class T>
+template <TF_DataType T>
 struct MatMulOp {
   MatMulOp() : transA_(false), transB_(false) {}
   bool transA_, transB_;
 };
 
-template <typename T>
+template <TF_DataType T>
 void* MatMulOp_Create(TF_OpKernelConstruction* ctx) {
   auto kernel = new MatMulOp<T>();
 
@@ -61,14 +61,14 @@ void* MatMulOp_Create(TF_OpKernelConstruction* ctx) {
   return kernel;
 }
 
-template <typename T>
+template <TF_DataType T>
 void MatMulOp_Delete(void* kernel) {
   if (kernel != nullptr) {
     delete static_cast<MatMulOp<T>*>(kernel);
   }
 }
 
-template <typename T>
+template <TF_DataType T>
 void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   MatMulOp<T>* matMulOp = static_cast<MatMulOp<T>*>(kernel);
 
@@ -121,7 +121,7 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   TensorSafePtr output_safe_ptr(TF_AllocateOutput(
       ctx, 0, TF_ExpectedOutputDataType(ctx, 0), &outDims[0], 2,
-      (outDims[0] * outDims[1]) * sizeof(T), status.get()));
+      (outDims[0] * outDims[1]) * TF_DataTypeSize(T), status.get()));
   if (TF_GetCode(status.get()) != TF_OK) {
     TF_OpKernelContext_Failure(ctx, status.get());
     return;
@@ -189,13 +189,13 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       ->eval();
 }
 
-template <typename T>
+template <TF_DataType T>
 void RegisterMatMulOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder =
       TF_NewKernelBuilder("MatMul", device_type, MatMulOp_Create<T>,
                           &MatMulOp_Compute<T>, &MatMulOp_Delete<T>);
-  TF_KernelBuilder_TypeConstraint(builder, "T", TF_FLOAT, status.get());
+  TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering MatMul kernel with attribute T";
   TF_RegisterKernelBuilder("MatMulOp", builder, status.get());
@@ -206,17 +206,11 @@ void RegisterMatMulOpKernel(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceMatMul(const char* device_type) {
-  vulten_plugin::spirv_matmul.resize(
-      kp::shader_data::___shaders_MatMul_comp_spv_len / 4);
-  memcpy(&vulten_plugin::spirv_matmul[0],
-         kp::shader_data::___shaders_MatMul_comp_spv,
-         kp::shader_data::___shaders_MatMul_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_matmul,
+                     kp::shader_data::___shaders_MatMul_comp_spv)
 
-  vulten_plugin::spirv_transpose.resize(
-      kp::shader_data::___shaders_Transpose_comp_spv_len / 4);
-  memcpy(&vulten_plugin::spirv_transpose[0],
-         kp::shader_data::___shaders_Transpose_comp_spv,
-         kp::shader_data::___shaders_Transpose_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_transpose,
+                     kp::shader_data::___shaders_Transpose_comp_spv)
 
-  vulten_plugin::RegisterMatMulOpKernel<float>(device_type);
+  vulten_plugin::RegisterMatMulOpKernel<TF_FLOAT>(device_type);
 }

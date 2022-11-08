@@ -8,6 +8,10 @@ layout(set = 0, binding = 0) buffer a { readonly  mediump float x[]; };
 layout(set = 0, binding = 1) buffer b { readonly  mediump float y[]; };
 layout(set = 0, binding = 2) buffer c { writeonly mediump float outData[]; };
 
+layout(push_constant) uniform PushConstants {
+    uint scalar;
+} push_const;
+
 void power(in mediump float val, in mediump float ex, inout mediump float result){
     //mediump float res = val;
     result = val;
@@ -32,10 +36,15 @@ void power(in mediump float val, in mediump float ex, inout mediump float result
 }
 
 void main(){
-    //outData[gl_GlobalInvocationID.x] = pow(x[gl_GlobalInvocationID.x], y[gl_GlobalInvocationID.x]);
-    //outData[gl_GlobalInvocationID.x] = power(x[gl_GlobalInvocationID.x], y[gl_GlobalInvocationID.x]);
-    power(x[gl_GlobalInvocationID.x], y[gl_GlobalInvocationID.x], outData[gl_GlobalInvocationID.x]);
-
+    //push_const.scalar
+    if(push_const.scalar == 1){
+        power(x[0], y[gl_GlobalInvocationID.x], outData[gl_GlobalInvocationID.x]);
+    }else if(push_const.scalar == 2){
+        power(x[gl_GlobalInvocationID.x], y[0], outData[gl_GlobalInvocationID.x]);
+    }else{
+        power(x[gl_GlobalInvocationID.x], y[gl_GlobalInvocationID.x], outData[gl_GlobalInvocationID.x]);
+    }
+    
     // bool isZeroZero = x[gl_GlobalInvocationID.x] == 0 && y[gl_GlobalInvocationID.x] == 0;
 
     // if (subgroupAll(isZeroZero)) {

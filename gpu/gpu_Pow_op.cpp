@@ -37,7 +37,7 @@ namespace vulten_plugin {
 
 static std::vector<uint32_t> spirv_pow;
 
-template <typename T>
+template <TF_DataType T>
 void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   StatusSafePtr status(TF_NewStatus());
 
@@ -66,7 +66,9 @@ void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       TF_TensorData(y_safe_ptr.get()));
 
   if (TF_TensorElementCount(x_safe_ptr.get()) !=
-      TF_TensorElementCount(y_safe_ptr.get())) {
+          TF_TensorElementCount(y_safe_ptr.get()) &&
+      TF_TensorElementCount(x_safe_ptr.get()) != 1 &&
+      TF_TensorElementCount(y_safe_ptr.get()) != 1) {
     std::cerr << "Error input size mismatch in Pow \n";
     exit(-1);
   }
@@ -81,7 +83,8 @@ void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   TensorSafePtr output_safe_ptr(TF_AllocateOutput(
       ctx, 0, TF_ExpectedOutputDataType(ctx, 0), x_dims.data(), x_dims.size(),
-      TF_TensorElementCount(x_safe_ptr.get()) * sizeof(T), status.get()));
+      TF_TensorElementCount(x_safe_ptr.get()) * TF_DataTypeSize(T),
+      status.get()));
   if (TF_GetCode(status.get()) != TF_OK) {
     TF_OpKernelContext_Failure(ctx, status.get());
     std::cout << "Error: pow 2\n";
@@ -93,21 +96,29 @@ void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   SP_Stream stream = TF_GetStream(ctx, status.get());
   MutexScopeLock guard = MutexScopeLock(&stream->instance->mainQueueMutex);
 
+  uint32_t scaler = 0;
+  if (TF_TensorElementCount(x_safe_ptr.get()) == 1) {
+    scaler = 1;
+  } else if (TF_TensorElementCount(y_safe_ptr.get()) == 1) {
+    scaler = 2;
+  }
+
   std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
       {*x_ptr, *y_ptr, *out_ptr}, spirv_pow,
-      kp::Workgroup({uint32_t(TF_TensorElementCount(x_safe_ptr.get()))}));
+      kp::Workgroup({uint32_t(TF_TensorElementCount(x_safe_ptr.get()))}), {},
+      std::vector<uint32_t>{scaler});
 
   stream->instance->mngr->sequence(stream->instance->mainQueue)
       ->record<kp::OpAlgoDispatch>(algo)
       ->eval();
 }
 
-template <typename T>
+template <TF_DataType T>
 void RegisterPowOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder("Pow", device_type, nullptr,
                                       &PowOp_Compute<T>, nullptr);
-  TF_KernelBuilder_TypeConstraint(builder, "T", TF_FLOAT, status.get());
+  TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering Pow kernel with attribute T";
   TF_RegisterKernelBuilder("Pow", builder, status.get());
@@ -118,10 +129,8 @@ void RegisterPowOpKernel(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDevicePow(const char* device_type) {
-  vulten_plugin::spirv_pow.resize(kp::shader_data::___shaders_Pow_comp_spv_len /
-                                  4);
-  memcpy(&vulten_plugin::spirv_pow[0], kp::shader_data::___shaders_Pow_comp_spv,
-         kp::shader_data::___shaders_Pow_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_pow,
+                     kp::shader_data::___shaders_Pow_comp_spv)
 
-  vulten_plugin::RegisterPowOpKernel<float>(device_type);
+  vulten_plugin::RegisterPowOpKernel<TF_FLOAT>(device_type);
 }

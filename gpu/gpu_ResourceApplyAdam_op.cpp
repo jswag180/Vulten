@@ -22,13 +22,13 @@ namespace vulten_plugin {
 
 static std::vector<uint32_t> spirv;
 
-template <class T>
+template <TF_DataType T>
 struct ResourceApplyAdamOp {
   ResourceApplyAdamOp() : locking_(false), nesterov_(false) {}
   bool locking_, nesterov_;
 };
 
-template <typename T>
+template <TF_DataType T>
 void* ResourceApplyAdamOp_Create(TF_OpKernelConstruction* ctx) {
   auto kernel = new ResourceApplyAdamOp<T>();
 
@@ -46,14 +46,14 @@ void* ResourceApplyAdamOp_Create(TF_OpKernelConstruction* ctx) {
   return kernel;
 }
 
-template <typename T>
+template <TF_DataType T>
 void ResourceApplyAdamOp_Delete(void* kernel) {
   if (kernel != nullptr) {
     delete static_cast<ResourceApplyAdamOp<T>*>(kernel);
   }
 }
 
-template <typename T>
+template <TF_DataType T>
 void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   ResourceApplyAdamOp<T>* resourceApplyAdamOp =
       static_cast<ResourceApplyAdamOp<T>*>(kernel);
@@ -197,7 +197,7 @@ void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
       {*var_ptr, *m_ptr, *v_ptr, *beta1_power_ptr, *beta2_power_ptr, *lr_ptr,
        *beta1_ptr, *beta2_ptr, *epsilon_ptr, *grad_ptr},
       spirv, kp::Workgroup({var_ptr->get()->size()}),
-      std::vector<uint>{resourceApplyAdamOp->nesterov_}, {});
+      std::vector<uint32_t>{resourceApplyAdamOp->nesterov_}, {});
 
   stream->instance->mngr->sequence(stream->instance->mainQueue)
       ->record<kp::OpAlgoDispatch>(algo)
@@ -208,13 +208,13 @@ void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   delete v_ref;
 }
 
-template <typename T>
+template <TF_DataType T>
 void RegisterResourceApplyAdamOp(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder(
       "ResourceApplyAdam", device_type, ResourceApplyAdamOp_Create<T>,
       &ResourceApplyAdamOp_Compte<T>, &ResourceApplyAdamOp_Delete<T>);
-  TF_KernelBuilder_TypeConstraint(builder, "T", TF_FLOAT, status.get());
+  TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout
         << " Error while registering ResourceApplyAdam kernel with attribute T";
@@ -226,11 +226,8 @@ void RegisterResourceApplyAdamOp(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterResourceApplyAdam(const char* device_type) {
-  vulten_plugin::spirv.resize(
-      kp::shader_data::___shaders_ApplyAdam_comp_spv_len / 4);
-  memcpy(&vulten_plugin::spirv[0],
-         kp::shader_data::___shaders_ApplyAdam_comp_spv,
-         kp::shader_data::___shaders_ApplyAdam_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv,
+                     kp::shader_data::___shaders_ApplyAdam_comp_spv)
 
-  vulten_plugin::RegisterResourceApplyAdamOp<float>(device_type);
+  vulten_plugin::RegisterResourceApplyAdamOp<TF_FLOAT>(device_type);
 }

@@ -235,7 +235,7 @@ struct Im2colInfo {
   int getPadRight() { return dataVec[17]; };
 };
 
-template <class T>
+template <TF_DataType T>
 struct Conv2dOp {
   Conv2dOp() : data_format_("") {}
   std::vector<int32_t> strides_;
@@ -243,7 +243,7 @@ struct Conv2dOp {
   std::string data_format_;
 };
 
-template <class T>
+template <TF_DataType T>
 void *Conv2dOp_Create(TF_OpKernelConstruction *ctx) {
   auto kernel = new Conv2dOp<T>();
 
@@ -290,14 +290,14 @@ void *Conv2dOp_Create(TF_OpKernelConstruction *ctx) {
   return kernel;
 }
 
-template <typename T>
+template <TF_DataType T>
 void Conv2dOp_Delete(void *kernel) {
   if (kernel != nullptr) {
     delete static_cast<Conv2dOp<T> *>(kernel);
   }
 }
 
-template <typename T>
+template <TF_DataType T>
 void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
   Im2colInfo im2colInfo = Im2colInfo();
 
@@ -473,7 +473,7 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
   // [ in_batch, out_rows, out_cols, out_depth ]``
   TensorSafePtr output_safe_ptr(TF_AllocateOutput(
       ctx, 0, TF_ExpectedOutputDataType(ctx, 0), out_shape.data(),
-      out_shape.size(), sizeof(T) * output_size, status.get()));
+      out_shape.size(), TF_DataTypeSize(T) * output_size, status.get()));
 
   auto outputTensor = static_cast<std::shared_ptr<kp::TensorT<float>> *>(
       TF_TensorData(output_safe_ptr.get()));
@@ -553,14 +553,13 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
       ->eval();
 }
 
-template <typename T>
+template <TF_DataType T>
 void RegisterConvOpKernel(const char *device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto *builder =
       TF_NewKernelBuilder("Conv2D", device_type, Conv2dOp_Create<T>,
                           &Conv2dOp_Compute<T>, &Conv2dOp_Delete<T>);
-  TF_KernelBuilder_TypeConstraint(builder, "T", TF_DataType::TF_FLOAT,
-                                  status.get());
+  TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering conv2d kernel with attribute T";
   TF_RegisterKernelBuilder("Conv2DOp", builder, status.get());
@@ -571,29 +570,17 @@ void RegisterConvOpKernel(const char *device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceConv2D(const char *device_type) {
-  vulten_plugin::spirv_im2col_valid.resize(
-      kp::shader_data::___shaders_im2colValid_comp_spv_len / 4);
-  memcpy(&vulten_plugin::spirv_im2col_valid[0],
-         kp::shader_data::___shaders_im2colValid_comp_spv,
-         kp::shader_data::___shaders_im2colValid_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_im2col_valid,
+                     kp::shader_data::___shaders_im2colValid_comp_spv)
 
-  vulten_plugin::spirv_im2col_same.resize(
-      kp::shader_data::___shaders_im2colSame_comp_spv_len / 4);
-  memcpy(&vulten_plugin::spirv_im2col_same[0],
-         kp::shader_data::___shaders_im2colSame_comp_spv,
-         kp::shader_data::___shaders_im2colSame_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_im2col_same,
+                     kp::shader_data::___shaders_im2colSame_comp_spv)
 
-  vulten_plugin::spirv_conv2d.resize(
-      kp::shader_data::___shaders_conv2d_comp_spv_len / 4);
-  memcpy(&vulten_plugin::spirv_conv2d[0],
-         kp::shader_data::___shaders_conv2d_comp_spv,
-         kp::shader_data::___shaders_conv2d_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_conv2d,
+                     kp::shader_data::___shaders_conv2d_comp_spv)
 
-  vulten_plugin::spirv_conv2dOld.resize(
-      kp::shader_data::___shaders_conv2dOld_comp_spv_len / 4);
-  memcpy(&vulten_plugin::spirv_conv2dOld[0],
-         kp::shader_data::___shaders_conv2dOld_comp_spv,
-         kp::shader_data::___shaders_conv2dOld_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_conv2dOld,
+                     kp::shader_data::___shaders_conv2dOld_comp_spv)
 
-  vulten_plugin::RegisterConvOpKernel<float>(device_type);
+  vulten_plugin::RegisterConvOpKernel<TF_FLOAT>(device_type);
 }

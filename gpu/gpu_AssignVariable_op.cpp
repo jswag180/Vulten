@@ -17,18 +17,16 @@
 
 namespace vulten_plugin {
 
-template <typename T>
 void AssignVariableOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   StatusSafePtr status(TF_NewStatus());
 
   TF_AssignVariable(ctx, 0, 1, false, &varHelpers::copyFunc, status.get());
 }
 
-template <typename T>
 void RegisterAssignVariableOp(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder("AssignVariableOp", device_type, nullptr,
-                                      &AssignVariableOp_Compte<T>, nullptr);
+                                      &AssignVariableOp_Compte, nullptr);
   TF_RegisterKernelBuilder("AssignVariableOp", builder, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering AssignVariableOp kernel";
@@ -37,5 +35,5 @@ void RegisterAssignVariableOp(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceAssignVariable(const char* device_type) {
-  vulten_plugin::RegisterAssignVariableOp<float>(device_type);
+  vulten_plugin::RegisterAssignVariableOp(device_type);
 }

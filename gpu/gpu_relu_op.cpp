@@ -35,7 +35,7 @@ struct TensorDeleter {
 using StatusSafePtr = std::unique_ptr<TF_Status, StatusDeleter>;
 using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
-template <typename T>
+template <TF_DataType T>
 void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   // ReluOp* relu = static_cast<ReluOp*>(kernel);
   StatusSafePtr status(TF_NewStatus());
@@ -55,7 +55,8 @@ void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   TensorSafePtr output_safe_ptr(TF_AllocateOutput(
       ctx, 0, TF_ExpectedOutputDataType(ctx, 0), dims.data(), dims.size(),
-      TF_TensorElementCount(input_safe_ptr.get()) * sizeof(T), status.get()));
+      TF_TensorElementCount(input_safe_ptr.get()) * TF_DataTypeSize(T),
+      status.get()));
   if (TF_GetCode(status.get()) != TF_OK) {
     TF_OpKernelContext_Failure(ctx, status.get());
     std::cout << "Error: relu 2\n";
@@ -79,12 +80,12 @@ void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       ->eval();
 }
 
-template <typename T>
+template <TF_DataType T>
 void RegisterReluOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder("Relu", device_type, nullptr,
                                       &ReluOp_Compute<T>, nullptr);
-  TF_KernelBuilder_TypeConstraint(builder, "T", TF_FLOAT, status.get());
+  TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering relu kernel with attribute T";
   TF_RegisterKernelBuilder("ReluOp", builder, status.get());
@@ -95,10 +96,8 @@ void RegisterReluOpKernel(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceRelu(const char* device_type) {
-  vulten_plugin::spirv.resize(kp::shader_data::___shaders_Relu_comp_spv_len /
-                              4);
-  memcpy(&vulten_plugin::spirv[0], kp::shader_data::___shaders_Relu_comp_spv,
-         kp::shader_data::___shaders_Relu_comp_spv_len);
+  LOAD_SHADER_TO_VEC(vulten_plugin::spirv,
+                     kp::shader_data::___shaders_Relu_comp_spv)
 
-  vulten_plugin::RegisterReluOpKernel<float>(device_type);
+  vulten_plugin::RegisterReluOpKernel<TF_FLOAT>(device_type);
 }
