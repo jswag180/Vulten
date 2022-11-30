@@ -101,7 +101,7 @@ class gpuBackend {
   static int numDevices;
 
   std::unordered_map<void*, std::shared_ptr<kp::TensorT<float>>> tensors;
-  mutable std::shared_mutex buffers_mutex;
+  std::mutex buffers_mutex;
 
  public:
   static const int INFO = 0;

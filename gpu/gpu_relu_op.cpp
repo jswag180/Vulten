@@ -5,7 +5,7 @@
 
 #include "absl/container/inlined_vector.h"
 #include "gpuBackend.h"
-#include "shaders/headers/shaderRelu.hpp"
+#include "shaders/headers/Relu/Relu.h"
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/ops.h"
 #include "tensorflow/c/tf_datatype.h"
@@ -13,8 +13,6 @@
 #include "vulten_device.h"
 
 namespace vulten_plugin {
-
-static std::vector<uint32_t> spirv;
 
 struct StatusDeleter {
   void operator()(TF_Status* s) {
@@ -35,7 +33,7 @@ struct TensorDeleter {
 using StatusSafePtr = std::unique_ptr<TF_Status, StatusDeleter>;
 using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   // ReluOp* relu = static_cast<ReluOp*>(kernel);
   StatusSafePtr status(TF_NewStatus());
@@ -72,7 +70,7 @@ void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   MutexScopeLock guard = MutexScopeLock(&stream->instance->mainQueueMutex);
 
   std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
-      {*in_ptr, *out_ptr}, spirv,
+      {*in_ptr, *out_ptr}, *spirv,
       kp::Workgroup({(uint32_t)in_ptr->get()->size()}));
 
   stream->instance->mngr->sequence(stream->instance->mainQueue)
@@ -80,11 +78,11 @@ void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       ->eval();
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void RegisterReluOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder("Relu", device_type, nullptr,
-                                      &ReluOp_Compute<T>, nullptr);
+                                      &ReluOp_Compute<T, spirv>, nullptr);
   TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering relu kernel with attribute T";
@@ -96,8 +94,31 @@ void RegisterReluOpKernel(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceRelu(const char* device_type) {
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv,
-                     kp::shader_data::___shaders_Relu_comp_spv)
+#define REGISTER_KERNEL(T, S) \
+  vulten_plugin::RegisterReluOpKernel<T, &shader::Relu_##S>(device_type);
 
-  vulten_plugin::RegisterReluOpKernel<TF_FLOAT>(device_type);
+#ifdef RELU_FLOAT
+  REGISTER_KERNEL(TF_FLOAT, float)
+#endif
+#ifdef RELU_INT
+  REGISTER_KERNEL(TF_INT32, int)
+#endif
+#ifdef RELU_UINT
+  REGISTER_KERNEL(TF_UINT32, uint)
+#endif
+#ifdef RELU_INT64_T
+  REGISTER_KERNEL(TF_INT64, int64_t)
+#endif
+#ifdef RELU_UINT64_T
+  REGISTER_KERNEL(TF_UINT64, uint64_t)
+#endif
+#ifdef RELU_INT8_T
+  REGISTER_KERNEL(TF_INT8, int8_t)
+#endif
+#ifdef RELU_UINT8_T
+  REGISTER_KERNEL(TF_UINT8, uint8_t)
+#endif
+#ifdef RELU_DOUBLE
+  REGISTER_KERNEL(TF_DOUBLE, double)
+#endif
 }

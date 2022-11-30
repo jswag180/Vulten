@@ -2,7 +2,7 @@
 
 #include "absl/container/inlined_vector.h"
 #include "gpuBackend.h"
-#include "shaders/headers/shaderBiasAdd.hpp"
+#include "shaders/headers/BiasAdd/BiasAdd.h"
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/ops.h"
 #include "tensorflow/c/tf_datatype.h"
@@ -10,8 +10,6 @@
 #include "vulten_device.h"
 
 namespace vulten_plugin {
-
-static std::vector<uint32_t> spirv;
 
 struct StatusDeleter {
   void operator()(TF_Status* s) {
@@ -74,7 +72,7 @@ void BiasAddOp_Delete(void* kernel) {
   }
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void BiasAddOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   BiasAddOp<T>* biasAddOp = static_cast<BiasAddOp<T>*>(kernel);
 
@@ -131,7 +129,7 @@ void BiasAddOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       TF_TensorData(output_safe_ptr.get()));
 
   std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
-      {*in_ptr, *bias_ptr, *out_ptr}, spirv,
+      {*in_ptr, *bias_ptr, *out_ptr}, *spirv,
       kp::Workgroup({in_ptr->get()->size()}), {},
       std::vector<uint32_t>{
           uint32_t(dims[biasAddOp->channelIndx_ == 1
@@ -143,12 +141,12 @@ void BiasAddOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       ->eval();
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void RegisterBiasAddOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder =
       TF_NewKernelBuilder("BiasAdd", device_type, BiasAddOp_Create<T>,
-                          &BiasAddOp_Compute<T>, &BiasAddOp_Delete<T>);
+                          &BiasAddOp_Compute<T, spirv>, &BiasAddOp_Delete<T>);
   TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering bias add kernel with attribute T";
@@ -160,8 +158,33 @@ void RegisterBiasAddOpKernel(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceBiasAdd(const char* device_type) {
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv,
-                     kp::shader_data::___shaders_BiasAdd_comp_spv)
+#define REGISTER_KERNEL(T, S) \
+  vulten_plugin::RegisterBiasAddOpKernel<T, &S>(device_type);
 
-  vulten_plugin::RegisterBiasAddOpKernel<TF_FLOAT>(device_type);
+#ifdef BIASADD_FLOAT
+  REGISTER_KERNEL(TF_FLOAT, shader::BiasAdd_float)
+#endif
+#ifdef BIASADD_INT
+  REGISTER_KERNEL(TF_INT32, shader::BiasAdd_int)
+#endif
+#ifdef BIASADD_UINT
+  REGISTER_KERNEL(TF_UINT32, shader::BiasAdd_uint)
+#endif
+#ifdef BIASADD_INT64_T
+  REGISTER_KERNEL(TF_INT64, shader::BiasAdd_int64_t)
+#endif
+#ifdef BIASADD_UINT64_T
+  REGISTER_KERNEL(TF_UINT64, shader::BiasAdd_uint64_t)
+#endif
+#ifdef BIASADD_INT8_T
+  REGISTER_KERNEL(TF_INT8, shader::BiasAdd_int8_t)
+#endif
+#ifdef BIASADD_UINT8_T
+  REGISTER_KERNEL(TF_UINT8, shader::BiasAdd_uint8_t)
+#endif
+#ifdef BIASADD_DOUBLE
+  REGISTER_KERNEL(TF_DOUBLE, shader::BiasAdd_double)
+#endif
+
+#undef REGISTER_KERNEL
 }

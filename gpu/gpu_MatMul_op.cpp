@@ -2,18 +2,18 @@
 
 #include "absl/container/inlined_vector.h"
 #include "gpuBackend.h"
-#include "shaders/headers/shaderMatMul.hpp"
-#include "shaders/headers/shaderTranspose.hpp"
+#include "shaders/headers/MatMul/MatMul.h"
+#include "shaders/headers/Transpose/Transpose.h"
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/ops.h"
 #include "tensorflow/c/tf_datatype.h"
 #include "tensorflow/c/tf_status.h"
 #include "vulten_device.h"
 
-namespace vulten_plugin {
+#define TRANSPOSE 0
+#define GENERIC_ALGO 1
 
-static std::vector<uint32_t> spirv_matmul;
-static std::vector<uint32_t> spirv_transpose;
+namespace vulten_plugin {
 
 struct StatusDeleter {
   void operator()(TF_Status* s) {
@@ -68,7 +68,7 @@ void MatMulOp_Delete(void* kernel) {
   }
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv[]>
 void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   MatMulOp<T>* matMulOp = static_cast<MatMulOp<T>*>(kernel);
 
@@ -147,7 +147,7 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     transASeq =
         stream->instance->mngr->sequence(stream->instance->mainQueue)
             ->record<kp::OpAlgoDispatch>(stream->instance->mngr->algorithm(
-                {*a_ptr, transA}, spirv_transpose,
+                {*a_ptr, transA}, *spirv[TRANSPOSE],
                 kp::Workgroup({uint32_t(transVec.size())}),
                 std::vector<uint32_t>{uint32_t(aDims[0]), uint32_t(aDims[1])},
                 {}))
@@ -164,7 +164,7 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     transBSeq =
         stream->instance->mngr->sequence(stream->instance->mainQueue)
             ->record<kp::OpAlgoDispatch>(stream->instance->mngr->algorithm(
-                {*b_ptr, transB}, spirv_transpose,
+                {*b_ptr, transB}, *spirv[TRANSPOSE],
                 kp::Workgroup({uint32_t(transVec.size())}),
                 std::vector<uint32_t>{uint32_t(bDims[0]), uint32_t(bDims[1])},
                 {}))
@@ -181,7 +181,8 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
       {matMulOp->transA_ ? transA : *a_ptr, matMulOp->transB_ ? transB : *b_ptr,
        *out_ptr},
-      spirv_matmul, kp::Workgroup({uint32_t(outDims[0]), uint32_t(outDims[1])}),
+      *spirv[GENERIC_ALGO],
+      kp::Workgroup({uint32_t(outDims[0]), uint32_t(outDims[1])}),
       std::vector<uint32_t>{ax, ay, bx, by}, {});
 
   stream->instance->mngr->sequence(stream->instance->mainQueue)
@@ -189,12 +190,12 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       ->eval();
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv[]>
 void RegisterMatMulOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder =
       TF_NewKernelBuilder("MatMul", device_type, MatMulOp_Create<T>,
-                          &MatMulOp_Compute<T>, &MatMulOp_Delete<T>);
+                          &MatMulOp_Compute<T, spirv>, &MatMulOp_Delete<T>);
   TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering MatMul kernel with attribute T";
@@ -206,11 +207,35 @@ void RegisterMatMulOpKernel(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceMatMul(const char* device_type) {
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_matmul,
-                     kp::shader_data::___shaders_MatMul_comp_spv)
+// The array of pointers is being able in the future implement other matmul
+// alogs Format for spirv pointers is 0 is transpose and 1 is generic
+#define REGISTER_KERNEL(T, S)                                                 \
+  static const std::vector<uint32_t>* spirv_##S[2] = {&shader::Transpose_##S, \
+                                                      &shader::MatMul_##S};   \
+  vulten_plugin::RegisterMatMulOpKernel<T, spirv_##S>(device_type);
 
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_transpose,
-                     kp::shader_data::___shaders_Transpose_comp_spv)
-
-  vulten_plugin::RegisterMatMulOpKernel<TF_FLOAT>(device_type);
+#ifdef MATMUL_FLOAT
+  REGISTER_KERNEL(TF_FLOAT, float)
+#endif
+#ifdef MATMUL_INT
+  REGISTER_KERNEL(TF_INT32, int)
+#endif
+#ifdef MATMUL_UINT
+  REGISTER_KERNEL(TF_UINT32, uint)
+#endif
+#ifdef MATMUL_INT64_T
+  REGISTER_KERNEL(TF_INT64, int64_t)
+#endif
+#ifdef MATMUL_UINT64_T
+  REGISTER_KERNEL(TF_UINT64, uint64_t)
+#endif
+#ifdef MATMUL_INT8_T
+  REGISTER_KERNEL(TF_INT8, int8_t)
+#endif
+#ifdef MATMUL_UINT8_T
+  REGISTER_KERNEL(TF_UINT8, uint8_t)
+#endif
+#ifdef MATMUL_DOUBLE
+  REGISTER_KERNEL(TF_DOUBLE, double)
+#endif
 }

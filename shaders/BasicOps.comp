@@ -1,11 +1,17 @@
+//#/types, 1
 #version 450
+
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_GOOGLE_include_directive : enable
+
+#include "prelude.h"
 
 //layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) buffer a { readonly  mediump float x[]; };
-layout(set = 0, binding = 1) buffer b { readonly  mediump float y[]; };
-layout(set = 0, binding = 2) buffer c { writeonly mediump float outData[]; };
+layout(set = 0, binding = 0) buffer a { readonly  TYPE_0 x[]; };
+layout(set = 0, binding = 1) buffer b { readonly  TYPE_0 y[]; };
+layout(set = 0, binding = 2) buffer c { writeonly TYPE_0 outData[]; };
+
 
 layout(constant_id = 0) const uint batchNum   = 0;
 layout(constant_id = 1) const uint maxBatches = 1;
@@ -95,12 +101,18 @@ void main(){
                             ys3 > 1 ? gl_GlobalInvocationID.y : 0, 
                             ys4 > 1 ? gl_GlobalInvocationID.z : 0)];
     }else if(op == OP_DIV_NO_NAN){
-        float denominator = y[unFlatToFlatY(ys1 > 1 ? batchNum : 0, 
+        TYPE_0 denominator = y[unFlatToFlatY(ys1 > 1 ? batchNum : 0, 
                              ys2 > 1 ? gl_GlobalInvocationID.x : 0, 
                              ys3 > 1 ? gl_GlobalInvocationID.y : 0, 
                              ys4 > 1 ? gl_GlobalInvocationID.z : 0)];
         if(denominator == 0){
-            outData[outIndex] = 0.0;
+            #if TYPE_NUM_0 == FLOAT || TYPE_NUM_0 == DOUBLE
+                outData[outIndex] = 0.0;
+            #elif TYPE_NUM_0 == INT8_T || TYPE_NUM_0 == UINT8_T
+                outData[outIndex] = TYPE_0(0);
+            #else
+                outData[outIndex] = 0;
+            #endif
         }else{
             outData[outIndex] = 
                 x[unFlatToFlatX(xs1 > 1 ? batchNum : 0, 

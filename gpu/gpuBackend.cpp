@@ -67,7 +67,7 @@ int gpuBackend::listDevices() {
 kp::Manager* gpuBackend::getManager() { return mngr; }
 
 std::shared_ptr<kp::TensorT<float>>* gpuBackend::addBuffer(uint64_t size) {
-  std::unique_lock lock(buffers_mutex);
+  std::lock_guard<std::mutex> lock(buffers_mutex);
 
   // size / 4 to go from bytes to floats of 4 bytes
   std::shared_ptr<kp::TensorT<float>> ten =
@@ -84,7 +84,7 @@ std::shared_ptr<kp::TensorT<float>>* gpuBackend::getBuffer(void* tensorPtr) {
 }
 
 bool gpuBackend::isDeviceBuffer(void* tensorPtr) {
-  std::unique_lock lock(buffers_mutex);
+  std::lock_guard<std::mutex> lock(buffers_mutex);
 
   if (tensors.count(tensorPtr) == 0) {
     return false;
@@ -94,7 +94,7 @@ bool gpuBackend::isDeviceBuffer(void* tensorPtr) {
 }
 
 void gpuBackend::removeBuffer(void* tensorPtr) {
-  std::unique_lock lock(buffers_mutex);
+  std::lock_guard<std::mutex> lock(buffers_mutex);
   static_cast<kp::TensorT<float>*>(tensorPtr)->destroy();
   tensors.erase(tensorPtr);
 }
@@ -110,14 +110,14 @@ gpuBackend::gpuBackend(int deviceNum) {
       mainQueue = familyIndices.size() - 1;
     } else if (deviceProps[device].queueProperties[i].hasTransfer &&
                memoryQueue == -1) {
-      familyIndices.push_back(i);
-      memoryQueue = familyIndices.size() - 1;
-      hasMemQueue = true;
+      // familyIndices.push_back(i);
+      // memoryQueue = familyIndices.size() - 1;
+      // hasMemQueue = true;
     } else if (deviceProps[device].queueProperties[i].hasTransfer &&
                transferQueue == -1) {
-      familyIndices.push_back(i);
-      transferQueue = familyIndices.size() - 1;
-      hasTransQueue = true;
+      // familyIndices.push_back(i);
+      // transferQueue = familyIndices.size() - 1;
+      // hasTransQueue = true;
     }
   }
 

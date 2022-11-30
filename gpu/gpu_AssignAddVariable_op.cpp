@@ -7,7 +7,8 @@
 
 #include "gpuBackend.h"
 #include "gpu_variable_helpers.h"
-#include "shaders/headers/shaderAddInPlace.hpp"
+//#include "shaders/headers/shaderAddInPlace.hpp"
+#include "shaders/headers/AddInPlace/AddInPlace.h"
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/kernels_experimental.h"
 #include "tensorflow/c/ops.h"
@@ -18,9 +19,7 @@
 
 namespace vulten_plugin {
 
-static std::vector<uint32_t> spirv;
-
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t> *spirv>
 void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
   // utills::ScopeTimer timer("AssignAddVariableOp");
   StatusSafePtr status(TF_NewStatus());
@@ -43,7 +42,7 @@ void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
             TF_TensorData(value_safe_ptr.get()));
 
         std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
-            {*tensor_ptr, *value_ptr}, spirv,
+            {*tensor_ptr, *value_ptr}, *spirv,
             kp::Workgroup({tensor_ptr->get()->size()}));
         stream->instance->mngr->sequence(stream->instance->mainQueue)
             ->record<kp::OpAlgoDispatch>(algo)
@@ -52,12 +51,12 @@ void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
       status.get());
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t> *spirv>
 void RegisterAssignAddVariableOp(const char *device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto *builder =
       TF_NewKernelBuilder("AssignAddVariableOp", device_type, nullptr,
-                          &AssignAddVariableOp_Compte<T>, nullptr);
+                          &AssignAddVariableOp_Compte<T, spirv>, nullptr);
   TF_KernelBuilder_TypeConstraint(builder, "dtype", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout
@@ -70,8 +69,33 @@ void RegisterAssignAddVariableOp(const char *device_type) {
 }  // namespace vulten_plugin
 
 void RegisterAssignAddVariable(const char *device_type) {
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv,
-                     kp::shader_data::___shaders_AddInPlace_comp_spv)
+#define REGISTER_KERNEL(T, S) \
+  vulten_plugin::RegisterAssignAddVariableOp<T, &S>(device_type);
 
-  vulten_plugin::RegisterAssignAddVariableOp<TF_FLOAT>(device_type);
+#ifdef ADDINPLACE_FLOAT
+  REGISTER_KERNEL(TF_FLOAT, shader::AddInPlace_float)
+#endif
+#ifdef ADDINPLACE_INT
+  REGISTER_KERNEL(TF_INT32, shader::AddInPlace_int)
+#endif
+#ifdef ADDINPLACE_UINT
+  REGISTER_KERNEL(TF_UINT32, shader::AddInPlace_uint)
+#endif
+#ifdef ADDINPLACE_INT64_T
+  REGISTER_KERNEL(TF_INT64, shader::AddInPlace_int64_t)
+#endif
+#ifdef ADDINPLACE_UINT64_T
+  REGISTER_KERNEL(TF_UINT64, shader::AddInPlace_uint64_t)
+#endif
+#ifdef ADDINPLACE_INT8_T
+  REGISTER_KERNEL(TF_INT8, shader::AddInPlace_int8_t)
+#endif
+#ifdef ADDINPLACE_UINT8_T
+  REGISTER_KERNEL(TF_UINT8, shader::AddInPlace_uint8_t)
+#endif
+#ifdef ADDINPLACE_DOUBLE
+  REGISTER_KERNEL(TF_DOUBLE, shader::AddInPlace_double)
+#endif
+
+#undef REGISTER_KERNEL
 }

@@ -1,9 +1,13 @@
+//#/types, 1
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_GOOGLE_include_directive : enable
+
+#include "prelude.h"
 
 //layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) buffer a { readonly float inData[]; };
+layout(set = 0, binding = 0) buffer a { readonly TYPE_0 inData[]; };
 layout(set = 0, binding = 1) buffer b {
     readonly int batches;
     readonly int hight, width, channels;
@@ -14,7 +18,7 @@ layout(set = 0, binding = 1) buffer b {
     readonly int padTop, padBottom, padLeft, padRight;
 };
 //could pad the outData with 0s so that it evely fits into vec4 for that simd power
-layout(set = 0, binding = 2) buffer c { writeonly float outData[]; };
+layout(set = 0, binding = 2) buffer c { writeonly TYPE_0 outData[]; };
 
 
 int unFlatToFlat(in int x, in int y, in int width, in int channels){
@@ -25,23 +29,15 @@ int unFlatToFlat(in int x, in int y, in int width){
     return (x * width + y);
 }
 
-shared int filterArea;
-shared int resChannels;
-
 // x:batch y:row z:col
 void main(){
-    //int filterArea = filterH * filterW;
-    //int resChannels = channels >= filterOut ? filterOut : channels;
-    if(gl_LocalInvocationID.x == 0){
-        filterArea = filterH * filterW;
-        if(filterIn > 1){
-            resChannels = channels;// >= filterOut ? filterOut : channels;
-        }else{
-            resChannels = channels >= filterOut ? filterOut : channels;
-        }
+    int filterArea = filterH * filterW;
+    int resChannels;
+    if(filterIn > 1){
+        resChannels = channels;
+    }else{
+        resChannels = channels >= filterOut ? filterOut : channels;
     }
-    memoryBarrierShared();
-    barrier();
 
     int inBatchOffset = int(gl_GlobalInvocationID.x) * (hight * width * channels);
     int row = int(gl_GlobalInvocationID.y);
@@ -55,7 +51,6 @@ void main(){
         for(int fRow = 0; fRow < filterH; fRow++){
             for(int fCol = 0; fCol < filterW; fCol++){
                 outData[outBatchOffset + (index * filterArea) + (unFlatToFlat(fRow, fCol, filterW) + (filterArea * fChannel))] = inData[inBatchOffset + unFlatToFlat((row * strideH) + fRow, (col * strideW) + fCol, width, channels) + fChannel];
-                //outData[outBatchOffset + (index * filterArea) + (unFlatToFlat(fRow, fCol, filterW) + (filterArea * fChannel))] = 1.0;
             }
         }
     }

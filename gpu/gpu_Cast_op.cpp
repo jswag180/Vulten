@@ -1,38 +1,17 @@
-#include "absl/container/inlined_vector.h"
-#include "gpuBackend.h"
-#include "tensorflow/c/kernels.h"
-#include "tensorflow/c/ops.h"
-#include "tensorflow/c/tf_datatype.h"
-#include "tensorflow/c/tf_status.h"
-#include "vulten_device.h"
-
-// shaders
-// float  float
-// int    int
-// uint   uint
-
-// float int 1
-// float uint 2
-// int float 3
-// int uint 4
-// uint float 5
-// uint int 6
 #include <chrono>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <vector>
 
-#include "shaders/headers/shaderCast_1.hpp"
-#include "shaders/headers/shaderCast_10.hpp"
-#include "shaders/headers/shaderCast_2.hpp"
-#include "shaders/headers/shaderCast_3.hpp"
-#include "shaders/headers/shaderCast_4.hpp"
-#include "shaders/headers/shaderCast_5.hpp"
-#include "shaders/headers/shaderCast_6.hpp"
-#include "shaders/headers/shaderCast_7.hpp"
-#include "shaders/headers/shaderCast_8.hpp"
-#include "shaders/headers/shaderCast_9.hpp"
+#include "absl/container/inlined_vector.h"
+#include "gpuBackend.h"
+#include "shaders/headers/Cast/Cast.h"
+#include "tensorflow/c/kernels.h"
+#include "tensorflow/c/ops.h"
+#include "tensorflow/c/tf_datatype.h"
+#include "tensorflow/c/tf_status.h"
+#include "vulten_device.h"
 
 struct StatusDeleter {
   void operator()(TF_Status* s) {
@@ -54,22 +33,6 @@ using StatusSafePtr = std::unique_ptr<TF_Status, StatusDeleter>;
 using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
 namespace vulten_plugin {
-static std::vector<uint32_t> spirv_cast_1;
-static std::vector<uint32_t> spirv_cast_2;
-static std::vector<uint32_t> spirv_cast_3;
-static std::vector<uint32_t> spirv_cast_4;
-static std::vector<uint32_t> spirv_cast_5;
-static std::vector<uint32_t> spirv_cast_6;
-static std::vector<uint32_t> spirv_cast_7;
-static std::vector<uint32_t> spirv_cast_8;
-static std::vector<uint32_t> spirv_cast_9;
-static std::vector<uint32_t> spirv_cast_10;
-static std::map<std::pair<TF_DataType, TF_DataType>, std::vector<uint32_t>*>
-    shaders;
-
-std::string makeTypePair(TF_DataType source, TF_DataType destination) {
-  return source + "," + destination;
-}
 
 struct CastOp {
   CastOp() : truncate_(false), dstT_(TF_FLOAT) {}
@@ -95,7 +58,7 @@ void CastOp_Delete(void* kernel) {
   }
 }
 
-template <TF_DataType S, TF_DataType D>
+template <TF_DataType S, TF_DataType D, const std::vector<uint32_t>* spirv>
 void CastOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   // utills::ScopeTimer timer("CastOp");
 
@@ -134,19 +97,20 @@ void CastOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       TF_TensorData(output_safe_ptr.get()));
 
   std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
-      {*in_ptr, *out_ptr}, *shaders[{S, D}],
-      kp::Workgroup({in_ptr->get()->size()}), std::vector<uint32_t>{D}, {});
+      {*in_ptr, *out_ptr}, *spirv, kp::Workgroup({in_ptr->get()->size()}), {},
+      {});
 
   stream->instance->mngr->sequence(stream->instance->mainQueue)
       ->record<kp::OpAlgoDispatch>(algo)
       ->eval();
 }
 
-template <TF_DataType S, TF_DataType D>
+template <TF_DataType S, TF_DataType D, const std::vector<uint32_t>* spirv>
 void RegisterCastOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
-  auto* builder = TF_NewKernelBuilder("Cast", device_type, CastOp_Create<S, D>,
-                                      &CastOp_Compute<S, D>, &CastOp_Delete);
+  auto* builder =
+      TF_NewKernelBuilder("Cast", device_type, CastOp_Create<S, D>,
+                          &CastOp_Compute<S, D, spirv>, &CastOp_Delete);
 
   TF_KernelBuilder_TypeConstraint(builder, "SrcT", S, status.get());
   TF_KernelBuilder_TypeConstraint(builder, "DstT", D, status.get());
@@ -160,70 +124,207 @@ void RegisterCastOpKernel(const char* device_type) {
 
 }  // namespace vulten_plugin
 
-#define REGISTER_TYPE_PAIR(s, d, c)    \
-  vulten_plugin::shaders[{s, d}] = &c; \
-  vulten_plugin::RegisterCastOpKernel<s, d>(device_type);
+#define REGISTER_TYPE_PAIR(s, d, c) \
+  vulten_plugin::RegisterCastOpKernel<s, d, &c>(device_type);
 
 void RegisterDeviceCast(const char* device_type) {
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_cast_1,
-                     kp::shader_data::___shaders_cast_Cast_1_comp_spv)
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_cast_2,
-                     kp::shader_data::___shaders_cast_Cast_2_comp_spv)
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_cast_3,
-                     kp::shader_data::___shaders_cast_Cast_3_comp_spv)
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_cast_4,
-                     kp::shader_data::___shaders_cast_Cast_4_comp_spv)
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_cast_5,
-                     kp::shader_data::___shaders_cast_Cast_5_comp_spv)
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_cast_6,
-                     kp::shader_data::___shaders_cast_Cast_6_comp_spv)
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_cast_7,
-                     kp::shader_data::___shaders_cast_Cast_7_comp_spv)
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_cast_8,
-                     kp::shader_data::___shaders_cast_Cast_8_comp_spv)
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_cast_9,
-                     kp::shader_data::___shaders_cast_Cast_9_comp_spv)
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_cast_10,
-                     kp::shader_data::___shaders_cast_Cast_10_comp_spv)
+#ifdef CAST_FLOAT_FLOAT
+  REGISTER_TYPE_PAIR(TF_FLOAT, TF_FLOAT, shader::Cast_float_float)
+#endif
+#ifdef CAST_FLOAT_INT
+  REGISTER_TYPE_PAIR(TF_FLOAT, TF_INT32, shader::Cast_float_int)
+#endif
+#ifdef CAST_FLOAT_UINT
+  REGISTER_TYPE_PAIR(TF_FLOAT, TF_UINT32, shader::Cast_float_uint)
+#endif
+#ifdef CAST_FLOAT_INT64_T
+  REGISTER_TYPE_PAIR(TF_FLOAT, TF_INT64, shader::Cast_float_int64_t)
+#endif
+#ifdef CAST_FLOAT_UINT64_T
+  REGISTER_TYPE_PAIR(TF_FLOAT, TF_UINT64, shader::Cast_float_uint64_t)
+#endif
+#ifdef CAST_FLOAT_INT8_T
+  REGISTER_TYPE_PAIR(TF_FLOAT, TF_INT8, shader::Cast_float_int8_t)
+#endif
+#ifdef CAST_FLOAT_UINT8_T
+  REGISTER_TYPE_PAIR(TF_FLOAT, TF_UINT8, shader::Cast_float_uint8_t)
+#endif
+#ifdef CAST_FLOAT_DOUBLE
+  REGISTER_TYPE_PAIR(TF_FLOAT, TF_DOUBLE, shader::Cast_float_double)
+#endif
 
-  // float | int uint       1
-  // float | int64 uint64   2
-  // int   | float uint     3
-  // int   | int64 uint64   4
-  // uint  | float int      5
-  // uint  | int64 uint64   6
-  // int64 | float int uint 7
-  // int64 | uint64         8
-  // uint64| float int uint 9
-  // uint64| int64          10
+#ifdef CAST_INT_INT
+  REGISTER_TYPE_PAIR(TF_INT32, TF_INT32, shader::Cast_int_int)
+#endif
+#ifdef CAST_INT_FLOAT
+  REGISTER_TYPE_PAIR(TF_INT32, TF_FLOAT, shader::Cast_int_float)
+#endif
+#ifdef CAST_INT_UINT
+  REGISTER_TYPE_PAIR(TF_INT32, TF_UINT32, shader::Cast_int_uint)
+#endif
+#ifdef CAST_INT_INT64_T
+  REGISTER_TYPE_PAIR(TF_INT32, TF_INT64, shader::Cast_int_int64_t)
+#endif
+#ifdef CAST_INT_UINT64_T
+  REGISTER_TYPE_PAIR(TF_INT32, TF_UINT64, shader::Cast_int_uint64_t)
+#endif
+#ifdef CAST_INT_INT8_T
+  REGISTER_TYPE_PAIR(TF_INT32, TF_INT8, shader::Cast_int_int8_t)
+#endif
+#ifdef CAST_INT_UINT8_T
+  REGISTER_TYPE_PAIR(TF_INT32, TF_UINT8, shader::Cast_int_uint8_t)
+#endif
+#ifdef CAST_INT_DOUBLE
+  REGISTER_TYPE_PAIR(TF_INT32, TF_DOUBLE, shader::Cast_int_double)
+#endif
 
-  REGISTER_TYPE_PAIR(TF_FLOAT, TF_INT32, vulten_plugin::spirv_cast_1)
-  REGISTER_TYPE_PAIR(TF_FLOAT, TF_UINT32, vulten_plugin::spirv_cast_1)
+#ifdef CAST_UINT_UINT
+  REGISTER_TYPE_PAIR(TF_UINT32, TF_UINT32, shader::Cast_uint_uint)
+#endif
+#ifdef CAST_UINT_FLOAT
+  REGISTER_TYPE_PAIR(TF_UINT32, TF_FLOAT, shader::Cast_uint_float)
+#endif
+#ifdef CAST_UINT_INT
+  REGISTER_TYPE_PAIR(TF_UINT32, TF_INT32, shader::Cast_uint_int)
+#endif
+#ifdef CAST_UINT_INT64_T
+  REGISTER_TYPE_PAIR(TF_UINT32, TF_INT64, shader::Cast_uint_int64_t)
+#endif
+#ifdef CAST_UINT_UINT64_T
+  REGISTER_TYPE_PAIR(TF_UINT32, TF_UINT64, shader::Cast_uint_uint64_t)
+#endif
+#ifdef CAST_UINT_INT8_T
+  REGISTER_TYPE_PAIR(TF_UINT32, TF_INT8, shader::Cast_uint_int8_t)
+#endif
+#ifdef CAST_UINT_UINT8_T
+  REGISTER_TYPE_PAIR(TF_UINT32, TF_UINT8, shader::Cast_uint_uint8_t)
+#endif
+#ifdef CAST_UINT_DOUBLE
+  REGISTER_TYPE_PAIR(TF_UINT32, TF_DOUBLE, shader::Cast_uint_double)
+#endif
 
-  REGISTER_TYPE_PAIR(TF_FLOAT, TF_INT64, vulten_plugin::spirv_cast_2)
-  REGISTER_TYPE_PAIR(TF_FLOAT, TF_UINT64, vulten_plugin::spirv_cast_2)
+#ifdef CAST_INT64_T_INT64_T
+  REGISTER_TYPE_PAIR(TF_INT64, TF_INT64, shader::Cast_int64_t_int64_t)
+#endif
+#ifdef CAST_INT64_T_INT
+  REGISTER_TYPE_PAIR(TF_INT64, TF_INT32, shader::Cast_int64_t_int)
+#endif
+#ifdef CAST_INT64_T_UINT
+  REGISTER_TYPE_PAIR(TF_INT64, TF_UINT32, shader::Cast_int64_t_uint)
+#endif
+#ifdef CAST_INT64_T_FLOAT
+  REGISTER_TYPE_PAIR(TF_INT64, TF_FLOAT, shader::Cast_int64_t_float)
+#endif
+#ifdef CAST_INT64_T_UINT64_T
+  REGISTER_TYPE_PAIR(TF_INT64, TF_UINT64, shader::Cast_int64_t_uint64_t)
+#endif
+#ifdef CAST_INT64_T_INT8_T
+  REGISTER_TYPE_PAIR(TF_INT64, TF_INT8, shader::Cast_int64_t_int8_t)
+#endif
+#ifdef CAST_INT64_T_UINT8_T
+  REGISTER_TYPE_PAIR(TF_INT64, TF_UINT8, shader::Cast_int64_t_uint8_t)
+#endif
+#ifdef CAST_INT64_T_DOUBLE
+  REGISTER_TYPE_PAIR(TF_INT64, TF_DOUBLE, shader::Cast_int64_t_double)
+#endif
 
-  REGISTER_TYPE_PAIR(TF_INT32, TF_FLOAT, vulten_plugin::spirv_cast_3)
-  REGISTER_TYPE_PAIR(TF_INT32, TF_UINT32, vulten_plugin::spirv_cast_3)
+#ifdef CAST_UINT64_T_UINT64_T
+  REGISTER_TYPE_PAIR(TF_UINT64, TF_UINT64, shader::Cast_uint64_t_uint64_t)
+#endif
+#ifdef CAST_UINT64_T_INT
+  REGISTER_TYPE_PAIR(TF_UINT64, TF_INT32, shader::Cast_uint64_t_int)
+#endif
+#ifdef CAST_UINT64_T_UINT
+  REGISTER_TYPE_PAIR(TF_UINT64, TF_UINT32, shader::Cast_uint64_t_uint)
+#endif
+#ifdef CAST_UINT64_T_FLOAT
+  REGISTER_TYPE_PAIR(TF_UINT64, TF_FLOAT, shader::Cast_uint64_t_float)
+#endif
+#ifdef CAST_UINT64_T_INT64_T
+  REGISTER_TYPE_PAIR(TF_UINT64, TF_INT64, shader::Cast_uint64_t_int64_t)
+#endif
+#ifdef CAST_UINT64_T_INT8_T
+  REGISTER_TYPE_PAIR(TF_UINT64, TF_INT8, shader::Cast_uint64_t_int8_t)
+#endif
+#ifdef CAST_UINT64_T_UINT8_T
+  REGISTER_TYPE_PAIR(TF_UINT64, TF_UINT8, shader::Cast_uint64_t_uint8_t)
+#endif
+#ifdef CAST_UINT64_T_DOUBLE
+  REGISTER_TYPE_PAIR(TF_UINT64, TF_DOUBLE, shader::Cast_uint64_t_double)
+#endif
 
-  REGISTER_TYPE_PAIR(TF_INT32, TF_INT64, vulten_plugin::spirv_cast_4)
-  REGISTER_TYPE_PAIR(TF_INT32, TF_UINT64, vulten_plugin::spirv_cast_4)
+#ifdef CAST_INT8_T_INT8_T
+  REGISTER_TYPE_PAIR(TF_INT8, TF_INT8, shader::Cast_int8_t_int8_t)
+#endif
+#ifdef CAST_INT8_T_FLOAT
+  REGISTER_TYPE_PAIR(TF_INT8, TF_FLOAT, shader::Cast_int8_t_float)
+#endif
+#ifdef CAST_INT8_T_INT
+  REGISTER_TYPE_PAIR(TF_INT8, TF_INT32, shader::Cast_int8_t_int)
+#endif
+#ifdef CAST_INT8_T_UINT
+  REGISTER_TYPE_PAIR(TF_INT8, TF_UINT32, shader::Cast_int8_t_uint)
+#endif
+#ifdef CAST_INT8_T_INT64_T
+  REGISTER_TYPE_PAIR(TF_INT8, TF_INT64, shader::Cast_int8_t_int64_t)
+#endif
+#ifdef CAST_INT8_T_UINT64_T
+  REGISTER_TYPE_PAIR(TF_INT8, TF_UINT64, shader::Cast_int8_t_uint64_t)
+#endif
+#ifdef CAST_INT8_T_UINT8_T
+  REGISTER_TYPE_PAIR(TF_INT8, TF_UINT8, shader::Cast_int8_t_uint8_t)
+#endif
+#ifdef CAST_INT8_T_DOUBLE
+  REGISTER_TYPE_PAIR(TF_INT8, TF_DOUBLE, shader::Cast_int8_t_double)
+#endif
 
-  REGISTER_TYPE_PAIR(TF_UINT32, TF_FLOAT, vulten_plugin::spirv_cast_5)
-  REGISTER_TYPE_PAIR(TF_UINT32, TF_INT32, vulten_plugin::spirv_cast_5)
+#ifdef CAST_UINT8_T_UINT8_T
+  REGISTER_TYPE_PAIR(TF_UINT8, TF_UINT8, shader::Cast_uint8_t_uint8_t)
+#endif
+#ifdef CAST_UINT8_T_FLOAT
+  REGISTER_TYPE_PAIR(TF_UINT8, TF_FLOAT, shader::Cast_uint8_t_float)
+#endif
+#ifdef CAST_UINT8_T_INT
+  REGISTER_TYPE_PAIR(TF_UINT8, TF_INT32, shader::Cast_uint8_t_int)
+#endif
+#ifdef CAST_UINT8_T_UINT
+  REGISTER_TYPE_PAIR(TF_UINT8, TF_UINT32, shader::Cast_uint8_t_uint)
+#endif
+#ifdef CAST_UINT8_T_INT64_T
+  REGISTER_TYPE_PAIR(TF_UINT8, TF_INT64, shader::Cast_uint8_t_int64_t)
+#endif
+#ifdef CAST_UINT8_T_UINT64_T
+  REGISTER_TYPE_PAIR(TF_UINT8, TF_UINT64, shader::Cast_uint8_t_uint64_t)
+#endif
+#ifdef CAST_UINT8_T_INT8_T
+  REGISTER_TYPE_PAIR(TF_UINT8, TF_INT8, shader::Cast_uint8_t_int8_t)
+#endif
+#ifdef CAST_UINT8_T_DOUBLE
+  REGISTER_TYPE_PAIR(TF_UINT8, TF_DOUBLE, shader::Cast_uint8_t_double)
+#endif
 
-  REGISTER_TYPE_PAIR(TF_UINT32, TF_INT64, vulten_plugin::spirv_cast_6)
-  REGISTER_TYPE_PAIR(TF_UINT32, TF_UINT64, vulten_plugin::spirv_cast_6)
-
-  REGISTER_TYPE_PAIR(TF_INT64, TF_FLOAT, vulten_plugin::spirv_cast_7)
-  REGISTER_TYPE_PAIR(TF_INT64, TF_INT32, vulten_plugin::spirv_cast_7)
-  REGISTER_TYPE_PAIR(TF_INT64, TF_UINT32, vulten_plugin::spirv_cast_7)
-
-  REGISTER_TYPE_PAIR(TF_INT64, TF_UINT64, vulten_plugin::spirv_cast_8)
-
-  REGISTER_TYPE_PAIR(TF_UINT64, TF_FLOAT, vulten_plugin::spirv_cast_9)
-  REGISTER_TYPE_PAIR(TF_UINT64, TF_INT32, vulten_plugin::spirv_cast_9)
-  REGISTER_TYPE_PAIR(TF_UINT64, TF_UINT32, vulten_plugin::spirv_cast_9)
-
-  REGISTER_TYPE_PAIR(TF_UINT64, TF_INT64, vulten_plugin::spirv_cast_10)
+#ifdef CAST_DOUBLE_DOUBLE
+  REGISTER_TYPE_PAIR(TF_DOUBLE, TF_DOUBLE, shader::Cast_double_double)
+#endif
+#ifdef CAST_DOUBLE_FLOAT
+  REGISTER_TYPE_PAIR(TF_DOUBLE, TF_FLOAT, shader::Cast_double_float)
+#endif
+#ifdef CAST_DOUBLE_INT
+  REGISTER_TYPE_PAIR(TF_DOUBLE, TF_INT32, shader::Cast_double_int)
+#endif
+#ifdef CAST_DOUBLE_UINT
+  REGISTER_TYPE_PAIR(TF_DOUBLE, TF_UINT32, shader::Cast_double_uint)
+#endif
+#ifdef CAST_DOUBLE_INT64_T
+  REGISTER_TYPE_PAIR(TF_DOUBLE, TF_INT64, shader::Cast_double_int64_t)
+#endif
+#ifdef CAST_DOUBLE_UINT64_T
+  REGISTER_TYPE_PAIR(TF_DOUBLE, TF_UINT64, shader::Cast_double_uint64_t)
+#endif
+#ifdef CAST_DOUBLE_INT8_T
+  REGISTER_TYPE_PAIR(TF_DOUBLE, TF_INT8, shader::Cast_double_int8_t)
+#endif
+#ifdef CAST_DOUBLE_UINT8_T
+  REGISTER_TYPE_PAIR(TF_DOUBLE, TF_UINT8, shader::Cast_double_uint8_t)
+#endif
 }

@@ -6,10 +6,10 @@
 #include <vector>
 
 #include "gpuBackend.h"
-#include "shaders/headers/shaderconv2d.hpp"
-#include "shaders/headers/shaderconv2dOld.hpp"
-#include "shaders/headers/shaderim2colSame.hpp"
-#include "shaders/headers/shaderim2colValid.hpp"
+#include "shaders/headers/conv2d/conv2d.h"
+#include "shaders/headers/conv2dOld/conv2dOld.h"
+#include "shaders/headers/im2colSame/im2colSame.h"
+#include "shaders/headers/im2colValid/im2colValid.h"
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/ops.h"
 #include "tensorflow/c/tf_datatype.h"
@@ -160,11 +160,6 @@ static int64_t GetTensorDim(TF_Tensor *tensor, std::string &format, char dim) {
 
 namespace vulten_plugin {
 
-static std::vector<uint32_t> spirv_im2col_valid;
-static std::vector<uint32_t> spirv_im2col_same;
-static std::vector<uint32_t> spirv_conv2d;
-static std::vector<uint32_t> spirv_conv2dOld;
-
 struct Im2colInfo {
   std::vector<int> dataVec;
 
@@ -297,7 +292,10 @@ void Conv2dOp_Delete(void *kernel) {
   }
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t> *spirv_conv2d,
+          const std::vector<uint32_t> *spirv_conv2dOld,
+          const std::vector<uint32_t> *spirv_im2colSame,
+          const std::vector<uint32_t> *spirv_im2colValid>
 void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
   Im2colInfo im2colInfo = Im2colInfo();
 
@@ -513,14 +511,14 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
   std::shared_ptr<kp::Algorithm> im2colAlgo;
   if (static_cast<Conv2dOp<T> *>(kernel)->padding_ == Padding::VALID) {
     im2colAlgo = stream->instance->mngr->algorithm(
-        {*in_ptr, im2colInfoTen, im2colTen}, spirv_im2col_valid,
+        {*in_ptr, im2colInfoTen, im2colTen}, *spirv_im2colValid,
         kp::Workgroup({uint32_t(im2colInfo.getBatches()),
                        uint32_t(im2colInfo.getresHight()),
                        uint32_t(im2colInfo.getresWidth())}));
 
   } else if (static_cast<Conv2dOp<T> *>(kernel)->padding_ = Padding::SAME) {
     im2colAlgo = stream->instance->mngr->algorithm(
-        {*in_ptr, im2colInfoTen, im2colTen}, spirv_im2col_same,
+        {*in_ptr, im2colInfoTen, im2colTen}, *spirv_im2colSame,
         kp::Workgroup({uint32_t(im2colInfo.getBatches()),
                        uint32_t(im2colInfo.getresHight()),
                        uint32_t(im2colInfo.getresWidth())}));
@@ -533,7 +531,8 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
   std::shared_ptr<kp::Algorithm> conv2dAlgo;
   if (im2colInfo.getfilterIn() == 1) {
     conv2dAlgo = stream->instance->mngr->algorithm(
-        {im2colTen, *filter_ptr, im2colInfoTen, *outputTensor}, spirv_conv2dOld,
+        {im2colTen, *filter_ptr, im2colInfoTen, *outputTensor},
+        *spirv_conv2dOld,
         kp::Workgroup(
             {uint32_t(im2colInfo.getBatches()),
              uint32_t((im2colRes / im2colInfo.getBatches()) / filterArea),
@@ -541,7 +540,7 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
                                 im2colInfo.getChannels()))}));
   } else {
     conv2dAlgo = stream->instance->mngr->algorithm(
-        {im2colTen, *filter_ptr, im2colInfoTen, *outputTensor}, spirv_conv2d,
+        {im2colTen, *filter_ptr, im2colInfoTen, *outputTensor}, *spirv_conv2d,
         kp::Workgroup(
             {uint32_t(im2colInfo.getBatches()),
              uint32_t(im2colInfo.getresHight() * im2colInfo.getresWidth()),
@@ -553,12 +552,17 @@ void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
       ->eval();
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t> *spirv_conv2d,
+          const std::vector<uint32_t> *spirv_conv2dOld,
+          const std::vector<uint32_t> *spirv_im2colSame,
+          const std::vector<uint32_t> *spirv_im2colValid>
 void RegisterConvOpKernel(const char *device_type) {
   StatusSafePtr status(TF_NewStatus());
-  auto *builder =
-      TF_NewKernelBuilder("Conv2D", device_type, Conv2dOp_Create<T>,
-                          &Conv2dOp_Compute<T>, &Conv2dOp_Delete<T>);
+  auto *builder = TF_NewKernelBuilder(
+      "Conv2D", device_type, Conv2dOp_Create<T>,
+      &Conv2dOp_Compute<T, spirv_conv2d, spirv_conv2dOld, spirv_im2colSame,
+                        spirv_im2colValid>,
+      &Conv2dOp_Delete<T>);
   TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering conv2d kernel with attribute T";
@@ -570,17 +574,33 @@ void RegisterConvOpKernel(const char *device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceConv2D(const char *device_type) {
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_im2col_valid,
-                     kp::shader_data::___shaders_im2colValid_comp_spv)
+#define REGISTER_KERNEL(T, S)                                                  \
+  vulten_plugin::RegisterConvOpKernel<                                         \
+      T, &shader::conv2d_##S, &shader::conv2dOld_##S, &shader::im2colSame_##S, \
+      &shader::im2colValid_##S>(device_type);
 
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_im2col_same,
-                     kp::shader_data::___shaders_im2colSame_comp_spv)
-
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_conv2d,
-                     kp::shader_data::___shaders_conv2d_comp_spv)
-
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_conv2dOld,
-                     kp::shader_data::___shaders_conv2dOld_comp_spv)
-
-  vulten_plugin::RegisterConvOpKernel<TF_FLOAT>(device_type);
+#ifdef CONV2D_FLOAT
+  REGISTER_KERNEL(TF_FLOAT, float)
+#endif
+#ifdef CONV2D_INT
+  REGISTER_KERNEL(TF_INT32, int)
+#endif
+#ifdef CONV2D_UINT
+  REGISTER_KERNEL(TF_UINT32, uint)
+#endif
+#ifdef CONV2D_INT64_T
+  REGISTER_KERNEL(TF_INT64, int64_t)
+#endif
+#ifdef CONV2D_UINT64_T
+  REGISTER_KERNEL(TF_UINT64, uint64_t)
+#endif
+#ifdef CONV2D_INT8_T
+  REGISTER_KERNEL(TF_INT8, int8_t)
+#endif
+#ifdef CONV2D_UINT8_T
+  REGISTER_KERNEL(TF_UINT8, uint8_t)
+#endif
+#ifdef CONV2D_DOUBLE
+  REGISTER_KERNEL(TF_DOUBLE, double)
+#endif
 }

@@ -1,18 +1,16 @@
-#include "absl/container/inlined_vector.h"
-#include "gpuBackend.h"
-#include "tensorflow/c/kernels.h"
-#include "tensorflow/c/ops.h"
-#include "tensorflow/c/tf_datatype.h"
-#include "tensorflow/c/tf_status.h"
-#include "vulten_device.h"
-
-// shaders
 #include <chrono>
 #include <iostream>
 #include <memory>
 #include <vector>
 
-#include "shaders/headers/shaderPow.hpp"
+#include "absl/container/inlined_vector.h"
+#include "gpuBackend.h"
+#include "shaders/headers/Pow/Pow.h"
+#include "tensorflow/c/kernels.h"
+#include "tensorflow/c/ops.h"
+#include "tensorflow/c/tf_datatype.h"
+#include "tensorflow/c/tf_status.h"
+#include "vulten_device.h"
 
 struct StatusDeleter {
   void operator()(TF_Status* s) {
@@ -35,9 +33,7 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
 namespace vulten_plugin {
 
-static std::vector<uint32_t> spirv_pow;
-
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   StatusSafePtr status(TF_NewStatus());
 
@@ -104,7 +100,7 @@ void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   }
 
   std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
-      {*x_ptr, *y_ptr, *out_ptr}, spirv_pow,
+      {*x_ptr, *y_ptr, *out_ptr}, *spirv,
       kp::Workgroup({uint32_t(TF_TensorElementCount(x_safe_ptr.get()))}), {},
       std::vector<uint32_t>{scaler});
 
@@ -113,11 +109,11 @@ void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       ->eval();
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void RegisterPowOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder("Pow", device_type, nullptr,
-                                      &PowOp_Compute<T>, nullptr);
+                                      &PowOp_Compute<T, spirv>, nullptr);
   TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering Pow kernel with attribute T";
@@ -129,8 +125,31 @@ void RegisterPowOpKernel(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDevicePow(const char* device_type) {
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_pow,
-                     kp::shader_data::___shaders_Pow_comp_spv)
+#define REGISTER_KERNEL(T, S) \
+  vulten_plugin::RegisterPowOpKernel<T, &shader::Pow_##S>(device_type);
 
-  vulten_plugin::RegisterPowOpKernel<TF_FLOAT>(device_type);
+#ifdef POW_FLOAT
+  REGISTER_KERNEL(TF_FLOAT, float)
+#endif
+#ifdef POW_INT
+  REGISTER_KERNEL(TF_INT32, int)
+#endif
+#ifdef POW_UINT
+  REGISTER_KERNEL(TF_UINT32, uint)
+#endif
+#ifdef POW_INT64_T
+  REGISTER_KERNEL(TF_INT64, int64_t)
+#endif
+#ifdef POW_UINT64_T
+  REGISTER_KERNEL(TF_UINT64, uint64_t)
+#endif
+#ifdef POW_INT8_T
+  REGISTER_KERNEL(TF_INT8, int8_t)
+#endif
+#ifdef POW_UINT8_T
+  REGISTER_KERNEL(TF_UINT8, uint8_t)
+#endif
+#ifdef POW_DOUBLE
+  REGISTER_KERNEL(TF_DOUBLE, double)
+#endif
 }

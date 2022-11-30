@@ -11,9 +11,9 @@
 #include <memory>
 #include <vector>
 
-#include "shaders/headers/shaderBatchAdd.hpp"
-#include "shaders/headers/shaderExp.hpp"
-#include "shaders/headers/shaderSoftmax.hpp"
+#include "shaders/headers/BatchAdd/BatchAdd.h"
+#include "shaders/headers/Exp/Exp.h"
+#include "shaders/headers/Softmax/Softmax.h"
 
 struct StatusDeleter {
   void operator()(TF_Status* s) {
@@ -36,11 +36,9 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
 namespace vulten_plugin {
 
-static std::vector<uint32_t> spirv_softmax;
-static std::vector<uint32_t> spirv_exp;
-static std::vector<uint32_t> spirv_batch_add;
-
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv_softmax,
+          const std::vector<uint32_t>* spirv_batch_add,
+          const std::vector<uint32_t>* spirv_exp>
 void SoftmaxOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   StatusSafePtr status(TF_NewStatus());
   TF_Tensor* input = nullptr;
@@ -79,12 +77,12 @@ void SoftmaxOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   std::vector<float> stageVecExp(in_ptr->get()->size());
   auto expTen = stream->instance->mngr->tensorT<float>(
       {stageVecExp}, kp::Tensor::TensorTypes::eDevice);
-  std::vector<float> stageVecBatchAdd(in_ptr->get()->size() / 4);
+  std::vector<float> stageVecBatchAdd(in_ptr->get()->size() / dims[1]);
   auto sumTen = stream->instance->mngr->tensorT<float>(
       {stageVecBatchAdd}, kp::Tensor::TensorTypes::eDevice);
 
   std::shared_ptr<kp::Algorithm> algo_exp = stream->instance->mngr->algorithm(
-      {*in_ptr, expTen}, spirv_exp,
+      {*in_ptr, expTen}, *spirv_exp,
       kp::Workgroup({(uint32_t)in_ptr->get()->size()}));
   stream->instance->mngr->sequence(stream->instance->mainQueue)
       ->record<kp::OpAlgoDispatch>(algo_exp)
@@ -92,28 +90,32 @@ void SoftmaxOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   std::shared_ptr<kp::Algorithm> algo_batch_add =
       stream->instance->mngr->algorithm(
-          {expTen, sumTen}, spirv_batch_add,
-          kp::Workgroup({(uint32_t)in_ptr->get()->size() / 4}), {},
-          std::vector<uint32_t>{4});
+          {expTen, sumTen}, *spirv_batch_add,
+          kp::Workgroup({(uint32_t)(in_ptr->get()->size() / dims[1])}), {},
+          std::vector<uint32_t>{(uint32_t)dims[1]});
   stream->instance->mngr->sequence(stream->instance->mainQueue)
       ->record<kp::OpAlgoDispatch>(algo_batch_add)
       ->eval();
 
   std::shared_ptr<kp::Algorithm> algo_softmax =
       stream->instance->mngr->algorithm(
-          {expTen, sumTen, *out_ptr}, spirv_softmax,
+          {expTen, sumTen, *out_ptr}, *spirv_softmax,
           kp::Workgroup({(uint32_t)in_ptr->get()->size()}), {},
-          std::vector<uint32_t>{4});
+          std::vector<uint32_t>{(uint32_t)dims[1]});
   stream->instance->mngr->sequence(stream->instance->mainQueue)
       ->record<kp::OpAlgoDispatch>(algo_softmax)
       ->eval();
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv_softmax,
+          const std::vector<uint32_t>* spirv_batch_add,
+          const std::vector<uint32_t>* spirv_exp>
 void RegisterSoftmaxOpKernel(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
-  auto* builder = TF_NewKernelBuilder("Softmax", device_type, nullptr,
-                                      &SoftmaxOp_Compute<T>, nullptr);
+  auto* builder = TF_NewKernelBuilder(
+      "Softmax", device_type, nullptr,
+      &SoftmaxOp_Compute<T, spirv_softmax, spirv_batch_add, spirv_exp>,
+      nullptr);
   TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering Softmax kernel with attribute T";
@@ -125,14 +127,33 @@ void RegisterSoftmaxOpKernel(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceSoftmax(const char* device_type) {
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_softmax,
-                     kp::shader_data::___shaders_Softmax_comp_spv)
+#define REGISTER_KERNEL(T, S)                                            \
+  vulten_plugin::RegisterSoftmaxOpKernel<                                \
+      T, &shader::Softmax_##S, &shader::BatchAdd_##S, &shader::Exp_##S>( \
+      device_type);
 
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_exp,
-                     kp::shader_data::___shaders_Exp_comp_spv)
-
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_batch_add,
-                     kp::shader_data::___shaders_BatchAdd_comp_spv)
-
-  vulten_plugin::RegisterSoftmaxOpKernel<TF_FLOAT>(device_type);
+#ifdef SOFTMAX_FLOAT
+  REGISTER_KERNEL(TF_FLOAT, float)
+#endif
+#ifdef SOFTMAX_INT
+  REGISTER_KERNEL(TF_INT32, int)
+#endif
+#ifdef SOFTMAX_UINT
+  REGISTER_KERNEL(TF_UINT32, uint)
+#endif
+#ifdef SOFTMAX_INT64_T
+  REGISTER_KERNEL(TF_INT64, int64_t)
+#endif
+#ifdef SOFTMAX_UINT64_T
+  REGISTER_KERNEL(TF_UINT64, uint64_t)
+#endif
+#ifdef SOFTMAX_INT8_T
+  REGISTER_KERNEL(TF_INT8, int8_t)
+#endif
+#ifdef SOFTMAX_UINT8_T
+  REGISTER_KERNEL(TF_UINT8, uint8_t)
+#endif
+#ifdef SOFTMAX_DOUBLE
+  REGISTER_KERNEL(TF_DOUBLE, double)
+#endif
 }

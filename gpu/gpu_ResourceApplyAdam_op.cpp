@@ -7,7 +7,7 @@
 
 #include "gpuBackend.h"
 #include "gpu_variable_helpers.h"
-#include "shaders/headers/shaderApplyAdam.hpp"
+#include "shaders/headers/ApplyAdam/ApplyAdam.h"
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/kernels_experimental.h"
 #include "tensorflow/c/ops.h"
@@ -19,8 +19,6 @@
 //#define debugAdam 1
 
 namespace vulten_plugin {
-
-static std::vector<uint32_t> spirv;
 
 template <TF_DataType T>
 struct ResourceApplyAdamOp {
@@ -53,7 +51,7 @@ void ResourceApplyAdamOp_Delete(void* kernel) {
   }
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   ResourceApplyAdamOp<T>* resourceApplyAdamOp =
       static_cast<ResourceApplyAdamOp<T>*>(kernel);
@@ -196,7 +194,7 @@ void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
       {*var_ptr, *m_ptr, *v_ptr, *beta1_power_ptr, *beta2_power_ptr, *lr_ptr,
        *beta1_ptr, *beta2_ptr, *epsilon_ptr, *grad_ptr},
-      spirv, kp::Workgroup({var_ptr->get()->size()}),
+      *spirv, kp::Workgroup({var_ptr->get()->size()}),
       std::vector<uint32_t>{resourceApplyAdamOp->nesterov_}, {});
 
   stream->instance->mngr->sequence(stream->instance->mainQueue)
@@ -208,12 +206,12 @@ void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   delete v_ref;
 }
 
-template <TF_DataType T>
+template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void RegisterResourceApplyAdamOp(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder(
       "ResourceApplyAdam", device_type, ResourceApplyAdamOp_Create<T>,
-      &ResourceApplyAdamOp_Compte<T>, &ResourceApplyAdamOp_Delete<T>);
+      &ResourceApplyAdamOp_Compte<T, spirv>, &ResourceApplyAdamOp_Delete<T>);
   TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout
@@ -226,8 +224,32 @@ void RegisterResourceApplyAdamOp(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterResourceApplyAdam(const char* device_type) {
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv,
-                     kp::shader_data::___shaders_ApplyAdam_comp_spv)
+#define REGISTER_KERNEL(T, S)                                            \
+  vulten_plugin::RegisterResourceApplyAdamOp<T, &shader::ApplyAdam_##S>( \
+      device_type);
 
-  vulten_plugin::RegisterResourceApplyAdamOp<TF_FLOAT>(device_type);
+#ifdef APPLYADAM_FLOAT
+  REGISTER_KERNEL(TF_FLOAT, float)
+#endif
+#ifdef APPLYADAM_INT
+  REGISTER_KERNEL(TF_INT32, int)
+#endif
+#ifdef APPLYADAM_UINT
+  REGISTER_KERNEL(TF_UINT32, uint)
+#endif
+#ifdef APPLYADAM_INT64_T
+  REGISTER_KERNEL(TF_INT64, int64_t)
+#endif
+#ifdef APPLYADAM_UINT64_T
+  REGISTER_KERNEL(TF_UINT64, uint64_t)
+#endif
+#ifdef APPLYADAM_INT8_T
+  REGISTER_KERNEL(TF_INT8, int8_t)
+#endif
+#ifdef APPLYADAM_UINT8_T
+  REGISTER_KERNEL(TF_UINT8, uint8_t)
+#endif
+#ifdef APPLYADAM_DOUBLE
+  REGISTER_KERNEL(TF_DOUBLE, double)
+#endif
 }

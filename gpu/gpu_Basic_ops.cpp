@@ -13,7 +13,7 @@
 #include <memory>
 #include <vector>
 
-#include "shaders/headers/shaderBasicOps.hpp"
+#include "shaders/headers/BasicOps/BasicOps.h"
 
 #define OP_MUL 0
 #define OP_ADD 1
@@ -42,9 +42,7 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
 namespace vulten_plugin {
 
-static std::vector<uint32_t> spirv_basic;
-
-template <TF_DataType T, uint32_t OP>
+template <TF_DataType T, uint32_t OP, const std::vector<uint32_t>* spirv>
 void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
   StatusSafePtr status(TF_NewStatus());
   TF_Tensor* x = nullptr;
@@ -113,7 +111,7 @@ void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
   std::vector<std::shared_ptr<kp::Sequence>> sequences(res_dims[0]);
   for (uint32_t i = 0; i < uint32_t(res_dims[0]); i++) {
     std::shared_ptr<kp::Algorithm> algo = stream->instance->mngr->algorithm(
-        {*x_ptr, *y_ptr, *out_ptr}, spirv_basic,
+        {*x_ptr, *y_ptr, *out_ptr}, *spirv,
         kp::Workgroup({uint32_t(res_dims[1]), uint32_t(res_dims[2]),
                        uint32_t(res_dims[3])}),
         std::vector<uint32_t>{
@@ -131,24 +129,24 @@ void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
   }
 }
 
-template <TF_DataType T, uint32_t OP>
+template <TF_DataType T, uint32_t OP, const std::vector<uint32_t>* spirv>
 void RegisterBasicOpKernels(const char* device_type) {
   std::string op = "";
   if (OP == OP_MUL) {
     op = "Mul";
   } else if (OP == OP_ADD) {
-    op == "Add";
+    op = "Add";
   } else if (OP == OP_SUB) {
-    op == "Sub";
+    op = "Sub";
   } else if (OP == OP_DIV) {
-    op == "Div";
+    op = "Div";
   } else if (OP == OP_DIV_NO_NAN) {
-    op == "DivNoNan";
+    op = "DivNoNan";
   }
 
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder(op.c_str(), device_type, nullptr,
-                                      &BasicOps_Compute<T, OP>, nullptr);
+                                      &BasicOps_Compute<T, OP, spirv>, nullptr);
   TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering Mul kernel with attribute T";
@@ -160,17 +158,37 @@ void RegisterBasicOpKernels(const char* device_type) {
 }  // namespace vulten_plugin
 
 void RegisterDeviceBasicOps(const char* device_type) {
-  LOAD_SHADER_TO_VEC(vulten_plugin::spirv_basic,
-                     kp::shader_data::___shaders_BasicOps_comp_spv)
+#define REGISTER_KERNEL(T, S)                                        \
+  vulten_plugin::RegisterBasicOpKernels<T, OP_MUL, &S>(device_type); \
+  vulten_plugin::RegisterBasicOpKernels<T, OP_ADD, &S>(device_type); \
+  vulten_plugin::RegisterBasicOpKernels<T, OP_SUB, &S>(device_type); \
+  vulten_plugin::RegisterBasicOpKernels<T, OP_DIV, &S>(device_type); \
+  vulten_plugin::RegisterBasicOpKernels<T, OP_DIV_NO_NAN, &S>(device_type);
 
-#define REGISTER_KERNELS(T)                                      \
-  vulten_plugin::RegisterBasicOpKernels<T, OP_MUL>(device_type); \
-  vulten_plugin::RegisterBasicOpKernels<T, OP_ADD>(device_type); \
-  vulten_plugin::RegisterBasicOpKernels<T, OP_SUB>(device_type); \
-  vulten_plugin::RegisterBasicOpKernels<T, OP_DIV>(device_type); \
-  vulten_plugin::RegisterBasicOpKernels<T, OP_DIV_NO_NAN>(device_type);
-
-  REGISTER_KERNELS(TF_FLOAT)
+#ifdef BASICOPS_FLOAT
+  REGISTER_KERNEL(TF_FLOAT, shader::BasicOps_float)
+#endif
+#ifdef BASICOPS_INT
+  REGISTER_KERNEL(TF_INT32, shader::BasicOps_int)
+#endif
+#ifdef BASICOPS_UINT
+  REGISTER_KERNEL(TF_UINT32, shader::BasicOps_uint)
+#endif
+#ifdef BASICOPS_INT64_T
+  REGISTER_KERNEL(TF_INT64, shader::BasicOps_int64_t)
+#endif
+#ifdef BASICOPS_UINT64_T
+  REGISTER_KERNEL(TF_UINT64, shader::BasicOps_uint64_t)
+#endif
+#ifdef BASICOPS_INT8_T
+  REGISTER_KERNEL(TF_INT8, shader::BasicOps_int8_t)
+#endif
+#ifdef BASICOPS_UINT8_T
+  REGISTER_KERNEL(TF_UINT8, shader::BasicOps_uint8_t)
+#endif
+#ifdef BASICOPS_DOUBLE
+  REGISTER_KERNEL(TF_DOUBLE, shader::BasicOps_double)
+#endif
 
 #undef REGISTER_KERNELS
 }

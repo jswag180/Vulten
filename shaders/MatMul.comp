@@ -1,13 +1,15 @@
+//#/types, 1
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
-//#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+#extension GL_GOOGLE_include_directive : enable
+
+#include "prelude.h"
 
 //layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) buffer a { readonly  mediump float aData[]; };
-layout(set = 0, binding = 1) buffer b { readonly  mediump float bData[]; };
-layout(set = 0, binding = 2) buffer c { writeonly mediump float outData[]; };
-
+layout(set = 0, binding = 0) buffer a { readonly  TYPE_0 aData[]; };
+layout(set = 0, binding = 1) buffer b { readonly  TYPE_0 bData[]; };
+layout(set = 0, binding = 2) buffer c { writeonly TYPE_0 outData[]; };
 
 layout(constant_id = 0) const uint aX = 0;
 layout(constant_id = 1) const uint aY = 0;
@@ -20,7 +22,13 @@ uint unFlatToFlat(in uint x, in uint y, in uint width){
 
 void main() {
 
-    mediump float dotProd = 0.0;
+    #if TYPE_NUM_0 == FLOAT || TYPE_NUM_0 == DOUBLE
+        TYPE_0 dotProd = 0.0;
+    #elif TYPE_NUM_0 == INT8_T || TYPE_NUM_0 == UINT8_T
+        TYPE_0 dotProd = TYPE_0(0);
+    #else
+        TYPE_0 dotProd = 0;
+    #endif
 
     for(uint i = 0; i < aY; i++){
         dotProd += aData[unFlatToFlat(gl_GlobalInvocationID.x, i, aY)] * bData[unFlatToFlat(i, gl_GlobalInvocationID.y, bY)];

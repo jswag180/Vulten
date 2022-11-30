@@ -29,9 +29,9 @@ void ReadVariableOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
 
   if (TF_TensorElementCount(*ref) == 0) return;
   absl::InlinedVector<int64_t, 4> dims(TF_NumDims(*ref));
-  for (auto i = 0; i < TF_NumDims(*ref); ++i) {
-    dims[i] = TF_Dim(*ref, i);
-  }
+  // for (auto i = 0; i < TF_NumDims(*ref); ++i) {
+  //   dims[i] = TF_Dim(*ref, i);
+  // }
 
   TF_SetOutput(ctx, 0, *ref, status.get());
 
