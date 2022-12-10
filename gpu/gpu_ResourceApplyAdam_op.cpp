@@ -53,6 +53,8 @@ void ResourceApplyAdamOp_Delete(void* kernel) {
 
 template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
+  SCOPE_TIMER("ResourceApplyAdamOp")
+
   ResourceApplyAdamOp<T>* resourceApplyAdamOp =
       static_cast<ResourceApplyAdamOp<T>*>(kernel);
   StatusSafePtr status(TF_NewStatus());
