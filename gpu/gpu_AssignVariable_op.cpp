@@ -18,6 +18,8 @@
 namespace vulten_plugin {
 
 void AssignVariableOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
+  SCOPE_TIMER("AssignVariableOp")
+
   StatusSafePtr status(TF_NewStatus());
 
   TF_AssignVariable(ctx, 0, 1, false, &varHelpers::copyFunc, status.get());
