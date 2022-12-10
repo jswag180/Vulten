@@ -135,7 +135,7 @@ void RegisterBasicOpKernels(const char* device_type) {
   if (OP == OP_MUL) {
     op = "Mul";
   } else if (OP == OP_ADD) {
-    op = "Add";
+    op = "AddV2";
   } else if (OP == OP_SUB) {
     op = "Sub";
   } else if (OP == OP_DIV) {
