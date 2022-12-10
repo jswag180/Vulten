@@ -37,7 +37,8 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 namespace vulten_plugin {
 
 void IdentityOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
-  // utills::ScopeTimer timer("ReadVariableOp");
+  SCOPE_TIMER("IdentityOp")
+  
   StatusSafePtr status(TF_NewStatus());
 
   TF_Tensor* input = nullptr;
