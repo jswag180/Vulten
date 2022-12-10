@@ -59,7 +59,7 @@ void plugin_destroy_device_fns(const SP_Platform* platform,
 /*StreamExecutor Backend Impl*/
 void plugin_allocate(const SP_Device* device, uint64_t size,
                      int64_t memory_space, SP_DeviceMemoryBase* mem) {
-  // utills::ScopeTimer timer("ALLOC");
+  SCOPE_TIMER("ALLOC")
   mem->struct_size = SP_DEVICE_MEMORY_BASE_STRUCT_SIZE;
 
   MutexScopeLock guard = MutexScopeLock();
@@ -85,7 +85,7 @@ void plugin_allocate(const SP_Device* device, uint64_t size,
 }
 
 void plugin_deallocate(const SP_Device* device, SP_DeviceMemoryBase* mem) {
-// utills::ScopeTimer timer("DEALLOC");
+  SCOPE_TIMER("DEALLOC")
 #ifndef NDEBUG
   std::cout << "Vulten [INFO]: "
             << "DEALLOC: " << device->ordinal << " addr: " << mem->opaque
@@ -230,7 +230,7 @@ void plugin_stop_timer(const SP_Device* device, SP_Stream stream,
 void plugin_memcpy_dtoh(const SP_Device* device, SP_Stream stream,
                         void* host_dst, const SP_DeviceMemoryBase* device_src,
                         uint64_t size, TF_Status* status) {
-// utills::ScopeTimer timer("DTH Transfer");
+  SCOPE_TIMER("DTH Transfer")
 #ifndef NDEBUG
   std::cout << "Vulten [INFO]: "
             << "Device to host transfer Size: " << size << "\n";
@@ -270,7 +270,7 @@ void plugin_memcpy_dtoh(const SP_Device* device, SP_Stream stream,
 void plugin_memcpy_htod(const SP_Device* device, SP_Stream stream,
                         SP_DeviceMemoryBase* device_dst, const void* host_src,
                         uint64_t size, TF_Status* status) {
-  // utills::ScopeTimer timer("HTD Transfer");
+  SCOPE_TIMER("HTD Transfer")
 
 #ifndef NDEBUG
   std::cout << "Vulten [INFO]: "
@@ -315,7 +315,7 @@ void plugin_memcpy_dtod(const SP_Device* device, SP_Stream stream,
                         SP_DeviceMemoryBase* device_dst,
                         const SP_DeviceMemoryBase* device_src, uint64_t size,
                         TF_Status* status) {
-// utills::ScopeTimer timer("DTD Transfer");
+  SCOPE_TIMER("DTD Transfer")
 #ifndef NDEBUG
   std::cout << "Vulten [INFO]: " << device->ordinal
             << " Device to device transfer "
