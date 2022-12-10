@@ -42,8 +42,26 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
 namespace vulten_plugin {
 
+static inline std::string op_to_string(uint32_t op){
+  std::string op_str = "";
+  if (op == OP_MUL) {
+    op_str = "Mul";
+  } else if (op == OP_ADD) {
+    op_str = "AddV2";
+  } else if (op == OP_SUB) {
+    op_str = "Sub";
+  } else if (op == OP_DIV) {
+    op_str = "Div";
+  } else if (op == OP_DIV_NO_NAN) {
+    op_str = "DivNoNan";
+  }
+  return op_str;
+}
+
 template <TF_DataType T, uint32_t OP, const std::vector<uint32_t>* spirv>
 void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
+  SCOPE_TIMER("BasicOp " + op_to_string(OP))
+
   StatusSafePtr status(TF_NewStatus());
   TF_Tensor* x = nullptr;
   TF_GetInput(ctx, 0, &x, status.get());
@@ -131,18 +149,7 @@ void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
 template <TF_DataType T, uint32_t OP, const std::vector<uint32_t>* spirv>
 void RegisterBasicOpKernels(const char* device_type) {
-  std::string op = "";
-  if (OP == OP_MUL) {
-    op = "Mul";
-  } else if (OP == OP_ADD) {
-    op = "AddV2";
-  } else if (OP == OP_SUB) {
-    op = "Sub";
-  } else if (OP == OP_DIV) {
-    op = "Div";
-  } else if (OP == OP_DIV_NO_NAN) {
-    op = "DivNoNan";
-  }
+  std::string op = op_to_string(OP);
 
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder(op.c_str(), device_type, nullptr,
