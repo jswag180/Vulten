@@ -74,6 +74,8 @@ void BiasAddOp_Delete(void* kernel) {
 
 template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void BiasAddOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
+  SCOPE_TIMER("BiasAddOp")
+
   BiasAddOp<T>* biasAddOp = static_cast<BiasAddOp<T>*>(kernel);
 
   StatusSafePtr status(TF_NewStatus());
