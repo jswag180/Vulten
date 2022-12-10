@@ -42,7 +42,7 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
 namespace vulten_plugin {
 
-static inline std::string op_to_string(uint32_t op){
+static inline std::string op_to_string(uint32_t op) {
   std::string op_str = "";
   if (op == OP_MUL) {
     op_str = "Mul";
