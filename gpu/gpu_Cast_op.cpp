@@ -60,7 +60,8 @@ void CastOp_Delete(void* kernel) {
 
 template <TF_DataType S, TF_DataType D, const std::vector<uint32_t>* spirv>
 void CastOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
-  // utills::ScopeTimer timer("CastOp");
+  SCOPE_TIMER("CastOp " + std::to_string(static_cast<int>(S)) + " -> " +
+              std::to_string(static_cast<int>(D)))
 
   CastOp* castOp = static_cast<CastOp*>(kernel);
 
