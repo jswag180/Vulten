@@ -41,7 +41,7 @@ template <TF_DataType T, const std::vector<uint32_t>* spirv_softmax,
           const std::vector<uint32_t>* spirv_exp>
 void SoftmaxOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   SCOPE_TIMER("SoftmaxOp")
-  
+
   StatusSafePtr status(TF_NewStatus());
   TF_Tensor* input = nullptr;
   TF_GetInput(ctx, 0, &input, status.get());

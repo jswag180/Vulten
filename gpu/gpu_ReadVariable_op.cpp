@@ -20,7 +20,7 @@ namespace vulten_plugin {
 
 void ReadVariableOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   SCOPE_TIMER("ReadVariableOp")
-  
+
   StatusSafePtr status(TF_NewStatus());
 
   TF_Tensor** ref = new TF_Tensor*;

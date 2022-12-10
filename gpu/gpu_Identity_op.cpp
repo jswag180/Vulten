@@ -38,7 +38,7 @@ namespace vulten_plugin {
 
 void IdentityOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   SCOPE_TIMER("IdentityOp")
-  
+
   StatusSafePtr status(TF_NewStatus());
 
   TF_Tensor* input = nullptr;
