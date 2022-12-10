@@ -21,7 +21,8 @@ namespace vulten_plugin {
 
 template <TF_DataType T, const std::vector<uint32_t> *spirv>
 void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
-  // utills::ScopeTimer timer("AssignAddVariableOp");
+  SCOPE_TIMER("AssignAddVariableOp")
+
   StatusSafePtr status(TF_NewStatus());
 
   TF_AssignUpdateVariable(
