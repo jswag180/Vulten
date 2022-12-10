@@ -35,6 +35,8 @@ namespace vulten_plugin {
 
 template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
+  SCOPE_TIMER("PowOp")
+
   StatusSafePtr status(TF_NewStatus());
 
   TF_Tensor* x = nullptr;
