@@ -35,7 +35,8 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
 template <TF_DataType T, const std::vector<uint32_t>* spirv>
 void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
-  // ReluOp* relu = static_cast<ReluOp*>(kernel);
+  SCOPE_TIMER("ReluOp")
+
   StatusSafePtr status(TF_NewStatus());
   TF_Tensor* input = nullptr;
   TF_GetInput(ctx, 0, &input, status.get());
