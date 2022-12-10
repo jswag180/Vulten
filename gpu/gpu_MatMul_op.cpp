@@ -70,6 +70,8 @@ void MatMulOp_Delete(void* kernel) {
 
 template <TF_DataType T, const std::vector<uint32_t>* spirv[]>
 void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
+  SCOPE_TIMER("MatMulOp")
+
   MatMulOp<T>* matMulOp = static_cast<MatMulOp<T>*>(kernel);
 
   StatusSafePtr status(TF_NewStatus());
