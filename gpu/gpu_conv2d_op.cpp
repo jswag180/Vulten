@@ -297,6 +297,8 @@ template <TF_DataType T, const std::vector<uint32_t> *spirv_conv2d,
           const std::vector<uint32_t> *spirv_im2colSame,
           const std::vector<uint32_t> *spirv_im2colValid>
 void Conv2dOp_Compute(void *kernel, TF_OpKernelContext *ctx) {
+  SCOPE_TIMER("Conv2dOp")
+
   Im2colInfo im2colInfo = Im2colInfo();
 
   StatusSafePtr status(TF_NewStatus());
