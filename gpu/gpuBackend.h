@@ -16,6 +16,12 @@
 
 #define HANDLE_TO_GPUBACKEND_PTR(h) static_cast<gpuBackend*>(h)
 
+#ifdef OP_TIMERS
+  #define SCOPE_TIMER(n) utills::ScopeTimer scopeTimer(n);
+#else
+  #define SCOPE_TIMER(n)
+#endif
+
 struct MutexScopeLock {
   std::mutex* m_mutex;
   bool isLocked = false;

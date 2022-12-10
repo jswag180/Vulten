@@ -13,6 +13,7 @@ option(KOMPUTE_OPT_ENABLE_SPDLOG "Extra compile flags for Kompute, see docs for 
 if(KOMPUTE_OPT_ENABLE_SPDLOG)
     set(KOMPUTE_EXTRA_CXX_FLAGS "${KOMPUTE_EXTRA_CXX_FLAGS} -DKOMPUTE_ENABLE_SPDLOG=1")
 endif()
+option(ENABLE_SCOPE_TIMERS "Enable timers for ops" OFF)
 
 # It is necessary to pass the DEBUG or RELEASE flag accordingly to Kompute
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG=1 ${KOMPUTE_EXTRA_CXX_FLAGS}")
@@ -71,6 +72,10 @@ add_custom_target(softmax
 add_library(Vulten SHARED ${SOURCES})
 
 
+if(${ENABLE_SCOPE_TIMERS})
+    message("-- Scope timers: enabled")
+    add_compile_definitions(OP_TIMERS)
+endif()
 
 add_dependencies(Vulten cast addInPlace basicOps biasAdd conv2d transpose matMul pow relu applyAdam softmax)
 
