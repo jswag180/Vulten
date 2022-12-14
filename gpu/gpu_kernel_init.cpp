@@ -23,7 +23,7 @@ void RegisterDeviceKernels(const char* device_type) {
   RegisterDeviceCast(device_type);
   // RegisterDeviceStridedSliceOp(device_type);
   // RegisterDeviceSparseSoftmaxCrossEntropyWithLogitsOp(device_type);
-
+  RegisterDeviceBiasAddGradOp(device_type);
   RegisterDeviceBiasAdd(device_type);
   RegisterDeviceMatMul(device_type);
 }

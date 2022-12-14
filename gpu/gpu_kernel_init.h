@@ -22,5 +22,5 @@ void RegisterDeviceCast(const char* device_type);
 void RegisterDeviceStridedSliceOp(const char* device_type);
 void RegisterDeviceSparseSoftmaxCrossEntropyWithLogitsOp(
     const char* device_type);
-
+void RegisterDeviceBiasAddGradOp(const char* device_type);
 void RegisterDeviceKernels(const char* device_type);
