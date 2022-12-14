@@ -28,12 +28,12 @@ layout(push_constant) uniform PushConstants {
 
 shared TYPE_0 sdata[localX / subGroupSize];
 
+//Adopted from https://github.com/JonathanWoollett-Light/GLSL-BLAS/blob/master/glsl/ddot.comp
 void main(){
 
     uint chunk_size = localX;
 
     uint base = uint(gl_GlobalInvocationID.x) * chunk_size;
-
     
     TYPE_0 sum = TYPE_0(0);
     for( uint i = 0; i < chunk_size; i++){
