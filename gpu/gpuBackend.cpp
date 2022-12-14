@@ -27,6 +27,20 @@ int gpuBackend::listDevices() {
 
         newProp.physicalProperties = device.getProperties();
 
+        VkPhysicalDeviceSubgroupProperties subgroupProperties;
+        subgroupProperties.sType =
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+        subgroupProperties.pNext = NULL;
+
+        VkPhysicalDeviceProperties2 physicalDeviceProperties;
+        physicalDeviceProperties.sType =
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        physicalDeviceProperties.pNext = &subgroupProperties;
+
+        vkGetPhysicalDeviceProperties2(device, &physicalDeviceProperties);
+
+        newProp.maxSubGroupSize = subgroupProperties.subgroupSize;
+
         for (auto exten : device.enumerateDeviceExtensionProperties()) {
           newProp.deviceExtentions.push_back(exten.extensionName);
         }

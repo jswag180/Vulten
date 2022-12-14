@@ -11,9 +11,6 @@
 #include <unordered_map>
 #include <vector>
 
-#define LOAD_SHADER_TO_VEC(v, n) \
-  v = std::vector<uint32_t>((uint32_t*)n, (uint32_t*)(n + n##_len));
-
 #define HANDLE_TO_GPUBACKEND_PTR(h) static_cast<gpuBackend*>(h)
 
 #ifdef OP_TIMERS
@@ -66,6 +63,7 @@ struct devicePropertys {
   std::vector<std::string> deviceExtentions;
   vk::PhysicalDeviceMemoryProperties memProperties;
   std::vector<QueueProps> queueProperties;
+  uint32_t maxSubGroupSize;
 };
 
 namespace utills {
