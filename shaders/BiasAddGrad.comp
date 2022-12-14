@@ -31,12 +31,10 @@ shared TYPE_0 sdata[localX / subGroupSize];
 //Adopted from https://github.com/JonathanWoollett-Light/GLSL-BLAS/blob/master/glsl/ddot.comp
 void main(){
 
-    uint chunk_size = localX;
-
-    uint base = uint(gl_GlobalInvocationID.x) * chunk_size;
+    uint base = uint(gl_GlobalInvocationID.x) * localX;
     
     TYPE_0 sum = TYPE_0(0);
-    for( uint i = 0; i < chunk_size; i++){
+    for( uint i = 0; i < localX; i++){
         if(format == NHWC){
             sum += A[((base + i) * C) + push_const.channelSelect];
         }else{
