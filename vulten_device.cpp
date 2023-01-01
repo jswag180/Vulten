@@ -7,42 +7,45 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <memory>
 
-#include "gpuBackend.h"
+#include "Vulten_backend/Vulten_backend.h"
+#include "scope_timer.h"
 
 void plugin_get_device_count(const SP_Platform* platform, int* device_count,
                              TF_Status* status) {
-  *device_count = gpuBackend::listDevices();
+  *device_count = vulten_backend::Device_propertys().devices->size();
 }
 
 void plugin_create_device(const SP_Platform* platform,
                           SE_CreateDeviceParams* params,
                           TF_Status* const status) {
   params->device->struct_size = SP_DEVICE_STRUCT_SIZE;
-  params->device->device_handle = new gpuBackend(params->ordinal);
+  params->device->device_handle = new vulten_backend::Instance(params->ordinal);
   params->device->ordinal = params->ordinal;
   params->device->hardware_name =
-      gpuBackend::deviceProps[params->ordinal].physicalProperties.deviceName;
+      (*vulten_backend::Device_propertys().devices)[params->ordinal]
+          .props.deviceName;
 
 #ifndef NDEBUG
-  std::cout
-      << "Vulten [INFO]: "
-      << "Detected device " << params->ordinal << " "
-      << gpuBackend::deviceProps[params->ordinal].physicalProperties.deviceName
-      << "\n";
+  std::cout << "Vulten [INFO]: "
+            << "Detected device " << params->ordinal << " "
+            << (*vulten_backend::Device_propertys().devices)[params->ordinal]
+                   .props.deviceName
+            << "\n";
 #endif
 }
 
 void plugin_destroy_device(const SP_Platform* platform, SP_Device* device) {
 #ifndef NDEBUG
-  std::cout
-      << "Vulten [INFO]: "
-      << "Detroying device " << device->ordinal << " "
-      << gpuBackend::deviceProps[device->ordinal].physicalProperties.deviceName
-      << "\n";
+  std::cout << "Vulten [INFO]: "
+            << "Detroying device " << device->ordinal << " "
+            << (*vulten_backend::Device_propertys().devices)[params->ordinal]
+                   .props.deviceName
+            << "\n";
 #endif
 
-  delete static_cast<gpuBackend*>(device->device_handle);
+  delete VOID_TO_INSTANCE(device->device_handle);
   device->device_handle = nullptr;
   device->ordinal = -1;
 }
@@ -60,21 +63,10 @@ void plugin_destroy_device_fns(const SP_Platform* platform,
 void plugin_allocate(const SP_Device* device, uint64_t size,
                      int64_t memory_space, SP_DeviceMemoryBase* mem) {
   SCOPE_TIMER("ALLOC")
+
   mem->struct_size = SP_DEVICE_MEMORY_BASE_STRUCT_SIZE;
-
-  MutexScopeLock guard = MutexScopeLock();
-  if (HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->hasMemQueue) {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->memoryQueueMutex);
-  } else {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->mainQueueMutex);
-  }
-
-  // int8 is not impplemnted and bools don't work. rounding to up the nearest
-  // float
   mem->opaque =
-      static_cast<gpuBackend*>(device->device_handle)->addBuffer(size);
+      VOID_TO_INSTANCE(device->device_handle)->create_device_buffer(size);
   mem->size = size;
 
 #ifndef NDEBUG
@@ -92,21 +84,7 @@ void plugin_deallocate(const SP_Device* device, SP_DeviceMemoryBase* mem) {
             << "\n";
 #endif
 
-  // std::lock_guard<std::mutex>
-  // guard(static_cast<gpuBackend*>(device->device_handle)->testMutex);
-  MutexScopeLock guard = MutexScopeLock();
-  if (HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->hasMemQueue) {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->memoryQueueMutex);
-  } else {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->mainQueueMutex);
-  }
-
-  static_cast<gpuBackend*>(device->device_handle)
-      ->removeBuffer(
-          static_cast<std::shared_ptr<kp::TensorT<float>>*>(mem->opaque)
-              ->get());
+  delete VOID_TO_DEVICE_BUFFER(mem->opaque);
   mem->opaque = nullptr;
   mem->size = 0;
 }
@@ -140,8 +118,8 @@ TF_Bool plugin_device_memory_usage(const SP_Device* device, int64_t* free,
 
 void plugin_create_stream(const SP_Device* device, SP_Stream* stream,
                           TF_Status* status) {
-  *stream =
-      new SP_Stream_st(device->ordinal, (gpuBackend*)device->device_handle);
+  *stream = new SP_Stream_st(device->ordinal,
+                             VOID_TO_INSTANCE(device->device_handle));
 #ifndef NDEBUG
   std::cout << "Vulten [INFO]: "
             << "Stream created on device: " << device->ordinal
@@ -235,34 +213,14 @@ void plugin_memcpy_dtoh(const SP_Device* device, SP_Stream stream,
   std::cout << "Vulten [INFO]: "
             << "Device to host transfer Size: " << size << "\n";
 #endif
-  // std::lock_guard<std::mutex> guard(stream->instance->testMutex);
-  MutexScopeLock guard = MutexScopeLock();
-  int queue;
-  if (HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->hasTransQueue) {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->transferQueueMutex);
-    queue = HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->transferQueue;
-  } else if (HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->hasMemQueue) {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->memoryQueueMutex);
-    queue = HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->memoryQueue;
-  } else {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->mainQueueMutex);
-    queue = HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->mainQueue;
-  }
 
-  static_cast<gpuBackend*>(device->device_handle)
-      ->mngr->sequence(queue)
-      ->record<kp::OpTensorSyncLocal>(
-          {*static_cast<std::shared_ptr<kp::TensorT<float>>*>(
-              device_src->opaque)})
-      ->eval();
-  memcpy(host_dst,
-         static_cast<std::shared_ptr<kp::TensorT<float>>*>(device_src->opaque)
-             ->get()
-             ->data(),
-         size);
+  auto host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
+      VOID_TO_INSTANCE(device->device_handle)
+          ->create_host_mappable_buffer(nullptr, size, false));
+  VOID_TO_INSTANCE(device->device_handle)
+      ->copy_buffer(VOID_TO_DEVICE_BUFFER(device_src->opaque), host_buff.get());
+  auto host_maped = host_buff->map_to_host();
+  memcpy(host_dst, host_maped.data, size);
 }
 
 // Enqueues a memcpy operation onto stream, with a device destination
@@ -277,36 +235,11 @@ void plugin_memcpy_htod(const SP_Device* device, SP_Stream stream,
             << "Host to device transfer Size: " << size << "\n";
 #endif
 
-  // std::lock_guard<std::mutex> guard(stream->instance->testMutex);
-  MutexScopeLock guard = MutexScopeLock();
-  int queue;
-  if (HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->hasTransQueue) {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->transferQueueMutex);
-    queue = HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->transferQueue;
-  } else if (HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->hasMemQueue) {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->memoryQueueMutex);
-    queue = HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->memoryQueue;
-  } else {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->mainQueueMutex);
-    queue = HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->mainQueue;
-  }
-
-  std::vector<float> stageVec(std::ceil(size / 4.0F), 0);
-  memcpy(&stageVec[0], host_src, size);
-
-  auto hostTen =
-      static_cast<gpuBackend*>(device->device_handle)
-          ->mngr->tensorT<float>(stageVec, kp::Tensor::TensorTypes::eHost);
-
-  static_cast<gpuBackend*>(device->device_handle)
-      ->mngr->sequence(queue)
-      ->record<kp::OpTensorCopy>(
-          {hostTen, *static_cast<std::shared_ptr<kp::TensorT<float>>*>(
-                        device_dst->opaque)})
-      ->eval();
+  auto host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
+      VOID_TO_INSTANCE(device->device_handle)
+          ->create_host_mappable_buffer((uint8_t*)host_src, size));
+  VOID_TO_INSTANCE(device->device_handle)
+      ->copy_buffer(host_buff.get(), VOID_TO_DEVICE_BUFFER(device_dst->opaque));
 }
 
 // Enqueues a memcpy operation onto stream, with a device destination
@@ -322,65 +255,8 @@ void plugin_memcpy_dtod(const SP_Device* device, SP_Stream stream,
             << "\n";
 #endif
 
-  // std::lock_guard<std::mutex> guard(stream->instance->testMutex);
-  MutexScopeLock guard = MutexScopeLock();
-  int queue;
-  if (HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->hasTransQueue) {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->transferQueueMutex);
-    queue = HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->transferQueue;
-  } else if (HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->hasMemQueue) {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->memoryQueueMutex);
-    queue = HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->memoryQueue;
-  } else {
-    guard.setAndLockMutex(
-        &HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->mainQueueMutex);
-    queue = HANDLE_TO_GPUBACKEND_PTR(device->device_handle)->mainQueue;
-  }
-
-  kp::Manager* dst_mngr = nullptr;
-
-  for (int i = 0; i < gpuBackend::instances.size(); i++) {
-    if (!gpuBackend::instances[i]->device == device->ordinal) {
-      if (gpuBackend::instances[i]->isDeviceBuffer(
-              static_cast<std::shared_ptr<kp::TensorT<float>>*>(
-                  device_dst->opaque)
-                  ->get())) {
-        dst_mngr = gpuBackend::instances[i]->getManager();
-        break;
-      }
-    }
-  }
-
-  if (dst_mngr == nullptr) {
-    gpuBackend::vultenLog(gpuBackend::ERROR,
-                          "Unable to get destination manager.");
-    exit(1);
-  }
-
-  std::vector<float> interHostBeffer = std::vector<float>(size / 4);
-
-  static_cast<gpuBackend*>(device->device_handle)
-      ->mngr->sequence(queue)
-      ->record<kp::OpTensorSyncLocal>(
-          {*static_cast<std::shared_ptr<kp::TensorT<float>>*>(
-              device_src->opaque)})
-      ->eval();
-
-  memcpy(&interHostBeffer[0],
-         static_cast<std::shared_ptr<kp::TensorT<float>>*>(device_src->opaque)
-             ->get()
-             ->data(),
-         size);
-
-  auto hostTen = dst_mngr->tensorT<float>({interHostBeffer},
-                                          kp::Tensor::TensorTypes::eHost);
-  dst_mngr->sequence(queue)
-      ->record<kp::OpTensorCopy>(
-          {hostTen, *static_cast<std::shared_ptr<kp::TensorT<float>>*>(
-                        device_dst->opaque)})
-      ->eval();
+  std::cout << "DTD transfers not supported\n";
+  exit(-1);
 }
 
 // Blocks the caller while a data segment of the given size is

@@ -8,20 +8,10 @@ set(SOURCES "Vulten.cpp" "vulten_device.cpp" "vulten_kernel.cpp")
 file(GLOB GPU_FIELS gpu/*)
 list(APPEND SOURCES ${GPU_FIELS})
 
-option(ENABLE_SCOPE_TIMERS "Enable timers for ops" OFF)
+option(ENABLE_SCOPE_TIMERS "Enable timers for ops" ON)
 
-option(KOMPUTE_OPT_DISABLE_VK_DEBUG_LAYERS "disable val layers" ON)
-set(KOMPUTE_OPT_LOG_LEVEL "Off" CACHE STRING "Log level")
-option(KOMPUTE_OPT_USE_SPDLOG "Log" OFF)
-
-# It is necessary to pass the DEBUG or RELEASE flag accordingly to Kompute
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG=1 -fPIC")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DRELEASE=1 -fPIC")
-
-FetchContent_Declare(kompute
-                     GIT_REPOSITORY https://github.com/KomputeProject/kompute.git
-                     GIT_TAG        09c1a4afee1556ce3c43ac3d33732b88f27863e9)
-FetchContent_MakeAvailable(kompute)
+set(VULTEN_LOG_LEVEL "2" CACHE STRING "Vulten log level")
+add_subdirectory(Vulten_backend Vulten_backend/)
 
 #Set the location of tensorflow site-packages wether it is is installed system/user or in a venv
 #This will be used for linking, include
@@ -88,7 +78,7 @@ target_link_directories(Vulten PUBLIC ${TF_LOCAL}/tensorflow/python)
 
 find_library(PYWARP _pywrap_tensorflow_internal)
 
-target_link_libraries(Vulten kompute::kompute Vulkan::Vulkan :_pywrap_tensorflow_internal.so)
+target_link_libraries(Vulten Vulten_backend Vulkan::Vulkan :_pywrap_tensorflow_internal.so)
 
 
 include_directories(${CMAKE_SOURCE_DIR})

@@ -2,7 +2,7 @@
 
 #include <chrono>
 
-#include "gpuBackend.h"
+#include "Vulten_backend/Vulten_backend.h"
 #include "tensorflow/c/experimental/stream_executor/stream_executor.h"
 #include "tensorflow/c/tf_status.h"
 
@@ -10,10 +10,10 @@ void SE_InitPluginFns(SE_PlatformRegistrationParams* const params,
                       TF_Status* const status);
 
 struct SP_Stream_st {
-  explicit SP_Stream_st(int devNum, gpuBackend* manager)
-      : deviceNum(devNum), instance(manager) {}
+  explicit SP_Stream_st(int devNum, vulten_backend::Instance* instance)
+      : deviceNum(devNum), instance(instance) {}
   int deviceNum;
-  gpuBackend* instance;
+  vulten_backend::Instance* instance;
 };
 
 struct SP_Event_st {
