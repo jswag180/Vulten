@@ -29,15 +29,15 @@ std::string Data_type_to_str(Data_type dt) {
 }
 
 Vulten_tensor::Vulten_tensor(vulten_backend::Buffer *buffer_ptr,
-                             uint32_t num_dims, uint32_t *dims_ptr)
+                             int64_t num_dims, int64_t *dims_ptr)
     : buffer(buffer_ptr), num_dims(num_dims), dims(dims_ptr) {
   //
 }
 
-uint32_t Vulten_tensor::get_total_elements() {
-  uint32_t total_elements = 0;
-  for (uint32_t i = 0; i < num_dims; i++) {
-    total_elements += dims[i];
+int64_t Vulten_tensor::get_total_elements() {
+  int64_t total_elements = 1;
+  for (int64_t i = 0; i < num_dims; i++) {
+    total_elements *= dims[i];
   }
   return total_elements;
 }
@@ -126,8 +126,8 @@ bool Vulten_op::is_pipeline_cached(std::string pipe_string) {
   return true;
 }
 
-Vulten_op::Vulten_op(vulten_backend::Instance &inst, Data_type dt)
-    : inst(&inst), data_type(dt) {
+Vulten_op::Vulten_op(vulten_backend::Instance *inst, Data_type dt)
+    : inst(inst), data_type(dt) {
   //
 }
 

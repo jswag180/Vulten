@@ -4,6 +4,7 @@
 
 void RegisterDeviceKernels(const char* device_type) {
   // Ativations
+  RegisterDeviceRelu(device_type);
 
   // Convs
 

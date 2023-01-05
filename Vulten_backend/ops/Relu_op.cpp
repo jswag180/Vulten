@@ -4,7 +4,7 @@
 
 namespace vulten_ops {
 
-Relu_op::Relu_op(vulten_backend::Instance &inst, Data_type dt)
+Relu_op::Relu_op(vulten_backend::Instance *inst, Data_type dt)
     : Vulten_op(inst, dt) {
   VULTEN_LOG_DEBUG("Creating vulten_ops::Relu_op")
 }
@@ -54,7 +54,7 @@ void Relu_op::run_op(Vulten_tensor input, Vulten_tensor output) {
       0,                                  // First descriptor set
       {vulten_pipeline->descriptor_set},  // List of descriptor sets
       {});                                // Dynamic offsets
-  cmd_buff.dispatch(input.get_total_elements(), 1, 1);
+  cmd_buff.dispatch(uint32_t(input.get_total_elements()), 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
 

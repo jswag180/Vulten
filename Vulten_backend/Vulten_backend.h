@@ -4,6 +4,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
@@ -23,6 +24,10 @@
 #define VOID_TO_DEVICE_BUFFER(X) static_cast<vulten_backend::Device_buffer *>(X)
 #define VOID_TO_HOST_MAPPABLE_BUFFER(X) \
   static_cast<vulten_backend::Host_mappable_buffer *>(X)
+
+namespace vulten_ops {
+class Vulten_op;
+};
 
 namespace vulten_backend {
 
@@ -119,6 +124,8 @@ class Instance {
   std::mutex main_queue_mutex;
   vk::Queue main_queue;
   vk::CommandPool cmd_pool;
+  // opName_Data_type
+  std::unordered_map<std::string, vulten_ops::Vulten_op *> op_chache;
 
   Host_mappable_buffer *create_host_mappable_buffer(uint8_t *data,
                                                     uint32_t size,
