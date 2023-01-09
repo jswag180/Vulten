@@ -18,6 +18,17 @@ enum Data_type {
   VULTEN_UINT8 = 4,
 };
 
+#define VULTEN_DEFINE_BASIC_TYPES(op) \
+  template class op<VULTEN_FLOAT>;  \
+  template class op<VULTEN_FLOAT16>;  \
+  template class op<VULTEN_DOUBLE>; \
+  template class op<VULTEN_INT32>; \
+  template class op<VULTEN_UINT32>; \
+  template class op<VULTEN_INT8>; \
+  template class op<VULTEN_UINT8>; \
+  template class op<VULTEN_INT64>; \
+  template class op<VULTEN_UINT64>;
+
 std::string Data_type_to_str(Data_type dt);
 
 struct Vulten_tensor {
@@ -64,7 +75,6 @@ class Vulten_op {
   //
  public:
   vulten_backend::Instance *inst;
-  Data_type data_type;
   std::unordered_map<std::string, Vulten_pipeline *> pipelines;
 
   virtual void run_op();
@@ -85,7 +95,7 @@ class Vulten_op {
       const std::vector<uint32_t> &shader_source,
       vk::SpecializationInfo spec_info = {});
 
-  Vulten_op(vulten_backend::Instance *inst, Data_type dt);
+  Vulten_op(vulten_backend::Instance *inst);
   ~Vulten_op();
 };
 

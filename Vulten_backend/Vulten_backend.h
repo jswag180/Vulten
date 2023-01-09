@@ -24,7 +24,16 @@
 #define VOID_TO_DEVICE_BUFFER(X) static_cast<vulten_backend::Device_buffer *>(X)
 #define VOID_TO_HOST_MAPPABLE_BUFFER(X) \
   static_cast<vulten_backend::Host_mappable_buffer *>(X)
-
+#define CALL_ALL_BASIC_TYPES(func) \
+  func(TF_FLOAT)  \
+  func(TF_HALF)   \
+  func(TF_DOUBLE)  \
+  func(TF_INT32)  \
+  func(TF_UINT32)  \
+  func(TF_INT8)  \
+  func(TF_UINT8)  \
+  func(TF_INT64)  \
+  func(TF_UINT64)
 namespace vulten_ops {
 class Vulten_op;
 };

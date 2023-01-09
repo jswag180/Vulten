@@ -6,7 +6,6 @@
 #include "Vulten_backend/ops/Relu_op.h"
 #include "absl/container/inlined_vector.h"
 #include "scope_timer.h"
-#include "shaders/headers/Relu/Relu.h"
 #include "tensor_utills.h"
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/ops.h"
@@ -27,15 +26,15 @@ void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 
-  vulten_ops::Relu_op* relu_op = nullptr;
+  vulten_ops::Relu_op<(vulten_ops::Data_type)T>* relu_op = nullptr;
   std::string op_cache_name = "Relu_" + std::to_string(T);
   inst->main_queue_mutex.lock();
   if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
     inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Relu_op(
-            inst, (vulten_ops::Data_type)T);
+        (vulten_ops::Vulten_op*)new vulten_ops::Relu_op<(vulten_ops::Data_type)T>(
+            inst);
   }
-  relu_op = (vulten_ops::Relu_op*)inst->op_chache[op_cache_name];
+  relu_op = (vulten_ops::Relu_op<(vulten_ops::Data_type)T>*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
   vulten_ops::Vulten_tensor input_tensor(
@@ -63,29 +62,6 @@ void RegisterReluOpKernel(const char* device_type) {
 
 void RegisterDeviceRelu(const char* device_type) {
 #define REGISTER_KERNEL(T) RegisterReluOpKernel<T>(device_type);
-
-#ifdef RELU_FLOAT
-  REGISTER_KERNEL(TF_FLOAT)
-#endif
-// #ifdef RELU_INT
-//   REGISTER_KERNEL(TF_INT32)
-// #endif
-// #ifdef RELU_UINT
-//   REGISTER_KERNEL(TF_UINT32)
-// #endif
-// #ifdef RELU_INT64_T
-//   REGISTER_KERNEL(TF_INT64)
-// #endif
-// #ifdef RELU_UINT64_T
-//   REGISTER_KERNEL(TF_UINT64)
-// #endif
-// #ifdef RELU_INT8_T
-//   REGISTER_KERNEL(TF_INT8)
-// #endif
-// #ifdef RELU_UINT8_T
-//   REGISTER_KERNEL(TF_UINT8)
-// #endif
-// #ifdef RELU_DOUBLE
-//   REGISTER_KERNEL(TF_DOUBLE)
-// #endif
+  
+  CALL_ALL_BASIC_TYPES(REGISTER_KERNEL)
 }
