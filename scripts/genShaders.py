@@ -31,6 +31,7 @@ typeToIntDict = {
     'int8_t' : 5,
     'uint8_t' : 6,
     'double' : 7,
+    'float16_t' : 8,
 }
 
 intToTypeDic = inv_map = {v: k for k, v in typeToIntDict.items()}
