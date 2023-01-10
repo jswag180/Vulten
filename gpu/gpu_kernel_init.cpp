@@ -11,4 +11,5 @@ void RegisterDeviceKernels(const char* device_type) {
   // Optimizers
 
   // Misc
+  RegisterDeviceAssignVariable(device_type);
 }
