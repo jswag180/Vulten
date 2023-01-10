@@ -1,6 +1,8 @@
 #pragma once
 
+#include "tensorflow/c/kernels.h"
 #include "tensorflow/c/tf_tensor.h"
+#include "vulten_device.h"
 
 struct StatusDeleter {
   void operator()(TF_Status* s) {
@@ -54,3 +56,22 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
     std::cout << "Error: " << OP_NAME << " at " << #NAME << "\n";              \
     return;                                                                    \
   }
+
+namespace tensor_utills {
+
+static void copyFunc(TF_OpKernelContext* ctx, TF_Tensor* source,
+                     TF_Tensor* dest) {
+  StatusSafePtr status(TF_NewStatus());
+  SP_Stream stream = TF_GetStream(ctx, status.get());
+
+  TensorSafePtr source_safe_ptr(source);
+  auto source_buffer =
+      VOID_TO_DEVICE_BUFFER(TF_TensorData(source_safe_ptr.get()));
+
+  TensorSafePtr dest_safe_ptr(dest);
+  auto dest_buffer = VOID_TO_DEVICE_BUFFER(TF_TensorData(dest_safe_ptr.get()));
+
+  VOID_TO_INSTANCE(stream->instance)->copy_buffer(source_buffer, dest_buffer);
+}
+
+};  // namespace tensor_utills
