@@ -31,10 +31,11 @@ void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   inst->main_queue_mutex.lock();
   if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
     inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Relu_op<(vulten_ops::Data_type)T>(
-            inst);
+        (vulten_ops::Vulten_op*)new vulten_ops::Relu_op<(
+            vulten_ops::Data_type)T>(inst);
   }
-  relu_op = (vulten_ops::Relu_op<(vulten_ops::Data_type)T>*)inst->op_chache[op_cache_name];
+  relu_op = (vulten_ops::Relu_op<(vulten_ops::Data_type)T>*)
+                inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
   vulten_ops::Vulten_tensor input_tensor(
@@ -62,6 +63,6 @@ void RegisterReluOpKernel(const char* device_type) {
 
 void RegisterDeviceRelu(const char* device_type) {
 #define REGISTER_KERNEL(T) RegisterReluOpKernel<T>(device_type);
-  
+
   CALL_ALL_BASIC_TYPES(REGISTER_KERNEL)
 }

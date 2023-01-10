@@ -3,7 +3,7 @@
 #include "Vulten_backend_ops.h"
 
 namespace vulten_ops {
-template<Data_type T>
+template <Data_type T>
 class Relu_op : Vulten_op {
  private:
   //

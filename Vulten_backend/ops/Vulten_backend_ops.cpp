@@ -126,8 +126,7 @@ bool Vulten_op::is_pipeline_cached(std::string pipe_string) {
   return true;
 }
 
-Vulten_op::Vulten_op(vulten_backend::Instance *inst)
-    : inst(inst) {
+Vulten_op::Vulten_op(vulten_backend::Instance *inst) : inst(inst) {
   //
 }
 
