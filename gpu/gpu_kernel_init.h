@@ -6,5 +6,6 @@
 
 void RegisterDeviceRelu(const char* device_type);
 void RegisterDeviceAssignVariable(const char* device_type);
+void RegisterAssignAddVariable(const char* device_type);
 
 void RegisterDeviceKernels(const char* device_type);

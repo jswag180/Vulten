@@ -12,4 +12,7 @@ void RegisterDeviceKernels(const char* device_type) {
 
   // Misc
   RegisterDeviceAssignVariable(device_type);
+  RegisterAssignAddVariable(device_type);
 }
+
+\ No newline at end of file
