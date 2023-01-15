@@ -49,7 +49,7 @@ Vulten_tensor::~Vulten_tensor() {
 Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance &instance,
                                  uint32_t num_buffers,
                                  const std::vector<uint32_t> &shader_source,
-                                 vk::SpecializationInfo spec_info)
+                                 vk::SpecializationInfo *spec_info)
     : inst(&instance) {
   auto_clean = true;
   vk::ShaderModuleCreateInfo shader_create_info(vk::ShaderModuleCreateFlags(),
@@ -80,8 +80,8 @@ Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance &instance,
       vk::ShaderStageFlagBits::eCompute,     // Stage
       shader,                                // Shader Module
       "main");                               // Shader Entry Point
-  if (spec_info.mapEntryCount > 0) {
-    pipeline_shader_create_info.setPSpecializationInfo(&spec_info);
+  if (spec_info != nullptr && spec_info->mapEntryCount > 0) {
+    pipeline_shader_create_info.setPSpecializationInfo(spec_info);
   }
 
   vk::ComputePipelineCreateInfo compute_pipeline_create_info(
@@ -137,7 +137,7 @@ void Vulten_op::run_op() {
 Vulten_pipeline *Vulten_op::create_pipeline(
     std::string pipe_string, uint32_t num_buffers,
     const std::vector<uint32_t> &shader_source,
-    vk::SpecializationInfo spec_info) {
+    vk::SpecializationInfo *spec_info) {
   pipelines[pipe_string] =
       new Vulten_pipeline(*inst, num_buffers, shader_source, spec_info);
   return pipelines[pipe_string];

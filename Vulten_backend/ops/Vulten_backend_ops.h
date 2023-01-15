@@ -65,7 +65,7 @@ struct Vulten_pipeline {
    */
   Vulten_pipeline(vulten_backend::Instance &instance, uint32_t num_buffers,
                   const std::vector<uint32_t> &shader_source,
-                  vk::SpecializationInfo spec_info = {});
+                  vk::SpecializationInfo *spec_info = {});
   Vulten_pipeline();
   ~Vulten_pipeline();
 };
@@ -93,7 +93,7 @@ class Vulten_op {
   virtual Vulten_pipeline *create_pipeline(
       std::string pipe_string, uint32_t num_buffers,
       const std::vector<uint32_t> &shader_source,
-      vk::SpecializationInfo spec_info = {});
+      vk::SpecializationInfo *spec_info = {});
 
   Vulten_op(vulten_backend::Instance *inst);
   ~Vulten_op();
