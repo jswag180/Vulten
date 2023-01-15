@@ -38,13 +38,6 @@ void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
                 inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  vulten_ops::Vulten_tensor input_tensor(
-      VOID_TO_DEVICE_BUFFER(TF_TensorData(input_safe_ptr.get())),
-      input_dims.size(), input_dims.data());
-  vulten_ops::Vulten_tensor output_tensor(
-      VOID_TO_DEVICE_BUFFER(TF_TensorData(output_safe_ptr.get())),
-      input_dims.size(), input_dims.data());
-
   relu_op->run_op(input_tensor, output_tensor);
 }
 
