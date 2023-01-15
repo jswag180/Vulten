@@ -9,10 +9,9 @@ void RegisterDeviceKernels(const char* device_type) {
   // Convs
 
   // Optimizers
+  RegisterResourceApplyAdam(device_type);
 
   // Misc
   RegisterDeviceAssignVariable(device_type);
   RegisterAssignAddVariable(device_type);
 }
-
-\ No newline at end of file
