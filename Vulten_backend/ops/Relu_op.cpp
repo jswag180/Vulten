@@ -4,7 +4,9 @@
 
 namespace vulten_ops {
 
-VULTEN_DEFINE_BASIC_TYPES(Relu_op)
+#define DEFINE_RELU(X) template class Relu_op<X>;
+
+VULTEN_DEFINE_BASIC_TYPES(DEFINE_RELU)
 
 template <Data_type T>
 Relu_op<T>::Relu_op(vulten_backend::Instance *inst) : Vulten_op(inst) {

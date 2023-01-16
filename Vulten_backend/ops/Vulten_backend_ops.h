@@ -19,15 +19,15 @@ enum Data_type {
 };
 
 #define VULTEN_DEFINE_BASIC_TYPES(op) \
-  template class op<VULTEN_FLOAT>;    \
-  template class op<VULTEN_FLOAT16>;  \
-  template class op<VULTEN_DOUBLE>;   \
-  template class op<VULTEN_INT32>;    \
-  template class op<VULTEN_UINT32>;   \
-  template class op<VULTEN_INT8>;     \
-  template class op<VULTEN_UINT8>;    \
-  template class op<VULTEN_INT64>;    \
-  template class op<VULTEN_UINT64>;
+  op(VULTEN_FLOAT)    \
+  op(VULTEN_FLOAT16)  \
+  op(VULTEN_DOUBLE)   \
+  op(VULTEN_INT32)    \
+  op(VULTEN_UINT32)   \
+  op(VULTEN_INT8)     \
+  op(VULTEN_UINT8)    \
+  op(VULTEN_INT64)    \
+  op(VULTEN_UINT64)
 
 std::string Data_type_to_str(Data_type dt);
 

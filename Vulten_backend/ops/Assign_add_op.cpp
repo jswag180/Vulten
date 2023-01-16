@@ -4,7 +4,9 @@
 
 namespace vulten_ops {
 
-VULTEN_DEFINE_BASIC_TYPES(Assign_add_op)
+#define DEFINE_ASSIGN_ADD(X) template class Assign_add_op<X>;
+
+VULTEN_DEFINE_BASIC_TYPES(DEFINE_ASSIGN_ADD)
 
 template <Data_type T>
 Assign_add_op<T>::Assign_add_op(vulten_backend::Instance *inst)
