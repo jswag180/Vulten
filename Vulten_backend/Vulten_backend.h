@@ -93,7 +93,7 @@ struct Buffer {
                           vk::MemoryPropertyFlags properties,
                           vk::PhysicalDeviceMemoryProperties &memProperties);
 
-  Buffer(Instance *inst, uint32_t size);
+  Buffer(Instance *inst, uint32_t size, bool trans_src, bool trans_dst);
   ~Buffer();
 };
 
@@ -104,7 +104,7 @@ struct Host_mappable_buffer : Buffer {
   Mapped_memory map_to_host();
 
   Host_mappable_buffer(Instance *instance, uint8_t *data, uint32_t size,
-                       bool sync_to_device);
+                       bool sync_to_device, bool trans_src = true, bool trans_dst= true);
   ~Host_mappable_buffer();
 };
 
@@ -112,7 +112,7 @@ struct Device_buffer : Buffer {
  private:
   //
  public:
-  Device_buffer(Instance *instance, uint32_t size);
+  Device_buffer(Instance *instance, uint32_t size, bool trans_src = true, bool trans_dst= true);
   ~Device_buffer();
 };
 

@@ -12,15 +12,18 @@ Mapped_memory::Mapped_memory(vk::Device &device, vk::DeviceMemory &memory,
 Mapped_memory::~Mapped_memory() { m_device->unmapMemory(*m_memory); }
 
 // I don't know if I need to lock the main queue mutex for buffer creation.
-Buffer::Buffer(Instance *instance, uint32_t size) {
+Buffer::Buffer(Instance *instance, uint32_t size, bool trans_src, bool trans_dst) {
   inst = instance;
   buffer_size = size;
 
+  vk::BufferUsageFlags buffer_flags = vk::BufferUsageFlagBits::eStorageBuffer;
+  if(trans_src)
+    buffer_flags |= vk::BufferUsageFlagBits::eTransferSrc;
+  if(trans_dst)
+    buffer_flags |= vk::BufferUsageFlagBits::eTransferDst;
   vk::BufferCreateInfo buffer_create_info(
       vk::BufferCreateFlags(), buffer_size,
-      vk::BufferUsageFlagBits::eStorageBuffer |
-          vk::BufferUsageFlagBits::eTransferSrc |
-          vk::BufferUsageFlagBits::eTransferDst,
+      buffer_flags,
       vk::SharingMode::eExclusive, 0);
   vk_buffer = inst->logical_dev.createBuffer(buffer_create_info);
 
@@ -45,8 +48,8 @@ Buffer::~Buffer() {
 }
 
 Host_mappable_buffer::Host_mappable_buffer(Instance *instance, uint8_t *data,
-                                           uint32_t size, bool sync_to_device)
-    : Buffer(instance, size) {
+                                           uint32_t size, bool sync_to_device, bool trans_src, bool trans_dst)
+    : Buffer(instance, size, trans_src, trans_dst) {
   VULTEN_LOG_DEBUG("Creating vulten_backend::Host_mappable_buffer of size " +
                        std::to_string(buffer_size) + " at "
                    << this)
@@ -81,8 +84,8 @@ Host_mappable_buffer::~Host_mappable_buffer(){
                          std::to_string(buffer_size) + " at "
                      << this)}
 
-Device_buffer::Device_buffer(Instance *instance, uint32_t size)
-    : Buffer(instance, size) {
+Device_buffer::Device_buffer(Instance *instance, uint32_t size, bool trans_src, bool trans_dst)
+    : Buffer(instance, size, trans_src, trans_dst) {
   VULTEN_LOG_DEBUG("Creating vulten_backend::Device_buffer of size " +
                        std::to_string(buffer_size) + " at "
                    << this)
