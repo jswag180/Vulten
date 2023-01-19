@@ -16,7 +16,7 @@
     #extension GL_EXT_shader_explicit_arithmetic_types_int8 : enable
     #extension GL_EXT_shader_subgroup_extended_types_int8 : enable
 #endif
-#if TYPE_NUM_0 == HALF || TYPE_1 == HALF
+#if TYPE_NUM_0 == HALF || TYPE_NUM_1 == HALF
     #extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
     #extension GL_EXT_shader_subgroup_extended_types_float16 : enable
 #endif
