@@ -216,7 +216,7 @@ void plugin_memcpy_dtoh(const SP_Device* device, SP_Stream stream,
 
   auto host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
       VOID_TO_INSTANCE(device->device_handle)
-          ->create_host_mappable_buffer(nullptr, size, false));
+          ->create_host_mappable_buffer(nullptr, size, false, false, true));
   VOID_TO_INSTANCE(device->device_handle)
       ->copy_buffer(VOID_TO_DEVICE_BUFFER(device_src->opaque), host_buff.get());
   auto host_maped = host_buff->map_to_host();
