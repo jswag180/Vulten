@@ -17,7 +17,7 @@ add_custom_target( addInPlace
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/AddInPlace.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double,float16_t
 )
 add_custom_target( basicOps
-    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/BasicOps.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double
+    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/BasicOps.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double,float16_t
 )
 add_custom_target( biasAdd
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/BiasAdd.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double
@@ -29,7 +29,7 @@ add_custom_target( conv2d
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/im2colValid.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double
 )
 add_custom_target( transpose
-    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/Transpose.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double
+    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/Transpose.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double,float16_t
 )
 add_custom_target( matMul
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/MatMul.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double
