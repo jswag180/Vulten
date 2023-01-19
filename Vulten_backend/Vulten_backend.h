@@ -104,7 +104,7 @@ struct Host_mappable_buffer : Buffer {
   Mapped_memory map_to_host();
 
   Host_mappable_buffer(Instance *instance, uint8_t *data, uint32_t size,
-                       bool sync_to_device, bool trans_src = true, bool trans_dst= true);
+                       bool sync_to_device, bool trans_src, bool trans_dst);
   ~Host_mappable_buffer();
 };
 
@@ -112,7 +112,8 @@ struct Device_buffer : Buffer {
  private:
   //
  public:
-  Device_buffer(Instance *instance, uint32_t size, bool trans_src = true, bool trans_dst= true);
+  Device_buffer(Instance *instance, uint32_t size, bool trans_src,
+                bool trans_dst);
   ~Device_buffer();
 };
 
@@ -131,8 +132,11 @@ class Instance {
 
   Host_mappable_buffer *create_host_mappable_buffer(uint8_t *data,
                                                     uint32_t size,
-                                                    bool sync_to_device = true);
-  Device_buffer *create_device_buffer(uint32_t size);
+                                                    bool sync_to_device = true,
+                                                    bool trans_src = true,
+                                                    bool trans_dst = true);
+  Device_buffer *create_device_buffer(uint32_t size, bool trans_src = true,
+                                      bool trans_dst = true);
   void copy_buffer(Buffer *src, Buffer *dest);
 
   // Instance(const Instance&) = delete;

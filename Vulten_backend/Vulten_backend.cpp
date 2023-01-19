@@ -190,13 +190,18 @@ Instance::Instance(uint32_t dev_num) {
   cmd_pool = logical_dev.createCommandPool(cmd_pool_create_info);
 }
 
-Host_mappable_buffer *Instance::create_host_mappable_buffer(
-    uint8_t *data, uint32_t size, bool sync_to_device) {
-  return new Host_mappable_buffer(this, data, size, sync_to_device);
+Host_mappable_buffer *Instance::create_host_mappable_buffer(uint8_t *data,
+                                                            uint32_t size,
+                                                            bool sync_to_device,
+                                                            bool trans_src,
+                                                            bool trans_dst) {
+  return new Host_mappable_buffer(this, data, size, sync_to_device, trans_src,
+                                  trans_dst);
 }
 
-Device_buffer *Instance::create_device_buffer(uint32_t size) {
-  return new Device_buffer(this, size);
+Device_buffer *Instance::create_device_buffer(uint32_t size, bool trans_src,
+                                              bool trans_dst) {
+  return new Device_buffer(this, size, trans_src, trans_dst);
 }
 
 void Instance::copy_buffer(Buffer *src, Buffer *dest) {
