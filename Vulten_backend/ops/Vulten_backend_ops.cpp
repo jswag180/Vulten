@@ -49,7 +49,8 @@ Vulten_tensor::~Vulten_tensor() {
 Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance &instance,
                                  uint32_t num_buffers,
                                  const std::vector<uint32_t> &shader_source,
-                                 vk::SpecializationInfo *spec_info)
+                                 vk::SpecializationInfo *spec_info,
+                                 std::vector<vk::PushConstantRange> push_ranges)
     : inst(&instance) {
   auto_clean = true;
   vk::ShaderModuleCreateInfo shader_create_info(vk::ShaderModuleCreateFlags(),
@@ -69,7 +70,8 @@ Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance &instance,
       descriptor_set_layout_create_info);
 
   vk::PipelineLayoutCreateInfo pipeline_layout_create_info(
-      vk::PipelineLayoutCreateFlags(), descriptor_set_layout);
+      vk::PipelineLayoutCreateFlags(), descriptor_set_layout, push_ranges);
+
   pipeline_layout =
       inst->logical_dev.createPipelineLayout(pipeline_layout_create_info);
   pipeline_cache =
@@ -137,9 +139,10 @@ void Vulten_op::run_op() {
 Vulten_pipeline *Vulten_op::create_pipeline(
     std::string pipe_string, uint32_t num_buffers,
     const std::vector<uint32_t> &shader_source,
-    vk::SpecializationInfo *spec_info) {
-  pipelines[pipe_string] =
-      new Vulten_pipeline(*inst, num_buffers, shader_source, spec_info);
+    vk::SpecializationInfo *spec_info,
+    std::vector<vk::PushConstantRange> push_ranges) {
+  pipelines[pipe_string] = new Vulten_pipeline(
+      *inst, num_buffers, shader_source, spec_info, push_ranges);
   return pipelines[pipe_string];
 }
 

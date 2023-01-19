@@ -18,16 +18,10 @@ enum Data_type {
   VULTEN_UINT8 = 4,
 };
 
-#define VULTEN_DEFINE_BASIC_TYPES(op) \
-  op(VULTEN_FLOAT)    \
-  op(VULTEN_FLOAT16)  \
-  op(VULTEN_DOUBLE)   \
-  op(VULTEN_INT32)    \
-  op(VULTEN_UINT32)   \
-  op(VULTEN_INT8)     \
-  op(VULTEN_UINT8)    \
-  op(VULTEN_INT64)    \
-  op(VULTEN_UINT64)
+#define VULTEN_DEFINE_BASIC_TYPES(op)                                     \
+  op(VULTEN_FLOAT) op(VULTEN_FLOAT16) op(VULTEN_DOUBLE) op(VULTEN_INT32)  \
+      op(VULTEN_UINT32) op(VULTEN_INT8) op(VULTEN_UINT8) op(VULTEN_INT64) \
+          op(VULTEN_UINT64)
 
 std::string Data_type_to_str(Data_type dt);
 
@@ -65,7 +59,8 @@ struct Vulten_pipeline {
    */
   Vulten_pipeline(vulten_backend::Instance &instance, uint32_t num_buffers,
                   const std::vector<uint32_t> &shader_source,
-                  vk::SpecializationInfo *spec_info = {});
+                  vk::SpecializationInfo *spec_info = {},
+                  std::vector<vk::PushConstantRange> push_ranges = {});
   Vulten_pipeline();
   ~Vulten_pipeline();
 };
@@ -93,7 +88,8 @@ class Vulten_op {
   virtual Vulten_pipeline *create_pipeline(
       std::string pipe_string, uint32_t num_buffers,
       const std::vector<uint32_t> &shader_source,
-      vk::SpecializationInfo *spec_info = {});
+      vk::SpecializationInfo *spec_info = {},
+      std::vector<vk::PushConstantRange> push_ranges = {});
 
   Vulten_op(vulten_backend::Instance *inst);
   ~Vulten_op();
