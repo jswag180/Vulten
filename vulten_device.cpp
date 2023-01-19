@@ -40,7 +40,7 @@ void plugin_destroy_device(const SP_Platform* platform, SP_Device* device) {
 #ifndef NDEBUG
   std::cout << "Vulten [INFO]: "
             << "Detroying device " << device->ordinal << " "
-            << (*vulten_backend::Device_propertys().devices)[params->ordinal]
+            << (*vulten_backend::Device_propertys().devices)[device->ordinal]
                    .props.deviceName
             << "\n";
 #endif
