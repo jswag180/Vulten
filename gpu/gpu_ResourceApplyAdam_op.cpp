@@ -56,7 +56,7 @@ void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
 
   vulten_ops::Resource_apply_adam_op<(vulten_ops::Data_type)T>*
       resource_apply_adam_op = nullptr;
-  std::string op_cache_name = "Resource_apply_adam_" + std::to_string(T);
+  std::string op_cache_name = "Resource_apply_adam";
   inst->main_queue_mutex.lock();
   if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
     inst->op_chache[op_cache_name] =

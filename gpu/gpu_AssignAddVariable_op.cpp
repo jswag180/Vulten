@@ -25,7 +25,7 @@ void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
 
         vulten_ops::Assign_add_op<(vulten_ops::Data_type)T> *assign_add =
             nullptr;
-        std::string op_cache_name = "Assign_add_" + std::to_string(T);
+        std::string op_cache_name = "Assign_add";
         inst->main_queue_mutex.lock();
         if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
           inst->op_chache[op_cache_name] =
