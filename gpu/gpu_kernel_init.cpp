@@ -15,4 +15,5 @@ void RegisterDeviceKernels(const char* device_type) {
   RegisterDeviceAssignVariable(device_type);
   RegisterAssignAddVariable(device_type);
   RegisterDeviceBasicOps(device_type);
+  RegisterDeviceCast(device_type);
 }
