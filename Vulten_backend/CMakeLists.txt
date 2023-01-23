@@ -13,8 +13,8 @@ file(GLOB OPS ${PROJECT_SOURCE_DIR}/ops/*.cpp)
 add_custom_target( cast
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/Cast.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double,float16_t
 )
-add_custom_target( addInPlace
-    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/AddInPlace.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double,float16_t
+add_custom_target( addSubInPlace
+    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/AddSubInPlace.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double,float16_t
 )
 add_custom_target( basicOps
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/genShaders.py -s ${CMAKE_SOURCE_DIR}/shaders/BasicOps.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/ -t float,int,uint,int64_t,uint64_t,int8_t,uint8_t,double,float16_t
@@ -55,7 +55,7 @@ add_custom_target(biasAddGrad
 
 add_library(Vulten_backend STATIC ${SOURCES} ${OPS})
 
-add_dependencies(Vulten_backend cast addInPlace basicOps biasAdd conv2d transpose matMul pow relu applyAdam softmax biasAddGrad)
+add_dependencies(Vulten_backend cast addSubInPlace basicOps biasAdd conv2d transpose matMul pow relu applyAdam softmax biasAddGrad)
 
 if(VULTEN_LOG_LEVEL EQUAL "0")
     message("-- Vulten log level: 0")

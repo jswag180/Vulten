@@ -1,64 +1,84 @@
-#include "Assign_add_op.h"
+#include "Assign_add_sub_op.h"
 
-#include "shaders/headers/AddInPlace/AddInPlace.h"
+#include "shaders/headers/AddSubInPlace/AddSubInPlace.h"
 
 namespace vulten_ops {
 
-#define DEFINE_ASSIGN_ADD(X) template class Assign_add_op<X>;
+#define DEFINE_ASSIGN_ADD(X) template class Assign_add_sub_op<X>;
 
 VULTEN_DEFINE_BASIC_TYPES(DEFINE_ASSIGN_ADD)
 
 template <Data_type T>
-Assign_add_op<T>::Assign_add_op(vulten_backend::Instance *inst)
+Assign_add_sub_op<T>::Assign_add_sub_op(vulten_backend::Instance *inst)
     : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Assign_add_op<" + Data_type_to_str(T) +
-                   ">")
+  VULTEN_LOG_DEBUG("Creating vulten_ops::Assign_add_sub_op<" +
+                   Data_type_to_str(T) + ">")
 }
 
 template <Data_type T>
-void Assign_add_op<T>::run_op(Vulten_tensor input, Vulten_tensor value) {
-  VULTEN_LOG_DEBUG("Running vulten_ops::Assign_add_op<" + Data_type_to_str(T) +
-                   ">")
+void Assign_add_sub_op<T>::run_op(Vulten_tensor input, Vulten_tensor value,
+                                  int op) {
+  if (op == ADD) {
+    VULTEN_LOG_DEBUG("Running vulten_ops::Assign_add_op<" +
+                     Data_type_to_str(T) + ">")
+  } else if (op == SUB) {
+    VULTEN_LOG_DEBUG("Running vulten_ops::Assign_sub_op<" +
+                     Data_type_to_str(T) + ">")
+  }
   inst->main_queue_mutex.lock();
 
-  std::string pipe_string = "Assign_add_" + Data_type_to_str(T);
+  std::string pipe_string = "Assign_add_sub_" + Data_type_to_str(T);
   Vulten_pipeline *vulten_pipeline = nullptr;
 
   if (!is_pipeline_cached(pipe_string)) {
-    VULTEN_LOG_DEBUG("Creating vulten_ops::Assign_add_op pipeline " +
+    VULTEN_LOG_DEBUG("Creating vulten_ops::Assign_add_sub_op pipeline " +
                      pipe_string)
+
+    const std::vector<vk::PushConstantRange> push_const_ranges = {
+        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(int32_t)}};
+
     if (T == VULTEN_FLOAT) {
       vulten_pipeline =
-          create_pipeline(pipe_string, 2, shader::AddInPlace_float);
+          create_pipeline(pipe_string, 2, shader::AddSubInPlace_float, nullptr,
+                          push_const_ranges);
     } else if (T == VULTEN_FLOAT16) {
       vulten_pipeline =
-          create_pipeline(pipe_string, 2, shader::AddInPlace_float16_t);
+          create_pipeline(pipe_string, 2, shader::AddSubInPlace_float16_t,
+                          nullptr, push_const_ranges);
     } else if (T == VULTEN_DOUBLE) {
       vulten_pipeline =
-          create_pipeline(pipe_string, 2, shader::AddInPlace_double);
+          create_pipeline(pipe_string, 2, shader::AddSubInPlace_double, nullptr,
+                          push_const_ranges);
     } else if (T == VULTEN_INT32) {
-      vulten_pipeline = create_pipeline(pipe_string, 2, shader::AddInPlace_int);
+      vulten_pipeline =
+          create_pipeline(pipe_string, 2, shader::AddSubInPlace_int, nullptr,
+                          push_const_ranges);
     } else if (T == VULTEN_UINT32) {
       vulten_pipeline =
-          create_pipeline(pipe_string, 2, shader::AddInPlace_uint);
+          create_pipeline(pipe_string, 2, shader::AddSubInPlace_uint, nullptr,
+                          push_const_ranges);
     } else if (T == VULTEN_INT8) {
       vulten_pipeline =
-          create_pipeline(pipe_string, 2, shader::AddInPlace_int8_t);
+          create_pipeline(pipe_string, 2, shader::AddSubInPlace_int8_t, nullptr,
+                          push_const_ranges);
     } else if (T == VULTEN_UINT8) {
       vulten_pipeline =
-          create_pipeline(pipe_string, 2, shader::AddInPlace_uint8_t);
+          create_pipeline(pipe_string, 2, shader::AddSubInPlace_uint8_t,
+                          nullptr, push_const_ranges);
     } else if (T == VULTEN_INT64) {
       vulten_pipeline =
-          create_pipeline(pipe_string, 2, shader::AddInPlace_int64_t);
+          create_pipeline(pipe_string, 2, shader::AddSubInPlace_int64_t,
+                          nullptr, push_const_ranges);
     } else if (T == VULTEN_UINT64) {
       vulten_pipeline =
-          create_pipeline(pipe_string, 2, shader::AddInPlace_uint64_t);
+          create_pipeline(pipe_string, 2, shader::AddSubInPlace_uint64_t,
+                          nullptr, push_const_ranges);
     } else {
-      throw std::runtime_error("Error unsuported type in Assign_add: " +
+      throw std::runtime_error("Error unsuported type in Assign_add_sub: " +
                                std::to_string(T));
     }
   } else {
-    VULTEN_LOG_DEBUG("Using cached vulten_ops::Assign_add_op pipeline " +
+    VULTEN_LOG_DEBUG("Using cached vulten_ops::Assign_add_sub_op pipeline " +
                      pipe_string)
     vulten_pipeline = pipelines[pipe_string];
   }
@@ -93,6 +113,9 @@ void Assign_add_op<T>::run_op(Vulten_tensor input, Vulten_tensor value) {
       0,                                  // First descriptor set
       {vulten_pipeline->descriptor_set},  // List of descriptor sets
       {});                                // Dynamic offsets
+  cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
+                         vk::ShaderStageFlagBits::eCompute, 0, sizeof(int32_t),
+                         &op);
   cmd_buff.dispatch(uint32_t(input.get_total_elements()), 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
@@ -114,9 +137,9 @@ void Assign_add_op<T>::run_op(Vulten_tensor input, Vulten_tensor value) {
 }
 
 template <Data_type T>
-Assign_add_op<T>::~Assign_add_op() {
-  VULTEN_LOG_DEBUG("Freeing vulten_ops::Assign_add_op<" + Data_type_to_str(T) +
-                   ">")
+Assign_add_sub_op<T>::~Assign_add_sub_op() {
+  VULTEN_LOG_DEBUG("Freeing vulten_ops::Assign_add_sub_op<" +
+                   Data_type_to_str(T) + ">")
 }
 
 }  // namespace vulten_ops

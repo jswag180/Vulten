@@ -1,4 +1,4 @@
-#include "Vulten_backend/ops/Assign_add_op.h"
+#include "Vulten_backend/ops/Assign_add_sub_op.h"
 #include "absl/container/inlined_vector.h"
 #include "scope_timer.h"
 #include "tensor_utills.h"
@@ -10,30 +10,35 @@
 #include "tensorflow/c/tf_tensor.h"
 #include "vulten_device.h"
 
-template <TF_DataType T>
-void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
-  SCOPE_TIMER("AssignAddVariableOp")
+template <TF_DataType T, int32_t OP>
+void AssignAddSubVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
+  if (OP == ADD) {
+    SCOPE_TIMER("AssignAddVariableOp")
+  } else if (OP == SUB) {
+    SCOPE_TIMER("AssignSubVariableOp")
+  }
 
   StatusSafePtr status(TF_NewStatus());
 
   TF_AssignUpdateVariable(
-      ctx, 0, 1, 0, 0, &tensor_utills::copyFunc,
+      ctx, 0, 1, OP, 0, &tensor_utills::copyFunc,
       [](TF_OpKernelContext *ctx, TF_Tensor *tensor, TF_Tensor *value, int Op) {
         StatusSafePtr status(TF_NewStatus());
         SP_Stream stream = TF_GetStream(ctx, status.get());
         vulten_backend::Instance *inst = stream->instance;
 
-        vulten_ops::Assign_add_op<(vulten_ops::Data_type)T> *assign_add =
-            nullptr;
-        std::string op_cache_name = "Assign_add";
+        vulten_ops::Assign_add_sub_op<(vulten_ops::Data_type)T>
+            *assign_add_sub = nullptr;
+        std::string op_cache_name = "Assign_add_sub";
         inst->main_queue_mutex.lock();
         if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
           inst->op_chache[op_cache_name] =
-              (vulten_ops::Vulten_op *)new vulten_ops::Assign_add_op<(
+              (vulten_ops::Vulten_op *)new vulten_ops::Assign_add_sub_op<(
                   vulten_ops::Data_type)T>(inst);
         }
-        assign_add = (vulten_ops::Assign_add_op<(vulten_ops::Data_type)T> *)
-                         inst->op_chache[op_cache_name];
+        assign_add_sub =
+            (vulten_ops::Assign_add_sub_op<(vulten_ops::Data_type)T> *)
+                inst->op_chache[op_cache_name];
         inst->main_queue_mutex.unlock();
 
         TensorSafePtr tensor_safe_ptr(tensor);
@@ -53,28 +58,40 @@ void AssignAddVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
         vulten_ops::Vulten_tensor value_tensor = vulten_ops::Vulten_tensor(
             value_ptr, tensor_dims.size(), tensor_dims.data());
 
-        assign_add->run_op(input_tensor, value_tensor);
+        assign_add_sub->run_op(input_tensor, value_tensor, Op);
       },
       status.get());
 }
 
-template <TF_DataType T>
-void RegisterAssignAddVariableOp(const char *device_type) {
+template <TF_DataType T, int32_t OP>
+void RegisterAssignAddSubVariableOp(const char *device_type) {
   StatusSafePtr status(TF_NewStatus());
+
+  std::string op_str = "";
+  if (OP == ADD) {
+    op_str = "AssignAddVariableOp";
+  } else if (OP == SUB) {
+    op_str = "AssignSubVariableOp";
+  }
+
   auto *builder =
-      TF_NewKernelBuilder("AssignAddVariableOp", device_type, nullptr,
-                          &AssignAddVariableOp_Compte<T>, nullptr);
+      TF_NewKernelBuilder(op_str.c_str(), device_type, nullptr,
+                          &AssignAddSubVariableOp_Compte<T, OP>, nullptr);
   TF_KernelBuilder_TypeConstraint(builder, "dtype", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
-    std::cout
-        << " Error while registering AssignAddVariable kernel with attribute T";
-  TF_RegisterKernelBuilder("AssignAddVariableOp", builder, status.get());
+    std::cout << " Error while registering AssignAddSubVariable kernel with "
+                 "attribute T";
+  TF_RegisterKernelBuilder(op_str.c_str(), builder, status.get());
   if (TF_OK != TF_GetCode(status.get()))
-    std::cout << " Error while registering AssignAddVariable kernel";
+    std::cout << " Error while registering AssignAddSubVariable kernel";
 }
 
-void RegisterAssignAddVariable(const char *device_type) {
-#define REGISTER_KERNEL(T) RegisterAssignAddVariableOp<T>(device_type);
+void RegisterAssignAddSubVariable(const char *device_type) {
+#define REGISTER_KERNEL_ADD(T) \
+  RegisterAssignAddSubVariableOp<T, ADD>(device_type);
+#define REGISTER_KERNEL_SUB(T) \
+  RegisterAssignAddSubVariableOp<T, SUB>(device_type);
 
-  CALL_ALL_BASIC_TYPES(REGISTER_KERNEL)
+  CALL_ALL_BASIC_TYPES(REGISTER_KERNEL_ADD)
+  CALL_ALL_BASIC_TYPES(REGISTER_KERNEL_SUB)
 }
