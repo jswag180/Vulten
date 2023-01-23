@@ -237,7 +237,8 @@ void plugin_memcpy_htod(const SP_Device* device, SP_Stream stream,
 
   auto host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
       VOID_TO_INSTANCE(device->device_handle)
-          ->create_host_mappable_buffer((uint8_t*)host_src, size, true, true, false));
+          ->create_host_mappable_buffer((uint8_t*)host_src, size, true, true,
+                                        false));
   VOID_TO_INSTANCE(device->device_handle)
       ->copy_buffer(host_buff.get(), VOID_TO_DEVICE_BUFFER(device_dst->opaque));
 }
