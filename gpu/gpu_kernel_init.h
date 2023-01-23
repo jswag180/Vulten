@@ -10,5 +10,6 @@ void RegisterResourceApplyAdam(const char* device_type);
 void RegisterAssignAddSubVariable(const char* device_type);
 void RegisterDeviceBasicOps(const char* device_type);
 void RegisterDeviceCast(const char* device_type);
+void RegisterDeviceReadVariableOp(const char* device_type);
 
 void RegisterDeviceKernels(const char* device_type);

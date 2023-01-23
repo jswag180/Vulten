@@ -13,7 +13,8 @@ void RegisterDeviceKernels(const char* device_type) {
 
   // Misc
   RegisterDeviceAssignVariable(device_type);
-  RegisterAssignAddVariable(device_type);
+  RegisterAssignAddSubVariable(device_type);
   RegisterDeviceBasicOps(device_type);
   RegisterDeviceCast(device_type);
+  RegisterDeviceReadVariableOp(device_type);
 }
