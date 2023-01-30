@@ -27,18 +27,15 @@ void AssignAddSubVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
         SP_Stream stream = TF_GetStream(ctx, status.get());
         vulten_backend::Instance *inst = stream->instance;
 
-        vulten_ops::Assign_add_sub_op<(vulten_ops::Data_type)T>
-            *assign_add_sub = nullptr;
+        vulten_ops::Assign_add_sub_op *assign_add_sub = nullptr;
         std::string op_cache_name = "Assign_add_sub";
         inst->main_queue_mutex.lock();
         if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
           inst->op_chache[op_cache_name] =
-              (vulten_ops::Vulten_op *)new vulten_ops::Assign_add_sub_op<(
-                  vulten_ops::Data_type)T>(inst);
+              (vulten_ops::Vulten_op *)new vulten_ops::Assign_add_sub_op(inst);
         }
         assign_add_sub =
-            (vulten_ops::Assign_add_sub_op<(vulten_ops::Data_type)T> *)
-                inst->op_chache[op_cache_name];
+            (vulten_ops::Assign_add_sub_op *)inst->op_chache[op_cache_name];
         inst->main_queue_mutex.unlock();
 
         TensorSafePtr tensor_safe_ptr(tensor);
@@ -58,7 +55,8 @@ void AssignAddSubVariableOp_Compte(void *kernel, TF_OpKernelContext *ctx) {
         vulten_ops::Vulten_tensor value_tensor = vulten_ops::Vulten_tensor(
             value_ptr, tensor_dims.size(), tensor_dims.data());
 
-        assign_add_sub->run_op(input_tensor, value_tensor, Op);
+        assign_add_sub->run_op((vulten_ops::Data_type)T, input_tensor,
+                               value_tensor, Op);
       },
       status.get());
 }

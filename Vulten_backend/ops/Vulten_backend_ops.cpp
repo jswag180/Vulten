@@ -1,5 +1,8 @@
 #include "Vulten_backend_ops.h"
 
+#include "shaderc/shaderc.hpp"
+#include "shaders/headers/prelude/prelude.h.h"
+
 namespace vulten_ops {
 
 std::string Data_type_to_str(Data_type dt) {
@@ -28,8 +31,8 @@ std::string Data_type_to_str(Data_type dt) {
   }
 }
 
-Vulten_tensor::Vulten_tensor(vulten_backend::Buffer *buffer_ptr,
-                             int64_t num_dims, int64_t *dims_ptr)
+Vulten_tensor::Vulten_tensor(vulten_backend::Buffer* buffer_ptr,
+                             int64_t num_dims, int64_t* dims_ptr)
     : buffer(buffer_ptr), num_dims(num_dims), dims(dims_ptr) {
   //
 }
@@ -46,10 +49,10 @@ Vulten_tensor::~Vulten_tensor() {
   //
 }
 
-Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance &instance,
+Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance& instance,
                                  uint32_t num_buffers,
-                                 const std::vector<uint32_t> &shader_source,
-                                 vk::SpecializationInfo *spec_info,
+                                 const std::vector<uint32_t>& shader_source,
+                                 vk::SpecializationInfo* spec_info,
                                  std::vector<vk::PushConstantRange> push_ranges)
     : inst(&instance) {
   auto_clean = true;
@@ -123,12 +126,65 @@ Vulten_pipeline::~Vulten_pipeline() {
   inst->logical_dev.destroyDescriptorPool(descriptor_pool);
 }
 
+class Includer : shaderc::CompileOptions::IncluderInterface {
+  shaderc_include_result* GetInclude(const char* requested_source,
+                                     shaderc_include_type type,
+                                     const char* requesting_source,
+                                     size_t include_depth) {
+    shaderc_include_result* include_result = new shaderc_include_result();
+
+    if (std::string(requested_source) == "prelude.h") {
+      include_result->source_name = "prelude.h";
+      include_result->source_name_length = strlen(include_result->source_name);
+
+      include_result->content = prelude_h;
+      include_result->content_length = strlen(prelude_h);
+    }
+
+    return include_result;
+  }
+
+  void ReleaseInclude(shaderc_include_result* data) { delete data; }
+};
+
+std::vector<uint32_t> compile_shader(const char* name, const char* source,
+                                     Data_type* type_chain,
+                                     uint32_t type_chain_size) {
+  shaderc::Compiler compiler;
+  shaderc::CompileOptions options;
+
+  for (uint32_t i = 0; i < type_chain_size; i++) {
+    options.AddMacroDefinition("TYPE_" + std::to_string(i),
+                               Data_type_to_str(type_chain[i]));
+    options.AddMacroDefinition("TYPE_NUM_" + std::to_string(i),
+                               std::to_string(uint32_t(type_chain[i])));
+  }
+
+  options.SetOptimizationLevel(shaderc_optimization_level_performance);
+  options.SetTargetEnvironment(shaderc_target_env_vulkan,
+                               shaderc_env_version_vulkan_1_3);
+  options.SetSourceLanguage(shaderc_source_language_glsl);
+  options.SetIncluder(
+      std::unique_ptr<shaderc::CompileOptions::IncluderInterface>(
+          (shaderc::CompileOptions::IncluderInterface*)new Includer()));
+
+  shaderc::SpvCompilationResult module =
+      compiler.CompileGlslToSpv(source, shaderc_compute_shader, name, options);
+
+  if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
+    std::cerr << module.GetErrorMessage();
+    exit(-1);
+  }
+
+  return {module.begin(), module.end()};
+}
+
 bool Vulten_op::is_pipeline_cached(std::string pipe_string) {
   if (pipelines.find(pipe_string) == pipelines.end()) return false;
   return true;
 }
 
-Vulten_op::Vulten_op(vulten_backend::Instance *inst) : inst(inst) {
+Vulten_op::Vulten_op(vulten_backend::Instance* inst) : inst(inst) {
   //
 }
 
@@ -136,13 +192,16 @@ void Vulten_op::run_op() {
   //
 }
 
-Vulten_pipeline *Vulten_op::create_pipeline(
-    std::string pipe_string, uint32_t num_buffers,
-    const std::vector<uint32_t> &shader_source,
-    vk::SpecializationInfo *spec_info,
+Vulten_pipeline* Vulten_op::create_pipeline(
+    std::string pipe_string, uint32_t num_buffers, const char* shader_source,
+    Data_type* type_chain, uint32_t type_chain_size,
+    vk::SpecializationInfo* spec_info,
     std::vector<vk::PushConstantRange> push_ranges) {
+  auto compiled_shader = compile_shader(pipe_string.c_str(), shader_source,
+                                        type_chain, type_chain_size);
+
   pipelines[pipe_string] = new Vulten_pipeline(
-      *inst, num_buffers, shader_source, spec_info, push_ranges);
+      *inst, num_buffers, compiled_shader, spec_info, push_ranges);
   return pipelines[pipe_string];
 }
 

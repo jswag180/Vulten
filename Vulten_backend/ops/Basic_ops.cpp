@@ -1,12 +1,8 @@
 #include "Basic_ops.h"
 
-#include "../../shaders/headers/BasicOps/BasicOps.h"
+#include "../../shaders/headers/BasicOps/BasicOps.comp.h"
 
 namespace vulten_ops {
-
-#define DEFINE_BASIC(X) template class Basic_op<X>;
-
-VULTEN_DEFINE_BASIC_TYPES(DEFINE_BASIC)
 
 struct Push_const {
   uint32_t batch_num;
@@ -28,22 +24,20 @@ std::string op_as_str(uint32_t op) {
   }
 }
 
-template <Data_type T>
-Basic_op<T>::Basic_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Basic_op<" + Data_type_to_str(T) + ">")
+Basic_op::Basic_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
+  VULTEN_LOG_DEBUG("Creating vulten_ops::Basic_op")
 }
 
-template <Data_type T>
-void Basic_op<T>::run_op(uint32_t op, Vulten_tensor x, Vulten_tensor y,
-                         Vulten_tensor output) {
-  VULTEN_LOG_DEBUG("Running vulten_ops::Basic_op<" + Data_type_to_str(T) +
+void Basic_op::run_op(Data_type dt, uint32_t op, Vulten_tensor x,
+                      Vulten_tensor y, Vulten_tensor output) {
+  VULTEN_LOG_DEBUG("Running vulten_ops::Basic_op<" + Data_type_to_str(dt) +
                    ", " + op_as_str(op) + ">")
   inst->main_queue_mutex.lock();
 
   // A future optimization could be the check if x_dims and y_dims are swaped so
   // we could do y + x instead of x + y and avoid an extra pipeline
   std::string basic_pipe_string =
-      "Basic_" + op_as_str(op) + "_" + Data_type_to_str(T) + "_" +
+      "Basic_" + op_as_str(op) + "_" + Data_type_to_str(dt) + "_" +
       std::to_string(output.dims[0]) + "_" + std::to_string(x.dims[0]) + "_" +
       std::to_string(x.dims[1]) + "_" + std::to_string(x.dims[2]) + "_" +
       std::to_string(x.dims[3]) + "_" + std::to_string(y.dims[0]) + "_" +
@@ -51,7 +45,7 @@ void Basic_op<T>::run_op(uint32_t op, Vulten_tensor x, Vulten_tensor y,
       std::to_string(y.dims[3]) + "_" + std::to_string(op);
   Vulten_pipeline *vulten_pipeline = nullptr;
   if (!is_pipeline_cached(basic_pipe_string)) {
-    VULTEN_LOG_DEBUG("Creating vulten_ops::Basic_op<" + Data_type_to_str(T) +
+    VULTEN_LOG_DEBUG("Creating vulten_ops::Basic_op<" + Data_type_to_str(dt) +
                      ", " + op_as_str(op) + "> " + basic_pipe_string)
 
     struct Spec {
@@ -101,49 +95,13 @@ void Basic_op<T>::run_op(uint32_t op, Vulten_tensor x, Vulten_tensor y,
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t)}};
 
-    if (T == VULTEN_FLOAT) {
-      vulten_pipeline =
-          create_pipeline(basic_pipe_string, 3, shader::BasicOps_float,
-                          &spec_info, push_const_ranges);
-    } else if (T == VULTEN_FLOAT16) {
-      vulten_pipeline =
-          create_pipeline(basic_pipe_string, 3, shader::BasicOps_float16_t,
-                          &spec_info, push_const_ranges);
-    } else if (T == VULTEN_DOUBLE) {
-      vulten_pipeline =
-          create_pipeline(basic_pipe_string, 3, shader::BasicOps_double,
-                          &spec_info, push_const_ranges);
-    } else if (T == VULTEN_INT32) {
-      vulten_pipeline =
-          create_pipeline(basic_pipe_string, 3, shader::BasicOps_int,
-                          &spec_info, push_const_ranges);
-    } else if (T == VULTEN_UINT32) {
-      vulten_pipeline =
-          create_pipeline(basic_pipe_string, 3, shader::BasicOps_uint,
-                          &spec_info, push_const_ranges);
-    } else if (T == VULTEN_INT8) {
-      vulten_pipeline =
-          create_pipeline(basic_pipe_string, 3, shader::BasicOps_int8_t,
-                          &spec_info, push_const_ranges);
-    } else if (T == VULTEN_UINT8) {
-      vulten_pipeline =
-          create_pipeline(basic_pipe_string, 3, shader::BasicOps_uint8_t,
-                          &spec_info, push_const_ranges);
-    } else if (T == VULTEN_INT64) {
-      vulten_pipeline =
-          create_pipeline(basic_pipe_string, 3, shader::BasicOps_int64_t,
-                          &spec_info, push_const_ranges);
-    } else if (T == VULTEN_UINT64) {
-      vulten_pipeline =
-          create_pipeline(basic_pipe_string, 3, shader::BasicOps_uint64_t,
-                          &spec_info, push_const_ranges);
-    } else {
-      throw std::runtime_error("Error unsuported type in Basic_op: " +
-                               std::to_string(T));
-    }
+    std::vector<Data_type> type_chain = {dt};
+    vulten_pipeline =
+        create_pipeline(basic_pipe_string, 3, BasicOps_comp, type_chain.data(),
+                        type_chain.size(), &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Basic_op<" +
-                     Data_type_to_str(T) + ", " + op_as_str(op) + "> " +
+                     Data_type_to_str(dt) + ", " + op_as_str(op) + "> " +
                      basic_pipe_string)
     vulten_pipeline = pipelines[basic_pipe_string];
   }
@@ -212,9 +170,6 @@ void Basic_op<T>::run_op(uint32_t op, Vulten_tensor x, Vulten_tensor y,
   inst->main_queue_mutex.unlock();
 }
 
-template <Data_type T>
-Basic_op<T>::~Basic_op() {
-  VULTEN_LOG_DEBUG("Freeing vulten_ops::Basic_op<" + Data_type_to_str(T) + ">")
-}
+Basic_op::~Basic_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Basic_op") }
 
 }  // namespace vulten_ops

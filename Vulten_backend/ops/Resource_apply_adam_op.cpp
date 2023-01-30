@@ -1,34 +1,27 @@
 #include "Resource_apply_adam_op.h"
 
-#include "shaders/headers/ApplyAdam/ApplyAdam.h"
+#include "shaders/headers/ApplyAdam/ApplyAdam.comp.h"
 
 namespace vulten_ops {
 
-// VULTEN_DEFINE_BASIC_TYPES(Resource_apply_adam_op)
-template class Resource_apply_adam_op<VULTEN_FLOAT>;
-template class Resource_apply_adam_op<VULTEN_INT32>;
-template class Resource_apply_adam_op<VULTEN_UINT32>;
-
-template <Data_type T>
-Resource_apply_adam_op<T>::Resource_apply_adam_op(
-    vulten_backend::Instance *inst)
+Resource_apply_adam_op::Resource_apply_adam_op(vulten_backend::Instance *inst)
     : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Resource_apply_adam_op<" +
-                   Data_type_to_str(T) + ">")
+  VULTEN_LOG_DEBUG("Creating vulten_ops::Resource_apply_adam_op")
 }
 
-template <Data_type T>
-void Resource_apply_adam_op<T>::run_op(
-    Vulten_tensor var, Vulten_tensor m, Vulten_tensor v,
-    Vulten_tensor beta1_power, Vulten_tensor beta2_power, Vulten_tensor lr,
-    Vulten_tensor beta1, Vulten_tensor beta2, Vulten_tensor epsilon,
-    Vulten_tensor grad, bool use_nesterov) {
+void Resource_apply_adam_op::run_op(Data_type dt, Vulten_tensor var,
+                                    Vulten_tensor m, Vulten_tensor v,
+                                    Vulten_tensor beta1_power,
+                                    Vulten_tensor beta2_power, Vulten_tensor lr,
+                                    Vulten_tensor beta1, Vulten_tensor beta2,
+                                    Vulten_tensor epsilon, Vulten_tensor grad,
+                                    bool use_nesterov) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Resource_apply_adam_op<" +
-                   Data_type_to_str(T) + ">")
+                   Data_type_to_str(dt) + ">")
   inst->main_queue_mutex.lock();
 
-  std::string pipe_string = "Resource_apply_adam_" + Data_type_to_str(T) + "_" +
-                            std::to_string(use_nesterov);
+  std::string pipe_string = "Resource_apply_adam_" + Data_type_to_str(dt) +
+                            "_" + std::to_string(use_nesterov);
   Vulten_pipeline *vulten_pipeline = nullptr;
 
   if (!is_pipeline_cached(pipe_string)) {
@@ -46,37 +39,10 @@ void Resource_apply_adam_op<T>::run_op(
     vk::SpecializationInfo spec_info(1, specs.data(), sizeof(spec_data),
                                      &spec_data);
 
-    if (T == VULTEN_FLOAT) {
-      vulten_pipeline =
-          create_pipeline(pipe_string, 10, shader::ApplyAdam_float, &spec_info);
-    } else if (T == VULTEN_FLOAT16) {
-      // vulten_pipeline = create_pipeline(pipe_string, 2,
-      // shader::ApplyAdam_float16_t);
-    } else if (T == VULTEN_DOUBLE) {
-      // vulten_pipeline = create_pipeline(pipe_string, 2,
-      // shader::ApplyAdam_double);
-    } else if (T == VULTEN_INT32) {
-      vulten_pipeline =
-          create_pipeline(pipe_string, 10, shader::ApplyAdam_int, &spec_info);
-    } else if (T == VULTEN_UINT32) {
-      vulten_pipeline =
-          create_pipeline(pipe_string, 10, shader::ApplyAdam_uint, &spec_info);
-    } else if (T == VULTEN_INT8) {
-      // vulten_pipeline = create_pipeline(pipe_string, 2,
-      // shader::ApplyAdam_int8_t);
-    } else if (T == VULTEN_UINT8) {
-      // vulten_pipeline = create_pipeline(pipe_string, 2,
-      // shader::ApplyAdam_uint8_t);
-    } else if (T == VULTEN_INT64) {
-      // vulten_pipeline = create_pipeline(pipe_string, 2,
-      // shader::ApplyAdam_int64_t);
-    } else if (T == VULTEN_UINT64) {
-      // vulten_pipeline = create_pipeline(pipe_string, 2,
-      // shader::ApplyAdam_uint64_t);
-    } else {
-      throw std::runtime_error(
-          "Error unsuported type in Resource_apply_adam: " + std::to_string(T));
-    }
+    std::vector<Data_type> type_chain = {dt};
+    vulten_pipeline =
+        create_pipeline(pipe_string, 10, ApplyAdam_comp, type_chain.data(),
+                        type_chain.size(), &spec_info);
   } else {
     VULTEN_LOG_DEBUG(
         "Using cached vulten_ops::Resource_apply_adam_op pipeline " +
@@ -166,10 +132,8 @@ void Resource_apply_adam_op<T>::run_op(
   inst->main_queue_mutex.unlock();
 }
 
-template <Data_type T>
-Resource_apply_adam_op<T>::~Resource_apply_adam_op() {
-  VULTEN_LOG_DEBUG("Freeing vulten_ops::Resource_apply_adam_op<" +
-                   Data_type_to_str(T) + ">")
+Resource_apply_adam_op::~Resource_apply_adam_op() {
+  VULTEN_LOG_DEBUG("Freeing vulten_ops::Resource_apply_adam_op")
 }
 
 }  // namespace vulten_ops

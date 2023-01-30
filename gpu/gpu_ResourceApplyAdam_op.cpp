@@ -54,18 +54,15 @@ void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 
-  vulten_ops::Resource_apply_adam_op<(vulten_ops::Data_type)T>*
-      resource_apply_adam_op = nullptr;
+  vulten_ops::Resource_apply_adam_op* resource_apply_adam_op = nullptr;
   std::string op_cache_name = "Resource_apply_adam";
   inst->main_queue_mutex.lock();
   if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
     inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Resource_apply_adam_op<(
-            vulten_ops::Data_type)T>(inst);
+        (vulten_ops::Vulten_op*)new vulten_ops::Resource_apply_adam_op(inst);
   }
   resource_apply_adam_op =
-      (vulten_ops::Resource_apply_adam_op<(vulten_ops::Data_type)T>*)
-          inst->op_chache[op_cache_name];
+      (vulten_ops::Resource_apply_adam_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
   const std::vector<int> input_to_lock = {0, 1, 2, 3, 4, 5, 6, 7, 8};
@@ -97,10 +94,11 @@ void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
 
   GET_INPUT_TENSOR("ResourceApplyAdamOp", grad, 9, ctx, status)
 
-  resource_apply_adam_op->run_op(
-      var_tensor, m_tensor, v_tensor, beta1_power_tensor, beta2_power_tensor,
-      lr_tensor, beta1_tensor, beta2_tensor, epsilon_tensor, grad_tensor,
-      resourceApplyAdamOp->nesterov_);
+  resource_apply_adam_op->run_op((vulten_ops::Data_type)T, var_tensor, m_tensor,
+                                 v_tensor, beta1_power_tensor,
+                                 beta2_power_tensor, lr_tensor, beta1_tensor,
+                                 beta2_tensor, epsilon_tensor, grad_tensor,
+                                 resourceApplyAdamOp->nesterov_);
 
   TF_ReleaseVariableInputLockHolder(*var_lock.get());
 }

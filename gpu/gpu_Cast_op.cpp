@@ -1,7 +1,6 @@
 #include "Vulten_backend/ops/Cast_op.h"
 #include "absl/container/inlined_vector.h"
 #include "scope_timer.h"
-#include "shaders/headers/Cast/Cast.h"
 #include "tensor_utills.h"
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/ops.h"
@@ -23,21 +22,18 @@ void CastOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 
-  vulten_ops::Cast_op<(vulten_ops::Data_type)S, (vulten_ops::Data_type)D>*
-      cast_op = nullptr;
+  vulten_ops::Cast_op* cast_op = nullptr;
   std::string op_cache_name = "Cast";
   inst->main_queue_mutex.lock();
   if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
     inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Cast_op<
-            (vulten_ops::Data_type)S, (vulten_ops::Data_type)D>(inst);
+        (vulten_ops::Vulten_op*)new vulten_ops::Cast_op(inst);
   }
-  cast_op =
-      (vulten_ops::Cast_op<(vulten_ops::Data_type)S, (vulten_ops::Data_type)D>*)
-          inst->op_chache[op_cache_name];
+  cast_op = (vulten_ops::Cast_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  cast_op->run_op(input_tensor, output_tensor);
+  cast_op->run_op((vulten_ops::Data_type)S, (vulten_ops::Data_type)D,
+                  input_tensor, output_tensor);
 }
 
 template <TF_DataType S, TF_DataType D>

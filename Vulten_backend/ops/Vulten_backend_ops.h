@@ -86,8 +86,8 @@ class Vulten_op {
    * @return requested pipeline.
    */
   virtual Vulten_pipeline *create_pipeline(
-      std::string pipe_string, uint32_t num_buffers,
-      const std::vector<uint32_t> &shader_source,
+      std::string pipe_string, uint32_t num_buffers, const char *shader_source,
+      Data_type *type_chain, uint32_t type_chain_size,
       vk::SpecializationInfo *spec_info = {},
       std::vector<vk::PushConstantRange> push_ranges = {});
 

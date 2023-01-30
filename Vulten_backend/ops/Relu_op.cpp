@@ -1,49 +1,25 @@
 #include "Relu_op.h"
 
-#include "shaders/headers/Relu/Relu.h"
+#include "shaders/headers/Relu/Relu.comp.h"
 
 namespace vulten_ops {
 
-#define DEFINE_RELU(X) template class Relu_op<X>;
-
-VULTEN_DEFINE_BASIC_TYPES(DEFINE_RELU)
-
-template <Data_type T>
-Relu_op<T>::Relu_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Relu_op<" + Data_type_to_str(T) + ">")
+Relu_op::Relu_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
+  VULTEN_LOG_DEBUG("Creating vulten_ops::Relu_op")
 }
-template <Data_type T>
-void Relu_op<T>::run_op(Vulten_tensor input, Vulten_tensor output) {
-  VULTEN_LOG_DEBUG("Running vulten_ops::Relu_op<" + Data_type_to_str(T) + ">")
+
+void Relu_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
+  VULTEN_LOG_DEBUG("Running vulten_ops::Relu_op<" + Data_type_to_str(dt) + ">")
   inst->main_queue_mutex.lock();
 
-  std::string pipe_string = "Relu_" + Data_type_to_str(T);
+  std::string pipe_string = "Relu_" + Data_type_to_str(dt);
   Vulten_pipeline *vulten_pipeline = nullptr;
 
   if (!is_pipeline_cached(pipe_string)) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Relu_op pipeline " + pipe_string)
-    if (T == VULTEN_FLOAT) {
-      vulten_pipeline = create_pipeline(pipe_string, 2, shader::Relu_float);
-    } else if (T == VULTEN_FLOAT16) {
-      vulten_pipeline = create_pipeline(pipe_string, 2, shader::Relu_float16_t);
-    } else if (T == VULTEN_DOUBLE) {
-      vulten_pipeline = create_pipeline(pipe_string, 2, shader::Relu_double);
-    } else if (T == VULTEN_INT32) {
-      vulten_pipeline = create_pipeline(pipe_string, 2, shader::Relu_int);
-    } else if (T == VULTEN_UINT32) {
-      vulten_pipeline = create_pipeline(pipe_string, 2, shader::Relu_uint);
-    } else if (T == VULTEN_INT8) {
-      vulten_pipeline = create_pipeline(pipe_string, 2, shader::Relu_int8_t);
-    } else if (T == VULTEN_UINT8) {
-      vulten_pipeline = create_pipeline(pipe_string, 2, shader::Relu_uint8_t);
-    } else if (T == VULTEN_INT64) {
-      vulten_pipeline = create_pipeline(pipe_string, 2, shader::Relu_int64_t);
-    } else if (T == VULTEN_UINT64) {
-      vulten_pipeline = create_pipeline(pipe_string, 2, shader::Relu_uint64_t);
-    } else {
-      throw std::runtime_error("Error unsuported type in Relu: " +
-                               std::to_string(T));
-    }
+    std::vector<Data_type> type_chain = {dt};
+    vulten_pipeline = create_pipeline(pipe_string, 2, Relu_comp,
+                                      type_chain.data(), type_chain.size());
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Relu_op pipeline " + pipe_string)
     vulten_pipeline = pipelines[pipe_string];
@@ -98,9 +74,7 @@ void Relu_op<T>::run_op(Vulten_tensor input, Vulten_tensor output) {
   inst->logical_dev.freeCommandBuffers(inst->cmd_pool, cmd_buff);
   inst->main_queue_mutex.unlock();
 }
-template <Data_type T>
-Relu_op<T>::~Relu_op() {
-  VULTEN_LOG_DEBUG("Freeing vulten_ops::Relu_op<" + Data_type_to_str(T) + ">")
-}
+
+Relu_op::~Relu_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Relu_op") }
 
 }  // namespace vulten_ops

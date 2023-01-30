@@ -1,12 +1,12 @@
 #define FLOAT 0
-#define INT 1
-#define UINT 2
-#define INT64_T 3
-#define UINT64_T 4
-#define INT8_T 5
-#define UINT8_T 6
-#define DOUBLE 7
-#define HALF 8
+#define INT 3
+#define UINT 22
+#define INT64_T 9
+#define UINT64_T 23
+#define INT8_T 6
+#define UINT8_T 4
+#define DOUBLE 2
+#define HALF 19
 
 #if TYPE_NUM_0 == INT64_T || TYPE_NUM_0 == UINT64_T || TYPE_NUM_1 == INT64_T || TYPE_NUM_1 == UINT64_T
     #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable

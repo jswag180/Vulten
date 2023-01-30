@@ -3,14 +3,14 @@
 #include "Vulten_backend_ops.h"
 
 namespace vulten_ops {
-template <Data_type SRC, Data_type DST>
 class Cast_op : Vulten_op {
  private:
   //
  public:
   //
 
-  void run_op(Vulten_tensor input, Vulten_tensor output);
+  void run_op(Data_type src, Data_type dst, Vulten_tensor input,
+              Vulten_tensor output);
 
   Cast_op(vulten_backend::Instance *inst);
   ~Cast_op();
