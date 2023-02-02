@@ -26,7 +26,7 @@ Vk_instance::Vk_instance() {
         1,                  // Application Version
         nullptr,            // Engine Name or nullptr
         0,                  // Engine Version
-        VK_API_VERSION_1_3  // Vulkan API version
+        VK_API_VERSION_1_2  // Vulkan API version
     };
 
     const std::vector<const char *> instExtend = {

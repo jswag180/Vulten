@@ -162,7 +162,7 @@ std::vector<uint32_t> compile_shader(const char* name, const char* source,
 
   options.SetOptimizationLevel(shaderc_optimization_level_performance);
   options.SetTargetEnvironment(shaderc_target_env_vulkan,
-                               shaderc_env_version_vulkan_1_3);
+                               shaderc_env_version_vulkan_1_2);
   options.SetSourceLanguage(shaderc_source_language_glsl);
   options.SetIncluder(
       std::unique_ptr<shaderc::CompileOptions::IncluderInterface>(
