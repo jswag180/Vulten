@@ -9,7 +9,7 @@ std::string Data_type_to_str(Data_type dt) {
   if (dt == Data_type::VULTEN_FLOAT) {
     return "float";
   } else if (dt == Data_type::VULTEN_FLOAT16) {
-    return "float16";
+    return "float16_t";
   } else if (dt == Data_type::VULTEN_DOUBLE) {
     return "double";
   } else if (dt == Data_type::VULTEN_INT32) {
@@ -24,6 +24,14 @@ std::string Data_type_to_str(Data_type dt) {
     return "int8_t";
   } else if (dt == Data_type::VULTEN_UINT8) {
     return "uint8_t";
+  } else if (dt == Data_type::VULTEN_INT16) {
+    return "int16_t";
+  } else if (dt == Data_type::VULTEN_UINT16) {
+    return "uint16_t";
+  } else if (dt == Data_type::VULTEN_COMPLEX64) {
+    return "cx_64";
+  } else if (dt == Data_type::VULTEN_COMPLEX128) {
+    return "cx_128";
   } else {
     throw std::runtime_error(
         "Error not a valid vulten_ops::DataType passed to "
@@ -172,6 +180,7 @@ std::vector<uint32_t> compile_shader(const char* name, const char* source,
       compiler.CompileGlslToSpv(source, shaderc_compute_shader, name, options);
 
   if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
+    std::cerr << "Shader compile error:\n";
     std::cerr << module.GetErrorMessage();
     exit(-1);
   }

@@ -26,7 +26,8 @@
   static_cast<vulten_backend::Host_mappable_buffer *>(X)
 #define CALL_ALL_BASIC_TYPES(func)                                            \
   func(TF_FLOAT) func(TF_HALF) func(TF_DOUBLE) func(TF_INT32) func(TF_UINT32) \
-      func(TF_INT8) func(TF_UINT8) func(TF_INT64) func(TF_UINT64)
+      func(TF_INT8) func(TF_UINT8) func(TF_INT64) func(TF_UINT64) func(TF_INT16) \
+      func(TF_UINT16)
 namespace vulten_ops {
 class Vulten_op;
 };
