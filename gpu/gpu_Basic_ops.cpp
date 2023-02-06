@@ -106,6 +106,19 @@ void RegisterBasicOpKernels(const char* device_type) {
   TF_RegisterKernelBuilder(op.c_str(), builder, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering Basic kernel";
+
+  //There is no apparent difference between Add and AddV2 so use the same for both
+  if(OP == OP_ADD){
+    StatusSafePtr status(TF_NewStatus());
+    auto* builder = TF_NewKernelBuilder("AddV2", device_type, nullptr,
+                                        &BasicOps_Compute<T, OP>, nullptr);
+    TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
+    if (TF_OK != TF_GetCode(status.get()))
+      std::cout << " Error while registering Basic kernel with attribute T";
+    TF_RegisterKernelBuilder("AddV2", builder, status.get());
+    if (TF_OK != TF_GetCode(status.get()))
+      std::cout << " Error while registering Basic kernel";
+  }
 }
 
 void RegisterDeviceBasicOps(const char* device_type) {
@@ -117,4 +130,12 @@ void RegisterDeviceBasicOps(const char* device_type) {
   RegisterBasicOpKernels<T, OP_DIV_NO_NAN>(device_type);
 
   CALL_ALL_BASIC_TYPES(REGISTER_KERNEL)
+
+#define REGISTER_COMPLEX_KERNEL(T)\
+  RegisterBasicOpKernels<T, OP_ADD>(device_type);\
+  RegisterBasicOpKernels<T, OP_SUB>(device_type);\
+  RegisterBasicOpKernels<T, OP_MUL>(device_type);\
+  RegisterBasicOpKernels<T, OP_DIV>(device_type);
+  
+  CALL_COMPLEX(REGISTER_COMPLEX_KERNEL)
 }

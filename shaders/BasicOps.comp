@@ -58,69 +58,41 @@ void main(){
 
     uint outIndex = (outTotalSize * push_const.batchNum) + (gl_GlobalInvocationID.x * gl_NumWorkGroups.y + gl_GlobalInvocationID.y) * gl_NumWorkGroups.z + gl_GlobalInvocationID.z;
 
+    TYPE_0 X = x[unFlatToFlatX(xs1 > 1 ? push_const.batchNum : 0, 
+                               xs2 > 1 ? gl_GlobalInvocationID.x : 0,  
+                               xs3 > 1 ? gl_GlobalInvocationID.y : 0,  
+                               xs4 > 1 ? gl_GlobalInvocationID.z : 0)];    
+    TYPE_0 Y = y[unFlatToFlatY(ys1 > 1 ? push_const.batchNum : 0, 
+                               ys2 > 1 ? gl_GlobalInvocationID.x : 0, 
+                               ys3 > 1 ? gl_GlobalInvocationID.y : 0, 
+                               ys4 > 1 ? gl_GlobalInvocationID.z : 0)];
     
     if(op == OP_MUL){
-        outData[outIndex] = 
-            x[unFlatToFlatX(xs1 > 1 ? push_const.batchNum : 0, 
-                            xs2 > 1 ? gl_GlobalInvocationID.x : 0, 
-                            xs3 > 1 ? gl_GlobalInvocationID.y : 0, 
-                            xs4 > 1 ? gl_GlobalInvocationID.z : 0)]
-            * 
-            y[unFlatToFlatY(ys1 > 1 ? push_const.batchNum : 0, 
-                            ys2 > 1 ? gl_GlobalInvocationID.x : 0, 
-                            ys3 > 1 ? gl_GlobalInvocationID.y : 0, 
-                            ys4 > 1 ? gl_GlobalInvocationID.z : 0)];
+        #if TYPE_NUM_0 == COMPLEX64
+        outData[outIndex] = cx_64_mul(X, Y);
+        #elif TYPE_NUM_0 == COMPLEX128
+        outData[outIndex] = cx_128_mul(X, Y);
+        #else
+        outData[outIndex] = X * Y;
+        #endif
     }else if(op == OP_ADD){
-        outData[outIndex] = 
-            x[unFlatToFlatX(xs1 > 1 ? push_const.batchNum : 0, 
-                            xs2 > 1 ? gl_GlobalInvocationID.x : 0, 
-                            xs3 > 1 ? gl_GlobalInvocationID.y : 0, 
-                            xs4 > 1 ? gl_GlobalInvocationID.z : 0)]
-            + 
-            y[unFlatToFlatY(ys1 > 1 ? push_const.batchNum : 0, 
-                            ys2 > 1 ? gl_GlobalInvocationID.x : 0, 
-                            ys3 > 1 ? gl_GlobalInvocationID.y : 0, 
-                            ys4 > 1 ? gl_GlobalInvocationID.z : 0)];
+        outData[outIndex] = X + Y;
     }else if(op == OP_SUB){
-        outData[outIndex] = 
-            x[unFlatToFlatX(xs1 > 1 ? push_const.batchNum : 0, 
-                            xs2 > 1 ? gl_GlobalInvocationID.x : 0, 
-                            xs3 > 1 ? gl_GlobalInvocationID.y : 0, 
-                            xs4 > 1 ? gl_GlobalInvocationID.z : 0)]
-            - 
-            y[unFlatToFlatY(ys1 > 1 ? push_const.batchNum : 0, 
-                            ys2 > 1 ? gl_GlobalInvocationID.x : 0, 
-                            ys3 > 1 ? gl_GlobalInvocationID.y : 0, 
-                            ys4 > 1 ? gl_GlobalInvocationID.z : 0)];
+        outData[outIndex] = X - Y;
     }else if(op == OP_DIV){
-        outData[outIndex] = 
-            x[unFlatToFlatX(xs1 > 1 ? push_const.batchNum : 0, 
-                            xs2 > 1 ? gl_GlobalInvocationID.x : 0, 
-                            xs3 > 1 ? gl_GlobalInvocationID.y : 0, 
-                            xs4 > 1 ? gl_GlobalInvocationID.z : 0)]
-            / 
-            y[unFlatToFlatY(ys1 > 1 ? push_const.batchNum : 0, 
-                            ys2 > 1 ? gl_GlobalInvocationID.x : 0, 
-                            ys3 > 1 ? gl_GlobalInvocationID.y : 0, 
-                            ys4 > 1 ? gl_GlobalInvocationID.z : 0)];
+        #if TYPE_NUM_0 == COMPLEX64
+        outData[outIndex] = cx_64_div(X, Y);
+        #elif TYPE_NUM_0 == COMPLEX128
+        outData[outIndex] = cx_128_div(X, Y);
+        #else
+        outData[outIndex] = X / Y;
+        #endif
     }else if(op == OP_DIV_NO_NAN){
-        TYPE_0 denominator = y[unFlatToFlatY(ys1 > 1 ? push_const.batchNum : 0, 
-                             ys2 > 1 ? gl_GlobalInvocationID.x : 0, 
-                             ys3 > 1 ? gl_GlobalInvocationID.y : 0, 
-                             ys4 > 1 ? gl_GlobalInvocationID.z : 0)];
-        if(denominator == TYPE_0(0)){
+        if(Y == TYPE_0(0)){
             outData[outIndex] = TYPE_0(0);
         }else{
-            outData[outIndex] = 
-                x[unFlatToFlatX(xs1 > 1 ? push_const.batchNum : 0, 
-                                xs2 > 1 ? gl_GlobalInvocationID.x : 0, 
-                                xs3 > 1 ? gl_GlobalInvocationID.y : 0, 
-                                xs4 > 1 ? gl_GlobalInvocationID.z : 0)]
-                / 
-                denominator;
+            outData[outIndex] = X / Y;
         }
     }
-
-
 
 }

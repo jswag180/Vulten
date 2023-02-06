@@ -12,7 +12,7 @@ std::string op_as_str(uint32_t op) {
   if (op == OP_MUL) {
     return "Mul";
   } else if (op == OP_ADD) {
-    return "AddV2";
+    return "Add";
   } else if (op == OP_SUB) {
     return "Sub";
   } else if (op == OP_DIV) {
