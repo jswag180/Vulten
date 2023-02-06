@@ -28,3 +28,16 @@
     #extension GL_EXT_shader_explicit_arithmetic_types_float16 : enable
     #extension GL_EXT_shader_subgroup_extended_types_float16 : enable
 #endif
+//Complex implemenrations adopted from https://github.com/julesb/glsl-util
+#if TYPE_NUM_0 == COMPLEX64 || TYPE_NUM_1 == COMPLEX64
+    #define cx_64 vec2
+
+    #define cx_64_mul(a, b) cx_64(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x)
+    #define cx_64_div(a, b) cx_64(((a.x*b.x+a.y*b.y)/(b.x*b.x+b.y*b.y)),((a.y*b.x-a.x*b.y)/(b.x*b.x+b.y*b.y)))
+#endif
+#if TYPE_NUM_0 == COMPLEX128 || TYPE_NUM_1 == COMPLEX128
+    #define cx_128 dvec2
+
+    #define cx_128_mul(a, b) cx_128(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x)
+    #define cx_128_div(a, b) cx_128(((a.x*b.x+a.y*b.y)/(b.x*b.x+b.y*b.y)),((a.y*b.x-a.x*b.y)/(b.x*b.x+b.y*b.y)))
+#endif
