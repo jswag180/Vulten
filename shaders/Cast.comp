@@ -12,5 +12,9 @@ layout(set = 0, binding = 0) buffer a { readonly TYPE_0 inData[]; };
 layout(set = 0, binding = 1) buffer b { writeonly TYPE_1 outData[]; };
 
 void main(){
+    #if TYPE_NUM_1 == COMPLEX64 || TYPE_NUM_1 == COMPLEX128
+    outData[gl_GlobalInvocationID.x] = TYPE_1(inData[gl_GlobalInvocationID.x], 0.0);
+    #else
     outData[gl_GlobalInvocationID.x] = TYPE_1(inData[gl_GlobalInvocationID.x]);
+    #endif
 }

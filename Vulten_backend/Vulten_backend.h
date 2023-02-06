@@ -29,6 +29,7 @@
       func(TF_INT8) func(TF_UINT8) func(TF_INT64) func(TF_UINT64)             \
           func(TF_INT16) func(TF_UINT16)
 #define CALL_COMPLEX(func) func(TF_COMPLEX64) func(TF_COMPLEX128)
+#define CALL_ALL_TYPES(func) CALL_ALL_BASIC_TYPES(func) CALL_COMPLEX(func)
 namespace vulten_ops {
 class Vulten_op;
 };
