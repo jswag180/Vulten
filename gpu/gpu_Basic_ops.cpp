@@ -107,8 +107,9 @@ void RegisterBasicOpKernels(const char* device_type) {
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering Basic kernel";
 
-  //There is no apparent difference between Add and AddV2 so use the same for both
-  if(OP == OP_ADD){
+  // There is no apparent difference between Add and AddV2 so use the same for
+  // both
+  if (OP == OP_ADD) {
     StatusSafePtr status(TF_NewStatus());
     auto* builder = TF_NewKernelBuilder("AddV2", device_type, nullptr,
                                         &BasicOps_Compute<T, OP>, nullptr);
@@ -131,11 +132,11 @@ void RegisterDeviceBasicOps(const char* device_type) {
 
   CALL_ALL_BASIC_TYPES(REGISTER_KERNEL)
 
-#define REGISTER_COMPLEX_KERNEL(T)\
-  RegisterBasicOpKernels<T, OP_ADD>(device_type);\
-  RegisterBasicOpKernels<T, OP_SUB>(device_type);\
-  RegisterBasicOpKernels<T, OP_MUL>(device_type);\
+#define REGISTER_COMPLEX_KERNEL(T)                \
+  RegisterBasicOpKernels<T, OP_ADD>(device_type); \
+  RegisterBasicOpKernels<T, OP_SUB>(device_type); \
+  RegisterBasicOpKernels<T, OP_MUL>(device_type); \
   RegisterBasicOpKernels<T, OP_DIV>(device_type);
-  
+
   CALL_COMPLEX(REGISTER_COMPLEX_KERNEL)
 }

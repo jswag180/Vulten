@@ -1,9 +1,7 @@
+#include "Vulten.h"
+
 #include "tensorflow/c/experimental/stream_executor/stream_executor.h"
 #include "vulten_device.h"
-
-//#include <kompute/Kompute.hpp>
-
-#include "Vulten.h"
 
 void SE_InitPlugin(SE_PlatformRegistrationParams* const params,
                    TF_Status* const status) {
