@@ -53,20 +53,23 @@ void RegisterCastOpKernel(const char* device_type) {
 }
 
 void RegisterDeviceCast(const char* device_type) {
-#define REGISTER_TYPE(s)                              \
-  RegisterCastOpKernel<s, TF_FLOAT>(device_type);     \
-  RegisterCastOpKernel<s, TF_INT32>(device_type);     \
-  RegisterCastOpKernel<s, TF_UINT32>(device_type);    \
-  RegisterCastOpKernel<s, TF_INT64>(device_type);     \
-  RegisterCastOpKernel<s, TF_UINT64>(device_type);    \
-  RegisterCastOpKernel<s, TF_INT8>(device_type);      \
-  RegisterCastOpKernel<s, TF_UINT8>(device_type);     \
-  RegisterCastOpKernel<s, TF_DOUBLE>(device_type);    \
-  RegisterCastOpKernel<s, TF_HALF>(device_type);      \
-  RegisterCastOpKernel<s, TF_INT16>(device_type);     \
-  RegisterCastOpKernel<s, TF_UINT16>(device_type);    \
-  RegisterCastOpKernel<s, TF_COMPLEX64>(device_type); \
-  RegisterCastOpKernel<s, TF_COMPLEX128>(device_type);
+#define REGISTER_TYPE(s)                               \
+  RegisterCastOpKernel<s, TF_FLOAT>(device_type);      \
+  RegisterCastOpKernel<s, TF_INT32>(device_type);      \
+  RegisterCastOpKernel<s, TF_UINT32>(device_type);     \
+  RegisterCastOpKernel<s, TF_INT64>(device_type);      \
+  RegisterCastOpKernel<s, TF_UINT64>(device_type);     \
+  RegisterCastOpKernel<s, TF_INT8>(device_type);       \
+  RegisterCastOpKernel<s, TF_UINT8>(device_type);      \
+  RegisterCastOpKernel<s, TF_DOUBLE>(device_type);     \
+  RegisterCastOpKernel<s, TF_HALF>(device_type);       \
+  RegisterCastOpKernel<s, TF_INT16>(device_type);      \
+  RegisterCastOpKernel<s, TF_UINT16>(device_type);     \
+  RegisterCastOpKernel<s, TF_COMPLEX64>(device_type);  \
+  RegisterCastOpKernel<s, TF_COMPLEX128>(device_type); \
+  RegisterCastOpKernel<s, TF_BOOL>(device_type);
 
   CALL_ALL_TYPES(REGISTER_TYPE)
+
+  REGISTER_TYPE(TF_BOOL)
 }

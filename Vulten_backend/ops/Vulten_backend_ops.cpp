@@ -32,6 +32,8 @@ std::string Data_type_to_str(Data_type dt) {
     return "cx_64";
   } else if (dt == Data_type::VULTEN_COMPLEX128) {
     return "cx_128";
+  } else if (dt == Data_type::VULTEN_BOOL) {
+    return "bool8";
   } else {
     throw std::runtime_error(
         "Error not a valid vulten_ops::DataType passed to "

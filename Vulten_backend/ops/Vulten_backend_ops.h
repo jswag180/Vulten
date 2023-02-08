@@ -20,6 +20,7 @@ enum Data_type {
   VULTEN_UINT16 = 17,
   VULTEN_COMPLEX64 = 8,
   VULTEN_COMPLEX128 = 18,
+  VULTEN_BOOL = 10,
 };
 
 #define VULTEN_DEFINE_BASIC_TYPES(op)                                     \
