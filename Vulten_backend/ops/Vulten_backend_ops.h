@@ -49,12 +49,10 @@ struct Vulten_pipeline {
   bool auto_clean;
   vulten_backend::Instance *inst;
   vk::Pipeline pipeline;
-  vk::DescriptorSet descriptor_set;
   vk::PipelineLayout pipeline_layout;
   vk::ShaderModule shader;
   vk::DescriptorSetLayout descriptor_set_layout;
   vk::PipelineCache pipeline_cache;
-  vk::DescriptorPool descriptor_pool;
 
   /**
    * @param instance reference to vulten_backend::Instance

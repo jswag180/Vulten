@@ -107,20 +107,6 @@ Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance& instance,
       inst->logical_dev
           .createComputePipeline(pipeline_cache, compute_pipeline_create_info)
           .value;
-
-  vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer, num_buffers);
-  vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
-      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 1,
-      descriptor_pool_size);
-  descriptor_pool =
-      inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
-
-  vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(
-      descriptor_pool, 1, &descriptor_set_layout);
-  const std::vector<vk::DescriptorSet> descriptor_sets =
-      inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info);
-  descriptor_set = descriptor_sets.front();
 }
 
 Vulten_pipeline::Vulten_pipeline() { auto_clean = false; }
@@ -132,8 +118,6 @@ Vulten_pipeline::~Vulten_pipeline() {
   inst->logical_dev.destroyPipelineLayout(pipeline_layout);
   inst->logical_dev.destroyPipelineCache(pipeline_cache);
   inst->logical_dev.destroyPipeline(pipeline);
-  inst->logical_dev.freeDescriptorSets(descriptor_pool, 1, &descriptor_set);
-  inst->logical_dev.destroyDescriptorPool(descriptor_pool);
 }
 
 class Includer : shaderc::CompileOptions::IncluderInterface {

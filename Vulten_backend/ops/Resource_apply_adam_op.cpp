@@ -50,6 +50,21 @@ void Resource_apply_adam_op::run_op(Data_type dt, Vulten_tensor var,
     vulten_pipeline = pipelines[pipe_string];
   }
 
+  vk::DescriptorPool descriptor_pool;
+  vk::DescriptorPoolSize descriptor_pool_size(
+      vk::DescriptorType::eStorageBuffer, 10);
+  vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
+      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 1,
+      descriptor_pool_size);
+  descriptor_pool =
+      inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
+
+  vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(
+      descriptor_pool, 1, &vulten_pipeline->descriptor_set_layout);
+  vk::DescriptorSet descriptor_set =
+      inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info)
+          .front();
+
   vk::DescriptorBufferInfo var_buffer_info(var.buffer->vk_buffer, 0,
                                            var.buffer->buffer_size);
   vk::DescriptorBufferInfo m_buffer_info(m.buffer->vk_buffer, 0,
@@ -72,26 +87,26 @@ void Resource_apply_adam_op::run_op(Data_type dt, Vulten_tensor var,
                                             grad.buffer->buffer_size);
 
   const std::vector<vk::WriteDescriptorSet> WriteDescriptorSets = {
-      {vulten_pipeline->descriptor_set, 0, 0, 1,
-       vk::DescriptorType::eStorageBuffer, nullptr, &var_buffer_info},
-      {vulten_pipeline->descriptor_set, 1, 0, 1,
-       vk::DescriptorType::eStorageBuffer, nullptr, &m_buffer_info},
-      {vulten_pipeline->descriptor_set, 2, 0, 1,
-       vk::DescriptorType::eStorageBuffer, nullptr, &v_buffer_info},
-      {vulten_pipeline->descriptor_set, 3, 0, 1,
-       vk::DescriptorType::eStorageBuffer, nullptr, &beta1_power_buffer_info},
-      {vulten_pipeline->descriptor_set, 4, 0, 1,
-       vk::DescriptorType::eStorageBuffer, nullptr, &beta2_power_buffer_info},
-      {vulten_pipeline->descriptor_set, 5, 0, 1,
-       vk::DescriptorType::eStorageBuffer, nullptr, &lr_buffer_info},
-      {vulten_pipeline->descriptor_set, 6, 0, 1,
-       vk::DescriptorType::eStorageBuffer, nullptr, &beta1_buffer_info},
-      {vulten_pipeline->descriptor_set, 7, 0, 1,
-       vk::DescriptorType::eStorageBuffer, nullptr, &beta2_buffer_info},
-      {vulten_pipeline->descriptor_set, 8, 0, 1,
-       vk::DescriptorType::eStorageBuffer, nullptr, &epsilon_buffer_info},
-      {vulten_pipeline->descriptor_set, 9, 0, 1,
-       vk::DescriptorType::eStorageBuffer, nullptr, &grad_buffer_info},
+      {descriptor_set, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &var_buffer_info},
+      {descriptor_set, 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &m_buffer_info},
+      {descriptor_set, 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &v_buffer_info},
+      {descriptor_set, 3, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &beta1_power_buffer_info},
+      {descriptor_set, 4, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &beta2_power_buffer_info},
+      {descriptor_set, 5, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &lr_buffer_info},
+      {descriptor_set, 6, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &beta1_buffer_info},
+      {descriptor_set, 7, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &beta2_buffer_info},
+      {descriptor_set, 8, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &epsilon_buffer_info},
+      {descriptor_set, 9, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &grad_buffer_info},
   };
   inst->logical_dev.updateDescriptorSets(WriteDescriptorSets, {});
 
@@ -107,11 +122,11 @@ void Resource_apply_adam_op::run_op(Data_type dt, Vulten_tensor var,
   cmd_buff.bindPipeline(vk::PipelineBindPoint::eCompute,
                         vulten_pipeline->pipeline);
   cmd_buff.bindDescriptorSets(
-      vk::PipelineBindPoint::eCompute,    // Bind point
-      vulten_pipeline->pipeline_layout,   // Pipeline Layout
-      0,                                  // First descriptor set
-      {vulten_pipeline->descriptor_set},  // List of descriptor sets
-      {});                                // Dynamic offsets
+      vk::PipelineBindPoint::eCompute,   // Bind point
+      vulten_pipeline->pipeline_layout,  // Pipeline Layout
+      0,                                 // First descriptor set
+      {descriptor_set},                  // List of descriptor sets
+      {});                               // Dynamic offsets
   cmd_buff.dispatch(uint32_t(var.get_total_elements()), 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
@@ -129,6 +144,8 @@ void Resource_apply_adam_op::run_op(Data_type dt, Vulten_tensor var,
 
   inst->logical_dev.destroyFence(fence);
   inst->logical_dev.freeCommandBuffers(inst->cmd_pool, cmd_buff);
+  inst->logical_dev.freeDescriptorSets(descriptor_pool, 1, &descriptor_set);
+  inst->logical_dev.destroyDescriptorPool(descriptor_pool);
   inst->main_queue_mutex.unlock();
 }
 
