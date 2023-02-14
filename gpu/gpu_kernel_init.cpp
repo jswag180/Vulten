@@ -17,4 +17,5 @@ void RegisterDeviceKernels(const char* device_type) {
   RegisterDeviceBasicOps(device_type);
   RegisterDeviceCast(device_type);
   RegisterDeviceReadVariableOp(device_type);
+  RegisterDeviceMatMul(device_type);
 }

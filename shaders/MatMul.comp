@@ -21,14 +21,7 @@ uint unFlatToFlat(in uint x, in uint y, in uint width){
 }
 
 void main() {
-
-    #if TYPE_NUM_0 == FLOAT || TYPE_NUM_0 == DOUBLE
-        TYPE_0 dotProd = 0.0;
-    #elif TYPE_NUM_0 == INT8_T || TYPE_NUM_0 == UINT8_T
-        TYPE_0 dotProd = TYPE_0(0);
-    #else
-        TYPE_0 dotProd = 0;
-    #endif
+    TYPE_0 dotProd = TYPE_0(0);
 
     for(uint i = 0; i < aY; i++){
         dotProd += aData[unFlatToFlat(gl_GlobalInvocationID.x, i, aY)] * bData[unFlatToFlat(i, gl_GlobalInvocationID.y, bY)];
