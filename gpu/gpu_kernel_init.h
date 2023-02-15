@@ -12,5 +12,6 @@ void RegisterDeviceBasicOps(const char* device_type);
 void RegisterDeviceCast(const char* device_type);
 void RegisterDeviceReadVariableOp(const char* device_type);
 void RegisterDeviceMatMul(const char* device_type);
+void RegisterDeviceReluGrad(const char* device_type);
 
 void RegisterDeviceKernels(const char* device_type);
