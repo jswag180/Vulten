@@ -19,4 +19,5 @@ void RegisterDeviceKernels(const char* device_type) {
   RegisterDeviceCast(device_type);
   RegisterDeviceReadVariableOp(device_type);
   RegisterDeviceMatMul(device_type);
+  RegisterDeviceBiasAddGradOp(device_type);
 }
