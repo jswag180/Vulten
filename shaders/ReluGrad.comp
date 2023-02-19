@@ -13,7 +13,7 @@ layout(set = 0, binding = 2) buffer c { writeonly TYPE_0 outData[];  };
 
 void main() {
     if(features[gl_GlobalInvocationID.x] > TYPE_0(0)){
-        outData[gl_GlobalInvocationID.x] = gradients[gl_GlobalInvocationID.x] * features[gl_GlobalInvocationID.x];
+        outData[gl_GlobalInvocationID.x] = gradients[gl_GlobalInvocationID.x];
     }else{
         outData[gl_GlobalInvocationID.x] = TYPE_0(0);
     }
