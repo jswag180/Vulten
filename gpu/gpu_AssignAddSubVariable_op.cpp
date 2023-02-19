@@ -90,6 +90,6 @@ void RegisterAssignAddSubVariable(const char *device_type) {
 #define REGISTER_KERNEL_SUB(T) \
   RegisterAssignAddSubVariableOp<T, SUB>(device_type);
 
-  CALL_ALL_BASIC_TYPES(REGISTER_KERNEL_ADD)
-  CALL_ALL_BASIC_TYPES(REGISTER_KERNEL_SUB)
+  CALL_ALL_TYPES(REGISTER_KERNEL_ADD)
+  CALL_ALL_TYPES(REGISTER_KERNEL_SUB)
 }
