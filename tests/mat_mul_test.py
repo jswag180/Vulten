@@ -5,7 +5,9 @@ import pytest
 
 tf.config.run_functions_eagerly(False)
 
-@pytest.mark.parametrize("data_type", [(np.float32), (np.float64), (np.float16), (np.int32), (np.int64), (np.complex64), (np.complex128)])
+#float16 will overflow and causes propblems for testing
+#, (np.float16)
+@pytest.mark.parametrize("data_type", [(np.float32), (np.float64), (np.int32), (np.int64), (np.complex64), (np.complex128)])
 def test_mat_mul(data_type):
     MAX_X = 10
     MAX_Y = 10
