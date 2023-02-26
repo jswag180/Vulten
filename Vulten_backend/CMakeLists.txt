@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 
 project( Vulten_backend )
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 # 0:None 1:Info 2:Debug
 set(VULTEN_LOG_LEVEL "0" CACHE STRING "Vulten log level")

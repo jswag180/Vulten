@@ -2,6 +2,8 @@
 
 #include "shaderc/shaderc.hpp"
 #include "shaders/headers/prelude/prelude.h.h"
+#include <filesystem>
+#include <fstream>
 
 namespace vulten_ops {
 
@@ -169,6 +171,18 @@ std::vector<uint32_t> compile_shader(const char* name, const char* source,
     std::cerr << "Shader compile error:\n";
     std::cerr << module.GetErrorMessage();
     exit(-1);
+  }
+
+  if(std::getenv("VULTEN_DUMP_SPV") != nullptr){
+    if(std::string(std::getenv("VULTEN_DUMP_SPV")) == "1"){
+      std::filesystem::path cwd = std::filesystem::current_path() / (std::string(name) + ".spv");
+      
+      std::vector<uint32_t> result_vec = std::vector<uint32_t>{module.begin(), module.end()};
+
+      std::ofstream file(cwd.string());
+      file.write(reinterpret_cast<char*>(result_vec.data()), sizeof(uint32_t) * result_vec.size());
+      file.close();
+    }
   }
 
   return {module.begin(), module.end()};
