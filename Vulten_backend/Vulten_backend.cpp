@@ -152,12 +152,13 @@ Instance::Instance(uint32_t dev_num) {
 
   vulten_backend::Device_propertys dev_props =
       vulten_backend::Device_propertys();
+  device_propertys = (*dev_props.devices)[device_num];
 
   float prio = 1.0f;
-  for (uint32_t i = 0; i < (*dev_props.devices)[device_num].queue_props.size();
+  for (uint32_t i = 0; i < device_propertys.queue_props.size();
        i++) {
-    if ((*dev_props.devices)[device_num].queue_props[i].hasCompute &&
-        (*dev_props.devices)[device_num].queue_props[i].hasTransfer) {
+    if (device_propertys.queue_props[i].hasCompute &&
+        device_propertys.queue_props[i].hasTransfer) {
       auto queue_info =
           vk::DeviceQueueCreateInfo(vk::DeviceQueueCreateFlags(), i, 1);
       queue_info.setQueuePriorities(prio);
@@ -168,10 +169,10 @@ Instance::Instance(uint32_t dev_num) {
 
   std::vector<const char *> extens = {};
 
-  if (std::find((*dev_props.devices)[device_num].extens.begin(),
-                (*dev_props.devices)[device_num].extens.end(),
+  if (std::find(device_propertys.extens.begin(),
+                device_propertys.extens.end(),
                 "VK_KHR_portability_subset") !=
-      (*dev_props.devices)[device_num].extens.end()) {
+      device_propertys.extens.end()) {
     extens.push_back("VK_KHR_portability_subset");
   }
 

@@ -54,7 +54,7 @@ Host_mappable_buffer::Host_mappable_buffer(Instance *instance, uint8_t *data,
                    << this)
 
   vk::PhysicalDeviceMemoryProperties mem_props =
-      (*Device_propertys().devices)[inst->device_num].mem_props;
+      inst->device_propertys.mem_props;
 
   vk::MemoryAllocateInfo memory_alloc_info(
       memory_req.size,

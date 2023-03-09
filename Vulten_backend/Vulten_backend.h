@@ -125,6 +125,7 @@ class Instance {
   //
  public:
   uint32_t device_num;
+  Device_property device_propertys;
   vk::PhysicalDevice physical_dev;
   vk::Device logical_dev;
   std::mutex main_queue_mutex;
