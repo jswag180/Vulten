@@ -155,8 +155,7 @@ Instance::Instance(uint32_t dev_num) {
   device_propertys = (*dev_props.devices)[device_num];
 
   float prio = 1.0f;
-  for (uint32_t i = 0; i < device_propertys.queue_props.size();
-       i++) {
+  for (uint32_t i = 0; i < device_propertys.queue_props.size(); i++) {
     if (device_propertys.queue_props[i].hasCompute &&
         device_propertys.queue_props[i].hasTransfer) {
       auto queue_info =
@@ -169,10 +168,8 @@ Instance::Instance(uint32_t dev_num) {
 
   std::vector<const char *> extens = {};
 
-  if (std::find(device_propertys.extens.begin(),
-                device_propertys.extens.end(),
-                "VK_KHR_portability_subset") !=
-      device_propertys.extens.end()) {
+  if (std::find(device_propertys.extens.begin(), device_propertys.extens.end(),
+                "VK_KHR_portability_subset") != device_propertys.extens.end()) {
     extens.push_back("VK_KHR_portability_subset");
   }
 
@@ -205,8 +202,8 @@ Device_buffer *Instance::create_device_buffer(uint32_t size, bool trans_src,
   return new Device_buffer(this, size, trans_src, trans_dst);
 }
 
-void Instance::copy_buffer(Buffer *src, Buffer *dest) {
-  main_queue_mutex.lock();
+void Instance::copy_buffer(Buffer *src, Buffer *dest, bool lock) {
+  if (lock) main_queue_mutex.lock();
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
@@ -226,7 +223,7 @@ void Instance::copy_buffer(Buffer *src, Buffer *dest) {
   main_queue.submit(submit_info, {});
   main_queue.waitIdle();
   logical_dev.freeCommandBuffers(cmd_pool, cmd_buff);
-  main_queue_mutex.unlock();
+  if (lock) main_queue_mutex.unlock();
 }
 
 Instance::~Instance() { logical_dev.destroyCommandPool(cmd_pool); }

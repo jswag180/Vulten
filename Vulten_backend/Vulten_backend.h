@@ -141,7 +141,7 @@ class Instance {
                                                     bool trans_dst = true);
   Device_buffer *create_device_buffer(uint32_t size, bool trans_src = true,
                                       bool trans_dst = true);
-  void copy_buffer(Buffer *src, Buffer *dest);
+  void copy_buffer(Buffer *src, Buffer *dest, bool lock = true);
 
   // Instance(const Instance&) = delete;
   Instance(uint32_t dev_num);

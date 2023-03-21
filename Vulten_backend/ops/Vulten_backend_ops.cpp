@@ -1,9 +1,10 @@
 #include "Vulten_backend_ops.h"
 
-#include "shaderc/shaderc.hpp"
-#include "shaders/headers/prelude/prelude.h.h"
 #include <filesystem>
 #include <fstream>
+
+#include "shaderc/shaderc.hpp"
+#include "shaders/headers/prelude/prelude.h.h"
 
 namespace vulten_ops {
 
@@ -173,14 +174,17 @@ std::vector<uint32_t> compile_shader(const char* name, const char* source,
     exit(-1);
   }
 
-  if(std::getenv("VULTEN_DUMP_SPV") != nullptr){
-    if(std::string(std::getenv("VULTEN_DUMP_SPV")) == "1"){
-      std::filesystem::path cwd = std::filesystem::current_path() / (std::string(name) + ".spv");
-      
-      std::vector<uint32_t> result_vec = std::vector<uint32_t>{module.begin(), module.end()};
+  if (std::getenv("VULTEN_DUMP_SPV") != nullptr) {
+    if (std::string(std::getenv("VULTEN_DUMP_SPV")) == "1") {
+      std::filesystem::path cwd =
+          std::filesystem::current_path() / (std::string(name) + ".spv");
+
+      std::vector<uint32_t> result_vec =
+          std::vector<uint32_t>{module.begin(), module.end()};
 
       std::ofstream file(cwd.string());
-      file.write(reinterpret_cast<char*>(result_vec.data()), sizeof(uint32_t) * result_vec.size());
+      file.write(reinterpret_cast<char*>(result_vec.data()),
+                 sizeof(uint32_t) * result_vec.size());
       file.close();
     }
   }
