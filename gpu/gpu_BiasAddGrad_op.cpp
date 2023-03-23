@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "Vulten_backend/ops/Bias_add_grad.h"
+#include "Vulten_backend/ops/Sum_op.h"
 #include "absl/container/inlined_vector.h"
 #include "scope_timer.h"
 #include "tensor_utills.h"
@@ -40,52 +40,44 @@ void BiasAddGradOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   BiasAddGradOp* biasAddGradOp_info = static_cast<BiasAddGradOp*>(kernel);
 
-  TF_Tensor* out_backprop = nullptr;
-  TF_GetInput(ctx, 0, &out_backprop, status.get());
-  TensorSafePtr out_backprop_safe_ptr(out_backprop);
-  if (TF_GetCode(status.get()) != TF_OK) {
-    TF_OpKernelContext_Failure(ctx, status.get());
-    std::cout << "Error: BiasAddGradOp out_backprop input\n";
-    return;
+  GET_INPUT_TENSOR("BiasAddGradOp", input, 0, ctx, status)
+
+  std::vector<int32_t> axis_vec = std::vector<int32_t>();
+
+  absl::InlinedVector<int64_t, 4> out_dims(1);
+  if (biasAddGradOp_info->format == "NHWC") {
+    out_dims[0] = input_dims[input_dims.size() - 1];
+    for (uint32_t i = 0; i < input_dims.size() - 1; i++) {
+      axis_vec.push_back(i);
+    }
+    std::reverse(axis_vec.begin(), axis_vec.end());
+  } else if (biasAddGradOp_info->format == "NCHW") {
+    out_dims[0] = input_dims[1];
+    for (uint32_t i = 0; i < input_dims.size(); i++) {
+      if (i != 1) {
+        axis_vec.push_back(i);
+      }
+    }
+    std::reverse(axis_vec.begin(), axis_vec.end());
   }
-  if (TF_TensorElementCount(out_backprop_safe_ptr.get()) == 0) return;
-  auto out_backprop_ptr =
-      VOID_TO_DEVICE_BUFFER(TF_TensorData(out_backprop_safe_ptr.get()));
 
-  absl::InlinedVector<int64_t, 4> out_backprop_dims =
-      absl::InlinedVector<int64_t, 4>(4, 1);
-  for (auto i = 0; i < TF_NumDims(out_backprop_safe_ptr.get()); ++i) {
-    out_backprop_dims[i + (4 - TF_NumDims(out_backprop_safe_ptr.get()))] =
-        TF_Dim(out_backprop_safe_ptr.get(), i);
-  }
-
-  vulten_ops::Vulten_tensor out_backprop_tensor(
-      out_backprop_ptr, out_backprop_dims.size(), out_backprop_dims.data());
-
-  std::vector<int64_t> out_dims = {biasAddGradOp_info->format == "NHWC"
-                                       ? out_backprop_dims[3]
-                                       : out_backprop_dims[1]};
   MAKE_OUTPUT_TENSOR("BiasAddGradOp", output, 0, out_dims, T, ctx, status)
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 
-  vulten_ops::Bias_add_grad_op* bias_add_grad_op = nullptr;
-  std::string op_cache_name = "BiasAddGradOp";
+  vulten_ops::Sum_op* sum_op = nullptr;
+  std::string op_cache_name = "Sum";
   inst->main_queue_mutex.lock();
   if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
     inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Bias_add_grad_op(inst);
+        (vulten_ops::Vulten_op*)new vulten_ops::Sum_op(inst);
   }
-  bias_add_grad_op =
-      (vulten_ops::Bias_add_grad_op*)inst->op_chache[op_cache_name];
+  sum_op = (vulten_ops::Sum_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  bias_add_grad_op->run_op((vulten_ops::Data_type)T, out_backprop_tensor,
-                           biasAddGradOp_info->format == "NHWC"
-                               ? vulten_ops::Channel_format::NHWC
-                               : vulten_ops::Channel_format::NCHW,
-                           output_tensor);
+  sum_op->run_op((vulten_ops::Data_type)T, input_tensor, axis_vec,
+                 output_tensor);
 }
 
 template <TF_DataType T>

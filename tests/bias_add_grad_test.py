@@ -17,26 +17,27 @@ def test_bias_add_grad(data_type):
         for hight in range(1, MAX_HIGHT + 1):
             for width in range(1, MAX_WIDTH + 1):
                 for channels in range(1, MAX_CHANNELS + 1):
-                    if(not np.issubdtype(data_type, np.unsignedinteger)):
-                        total_elements = (batchNum*hight*width*channels)
-                        start = -int(total_elements / 2)
-                        stop = total_elements / 2
-                        tens = np.arange(start, stop, dtype=data_type).reshape(batchNum, hight, width, channels)
-                    else:
-                        tens = np.arange(0, (batchNum*hight*width*channels), dtype=data_type).reshape(batchNum, hight, width, channels)
+                    for format in ['NHWC', 'NCHW']:
+                        if(not np.issubdtype(data_type, np.unsignedinteger)):
+                            total_elements = (batchNum*hight*width*channels)
+                            start = -int(total_elements / 2)
+                            stop = total_elements / 2
+                            tens = np.arange(start, stop, dtype=data_type).reshape(batchNum, hight, width, channels)
+                        else:
+                            tens = np.arange(0, (batchNum*hight*width*channels), dtype=data_type).reshape(batchNum, hight, width, channels)
 
-                    with tf.device('CPU:0'):
-                        res1 = tf.raw_ops.BiasAddGrad(out_backprop=tens)
+                        with tf.device('CPU:0'):
+                            res1 = tf.raw_ops.BiasAddGrad(out_backprop=tens, data_format=format)
+                            
+                        with tf.device(utills.DEVICE_NAME + ':0'):
+                            res2 = tf.raw_ops.BiasAddGrad(out_backprop=tens, data_format=format)
                         
-                    with tf.device(utills.DEVICE_NAME + ':0'):
-                        res2 = tf.raw_ops.BiasAddGrad(out_backprop=tens)
-                    
-                    if not tf.reduce_all(res1 == res2):
-                        print(f' B:{batchNum} H:{hight} W:{width} C:{channels}')
-                        print('Input tensor:')
-                        print(tens)
-                        print('Expected output:')
-                        print(res1)
-                        print('Got:')
-                        print(res2)
-                        assert False
+                        if not tf.reduce_all(res1 == res2):
+                            print(f' B:{batchNum} H:{hight} W:{width} C:{channels} F:{format}')
+                            print('Input tensor:')
+                            print(tens)
+                            print('Expected output:')
+                            print(res1)
+                            print('Got:')
+                            print(res2)
+                            assert False
