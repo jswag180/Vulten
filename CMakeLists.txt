@@ -3,6 +3,7 @@ include(FetchContent)
 
 project( Vulten )
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(SOURCES "Vulten.cpp" "vulten_device.cpp" "vulten_kernel.cpp")
 
 file(GLOB GPU_FIELS gpu/*)
