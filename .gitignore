@@ -47,3 +47,6 @@ package/dist
 
 #vscode
 .vscode
+
+#clangd
+.cache
