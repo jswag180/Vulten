@@ -39,6 +39,7 @@ struct Vulten_tensor {
 
   Vulten_tensor(vulten_backend::Buffer *buffer_ptr, int64_t num_dims,
                 int64_t *dims_ptr);
+  Vulten_tensor() : buffer(nullptr), dims(nullptr), num_dims(0){};
   ~Vulten_tensor();
 };
 
