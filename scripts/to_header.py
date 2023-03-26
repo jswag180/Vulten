@@ -21,7 +21,7 @@ def to_header(source_path: str = None, header_path: str = None):
     lines = ''.join(lines)
     file.close()
 
-    header = f'const char* {os.path.basename(source_path).replace(".", "_")} = R"('
+    header = f'static const char* {os.path.basename(source_path).replace(".", "_")} = R"('
     header_tail = ')";'
     for char in lines:
         header += char
