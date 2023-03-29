@@ -55,7 +55,7 @@ void RegisterExpOpKernel(const char* device_type) {
 void RegisterDeviceExp(const char* device_type) {
 #define REGISTER_KERNEL(T) RegisterExpOpKernel<T>(device_type);
 
-  //Exp is hard with compute shaders with the lack of native
-  //pow, exp, cos, and sin in extended types.
+  // Exp is hard with compute shaders with the lack of native
+  // pow, exp, cos, and sin in extended types.
   REGISTER_KERNEL(TF_FLOAT)
 }

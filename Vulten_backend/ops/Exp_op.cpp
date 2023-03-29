@@ -20,7 +20,7 @@ void Exp_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
 
   if (!is_pipeline_cached(pipe_string)) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Exp_op pipeline " + pipe_string)
-    
+
     struct Spec {
       uint32_t localX;
     } spec;
@@ -33,10 +33,11 @@ void Exp_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
     };
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
-    
+
     std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline = create_pipeline(pipe_string, NUM_BUFFERS, Exp_comp,
-                                      type_chain.data(), type_chain.size(), &spec_info);
+    vulten_pipeline =
+        create_pipeline(pipe_string, NUM_BUFFERS, Exp_comp, type_chain.data(),
+                        type_chain.size(), &spec_info);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Exp_op pipeline " + pipe_string)
     vulten_pipeline = pipelines[pipe_string];
@@ -87,9 +88,11 @@ void Exp_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
       0,                                 // First descriptor set
       {descriptor_set},                  // List of descriptor sets
       {});                               // Dynamic offsets
-  uint32_t threads = uint32_t(input.get_total_elements()) / inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
-  if(threads == 0){
-      threads += 1;
+  uint32_t threads =
+      uint32_t(input.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
+  if (threads == 0) {
+    threads += 1;
   }
   cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();
@@ -112,7 +115,7 @@ void Exp_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
   inst->logical_dev.destroyDescriptorPool(descriptor_pool);
   inst->main_queue_mutex.unlock();
 }
- 
+
 Exp_op::~Exp_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Exp_op") }
-          
-}
+
+}  // namespace vulten_ops
