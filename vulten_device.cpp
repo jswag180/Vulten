@@ -256,8 +256,20 @@ void plugin_memcpy_dtod(const SP_Device* device, SP_Stream stream,
             << "\n";
 #endif
 
-  std::cout << "DTD transfers not supported\n";
-  exit(-1);
+  auto src_host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
+      VOID_TO_INSTANCE(device->device_handle)
+          ->create_host_mappable_buffer(nullptr, size, false, false, true));
+  VOID_TO_INSTANCE(device->device_handle)
+      ->copy_buffer(VOID_TO_DEVICE_BUFFER(device_src->opaque),
+                    src_host_buff.get());
+  auto host_maped = src_host_buff->map_to_host();
+
+  auto dst_host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
+      VOID_TO_DEVICE_BUFFER(device_dst->opaque)
+          ->inst->create_host_mappable_buffer(host_maped.data, size));
+  VOID_TO_DEVICE_BUFFER(device_dst->opaque)
+      ->inst->copy_buffer(dst_host_buff.get(),
+                          VOID_TO_DEVICE_BUFFER(device_dst->opaque));
 }
 
 // Blocks the caller while a data segment of the given size is
