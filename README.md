@@ -1,8 +1,6 @@
 # Vulten
 A Vulkan PluggableDevice for Tensorflow
 
-To make the Vulkan side more manageable Vulten uses [Kompute](https://github.com/KomputeProject/kompute)
-
 # Why?
 Well, I started this project because AMD does not have great support for consumer cards (except the 6900 XT) for Tensorflow.
 I wanted to be able to use my 6700 XT in Tensorflow and what better api then Vulkan! I think this project has far more use the AMD cards
