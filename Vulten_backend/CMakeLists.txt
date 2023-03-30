@@ -61,7 +61,7 @@ add_custom_target(sum
 
 add_library(Vulten_backend STATIC ${SOURCES} ${OPS})
 
-add_dependencies(Vulten_backend prelude cast addSubInPlace basicOps biasAdd conv2d transpose matMul pow relu applyAdam softmax biasAddGrad)
+add_dependencies(Vulten_backend prelude cast addSubInPlace basicOps biasAdd conv2d transpose matMul pow relu applyAdam softmax biasAddGrad sum)
 
 if(VULTEN_LOG_LEVEL EQUAL "0")
     message("-- Vulten log level: 0")
