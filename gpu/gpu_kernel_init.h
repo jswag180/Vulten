@@ -18,5 +18,6 @@ void RegisterDeviceSum(const char* device_type);
 void RegisterDeviceAddn(const char* device_type);
 void RegisterDeviceExp(const char* device_type);
 void RegisterDeviceIdentity(const char* device_type);
+void RegisterDevicePow(const char* device_type);
 
 void RegisterDeviceKernels(const char* device_type);

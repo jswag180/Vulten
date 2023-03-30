@@ -5,7 +5,7 @@
 
 #include "prelude.h"
 
-//layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) buffer a { readonly  TYPE_0 x[]; };
 layout(set = 0, binding = 1) buffer b { readonly  TYPE_0 y[]; };
@@ -19,29 +19,16 @@ void power(in TYPE_0 val, in TYPE_0 ex, inout TYPE_0 result){
     result = val;
 
     if(ex == TYPE_0(0)){
-        #if TYPE_NUM_0 == FLOAT || TYPE_NUM_0 == DOUBLE
-            result = 1.0;
-        #elif TYPE_NUM_0 == INT8_T || TYPE_NUM_0 == UINT8_T
-            result = TYPE_0(1);
-        #else
-            result = 1;
-        #endif
+        result = TYPE_0(1);
         return;
     }else if (val == TYPE_0(0)){
-        #if TYPE_NUM_0 == FLOAT || TYPE_NUM_0 == DOUBLE
-            result = 0.0;
-        #elif TYPE_NUM_0 == INT8_T || TYPE_NUM_0 == UINT8_T
-            result = TYPE_0(0);
-        #else
-            result = 0;
-        #endif
+        result = TYPE_0(0);
         return;
     }
 
     for(uint i = 0; i < ex - 1; i++){
         result *= val;
     }
-    //result = pow(val, ex);
 }
 
 void main(){
