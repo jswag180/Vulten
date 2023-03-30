@@ -43,7 +43,7 @@ void Pow_op::run_op(Data_type dt, uint32_t scalar, Vulten_tensor x,
     std::vector<Data_type> type_chain = {dt};
     vulten_pipeline =
         create_pipeline(pipe_string, NUM_BUFFERS, Pow_comp, type_chain.data(),
-                        type_chain.size(), &spec_info);
+                        type_chain.size(), &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Pow_op pipeline " + pipe_string)
     vulten_pipeline = pipelines[pipe_string];
@@ -100,7 +100,7 @@ void Pow_op::run_op(Data_type dt, uint32_t scalar, Vulten_tensor x,
       {});                               // Dynamic offsets
 
   cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
-                         vk::ShaderStageFlagBits::eCompute, 0, 1, &scalar);
+                         vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t), &scalar);
   uint32_t threads = 0;
   if (scalar == 1) {
     threads =
