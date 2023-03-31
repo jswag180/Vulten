@@ -25,4 +25,5 @@ void RegisterDeviceKernels(const char* device_type) {
   RegisterDeviceExp(device_type);
   RegisterDeviceIdentity(device_type);
   RegisterDevicePow(device_type);
+  RegisterDeviceIdentityN(device_type);
 }
