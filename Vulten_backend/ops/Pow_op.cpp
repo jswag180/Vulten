@@ -100,7 +100,8 @@ void Pow_op::run_op(Data_type dt, uint32_t scalar, Vulten_tensor x,
       {});                               // Dynamic offsets
 
   cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
-                         vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t), &scalar);
+                         vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t),
+                         &scalar);
   uint32_t threads = 0;
   if (scalar == 1) {
     threads =
