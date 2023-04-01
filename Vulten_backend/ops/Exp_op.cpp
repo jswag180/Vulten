@@ -91,9 +91,8 @@ void Exp_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
   uint32_t threads =
       uint32_t(input.get_total_elements()) /
       inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
-  if (threads == 0) {
-    threads += 1;
-  }
+  threads += 1;
+
   cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
