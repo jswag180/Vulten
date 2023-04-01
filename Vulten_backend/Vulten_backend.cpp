@@ -1,5 +1,7 @@
 #include "Vulten_backend.h"
 
+#include <vulkan/vulkan_structs.hpp>
+
 namespace instance_utill {
 static vk::Instance instance;
 static bool is_initialized = false;
@@ -173,9 +175,37 @@ Instance::Instance(uint32_t dev_num) {
     extens.push_back("VK_KHR_portability_subset");
   }
 
+  vk::PhysicalDeviceShaderFloat16Int8Features half_char_feat =
+      vk::PhysicalDeviceShaderFloat16Int8Features();
+  half_char_feat.setShaderFloat16(true);
+  half_char_feat.setShaderInt8(true);
+
+  vk::PhysicalDevice8BitStorageFeatures char_buffer_feat =
+      vk::PhysicalDevice8BitStorageFeatures();
+  char_buffer_feat.setStoragePushConstant8(true);
+  char_buffer_feat.setStorageBuffer8BitAccess(true);
+  char_buffer_feat.setPNext(&half_char_feat);
+
+  vk::PhysicalDevice16BitStorageFeatures half_buffer_feat =
+      vk::PhysicalDevice16BitStorageFeatures();
+  half_buffer_feat.setStorageBuffer16BitAccess(true);
+  half_buffer_feat.setStorageInputOutput16(true);
+  half_buffer_feat.setPNext(&char_buffer_feat);
+
+  vk::PhysicalDeviceShaderSubgroupExtendedTypesFeatures extend_sub =
+      vk::PhysicalDeviceShaderSubgroupExtendedTypesFeatures();
+  extend_sub.setShaderSubgroupExtendedTypes(true);
+  extend_sub.setPNext(&half_buffer_feat);
+
+  vk::PhysicalDeviceFeatures2 dev_features2 = vk::PhysicalDeviceFeatures2();
+  dev_features2.features.setShaderInt16(true);
+  dev_features2.features.setShaderInt64(true);
+  dev_features2.features.setShaderFloat64(true);
+  dev_features2.setPNext(&extend_sub);
+
   auto dev_create_info = vk::DeviceCreateInfo(
       vk::DeviceCreateFlags(), queues_info.size(), queues_info.data(), 0, {},
-      extens.size(), extens.data());
+      extens.size(), extens.data(), nullptr, &dev_features2);
 
   logical_dev = physical_dev.createDevice(dev_create_info);
 
