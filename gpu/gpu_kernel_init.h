@@ -21,5 +21,6 @@ void RegisterDeviceIdentity(const char* device_type);
 void RegisterDevicePow(const char* device_type);
 void RegisterDeviceIdentityN(const char* device_type);
 void RegisterDeviceSqrt(const char* device_type);
+void RegisterDeviceBiasAdd(const char* device_type);
 
 void RegisterDeviceKernels(const char* device_type);
