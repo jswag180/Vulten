@@ -11,10 +11,9 @@ layout(set = 0, binding = 0) buffer a { readonly  TYPE_0 aData[]; };
 layout(set = 0, binding = 1) buffer b { readonly  TYPE_0 bData[]; };
 layout(set = 0, binding = 2) buffer c { writeonly TYPE_0 outData[]; };
 
-layout(constant_id = 0) const uint aX = 0;
-layout(constant_id = 1) const uint aY = 0;
-layout(constant_id = 2) const uint bX = 0;
-layout(constant_id = 3) const uint bY = 0;
+layout(push_constant) uniform PushConstants {
+    uint aY, bY;
+} push_const;
 
 uint unFlatToFlat(in uint x, in uint y, in uint width){
     return x * width + y;
@@ -23,8 +22,8 @@ uint unFlatToFlat(in uint x, in uint y, in uint width){
 void main() {
     TYPE_0 dotProd = TYPE_0(0);
 
-    for(uint i = 0; i < aY; i++){
-        dotProd += aData[unFlatToFlat(gl_GlobalInvocationID.x, i, aY)] * bData[unFlatToFlat(i, gl_GlobalInvocationID.y, bY)];
+    for(uint i = 0; i < push_const.aY; i++){
+        dotProd += aData[unFlatToFlat(gl_GlobalInvocationID.x, i, push_const.aY)] * bData[unFlatToFlat(i, gl_GlobalInvocationID.y, push_const.bY)];
     }
 
     outData[gl_GlobalInvocationID.x * gl_NumWorkGroups.y + gl_GlobalInvocationID.y] = dotProd;

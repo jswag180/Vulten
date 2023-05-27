@@ -40,39 +40,19 @@ void MatMul_op::run_op(Data_type dt, Vulten_tensor a, bool trans_a,
     }
   }
 
-  std::string matmul_pipe_string =
-      "MatMul_" + Data_type_to_str(dt) + "_" + std::to_string(mat_size_a.x) +
-      "_" + std::to_string(mat_size_a.y) + "_" + std::to_string(mat_size_b.x) +
-      "_" + std::to_string(mat_size_b.y);
+  std::string matmul_pipe_string = "MatMul_" + Data_type_to_str(dt);
   Vulten_pipeline *matmul_pipeline = nullptr;
   if (!is_pipeline_cached(matmul_pipe_string)) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::MatMul_op pipeline " +
                      matmul_pipe_string)
 
-    struct Spec {
-      uint32_t ax, ay;
-      uint32_t bx, by;
-    } spec;
-
-    spec.ax = trans_a ? mat_size_a.y : mat_size_a.x;
-    spec.ay = trans_a ? mat_size_a.x : mat_size_a.y;
-
-    spec.bx = trans_b ? mat_size_b.y : mat_size_b.x;
-    spec.by = trans_b ? mat_size_b.x : mat_size_b.y;
-
-    const std::vector<vk::SpecializationMapEntry> specs = {
-        {0, offsetof(Spec, ax), sizeof(uint32_t)},
-        {1, offsetof(Spec, ay), sizeof(uint32_t)},
-        {2, offsetof(Spec, bx), sizeof(uint32_t)},
-        {3, offsetof(Spec, by), sizeof(uint32_t)},
-    };
-    vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
-                                     &spec);
+    const std::vector<vk::PushConstantRange> push_const_ranges = {
+        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t) * 2}};
 
     std::vector<Data_type> type_chain = {dt};
     matmul_pipeline =
         create_pipeline(matmul_pipe_string, 3, MatMul_comp, type_chain.data(),
-                        type_chain.size(), &spec_info);
+                        type_chain.size(), nullptr, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::MatMul_op pipeline " +
                      matmul_pipe_string)
@@ -278,6 +258,11 @@ void MatMul_op::run_op(Data_type dt, Vulten_tensor a, bool trans_a,
       {matMul_descriptor_set},           // List of descriptor sets
       {});
 
+  uint32_t pushes[2] = {trans_a ? mat_size_a.x : mat_size_a.y,
+                        trans_b ? mat_size_b.x : mat_size_b.y};
+  cmd_buffs[cmd_buff_indx].pushConstants(matmul_pipeline->pipeline_layout,
+                                         vk::ShaderStageFlagBits::eCompute, 0,
+                                         sizeof(uint32_t) * 2, pushes);
   cmd_buffs[cmd_buff_indx].dispatch(output.dims[0], output.dims[1], 1);
   cmd_buffs[cmd_buff_indx].end();
 
