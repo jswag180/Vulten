@@ -82,7 +82,7 @@ void MatMul_op::run_op(Data_type dt, Vulten_tensor a, bool trans_a,
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
       vk::DescriptorType::eStorageBuffer,
-      2 + (trans_a ? 2 : 0) + (trans_b ? 2 : 0));
+      3 + (trans_a ? 2 : 0) + (trans_b ? 2 : 0));
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
       vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
       1 + (trans_a ? 1 : 0) + (trans_b ? 1 : 0), descriptor_pool_size);
