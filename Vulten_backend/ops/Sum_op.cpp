@@ -1,5 +1,6 @@
 #include "Sum_op.h"
 
+#include "Vulten_backend/Vulten_utills.h"
 #include "shaders/headers/Sum/Sum.comp.h"
 
 #define NUM_BUFFERS 2
@@ -9,19 +10,6 @@ namespace vulten_ops {
 // clang-format off
 Sum_op::Sum_op(vulten_backend::Instance *inst)
     : Vulten_op(inst){VULTEN_LOG_DEBUG("Creating vulten_ops::Sum_op")}
-
-std::vector<uint32_t> Sum_op::calculate_adj_strides(std::vector<int64_t> &
-                                                    dims) {
-  std::vector<uint32_t> adj_strides = std::vector<uint32_t>(dims.size() + 1, 1);
-
-  for (int64_t i = 0; i < dims.size(); i++) {
-    for (int64_t j = i; j < dims.size(); j++) {
-      adj_strides[i] *= dims[j];
-    }
-  }
-
-  return adj_strides;
-}
 // clang-format on
 
 void Sum_op::run_op(Data_type dt, Vulten_tensor input,
@@ -169,7 +157,7 @@ void Sum_op::run_op(Data_type dt, Vulten_tensor input,
         {descriptor_sets[i]},              // List of descriptor sets
         {});                               // Dynamic offsets
 
-    adj_strides = calculate_adj_strides(dims);
+    adj_strides = vulten_utills::calculate_adj_strides(dims);
     uint32_t push_consts[3] = {uint32_t(dims[axis[i]]),
                                uint32_t(adj_strides[axis[i]]),
                                uint32_t(adj_strides[axis[i] + 1])};
@@ -209,7 +197,7 @@ void Sum_op::run_op(Data_type dt, Vulten_tensor input,
       {descriptor_sets[final_cmd_buffer_ind]},  // List of descriptor sets
       {});                                      // Dynamic offsets
 
-  adj_strides = calculate_adj_strides(dims);
+  adj_strides = vulten_utills::calculate_adj_strides(dims);
   uint32_t push_consts[3] = {
       uint32_t(dims[axis[final_cmd_buffer_ind]]),
       uint32_t(adj_strides[axis[final_cmd_buffer_ind]]),

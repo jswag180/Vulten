@@ -5,7 +5,7 @@
 namespace vulten_ops {
 class Sum_op : Vulten_op {
  private:
-  std::vector<uint32_t> calculate_adj_strides(std::vector<int64_t> &dims);
+  //
 
  public:
   //
