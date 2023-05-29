@@ -63,7 +63,7 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
       NAME##_dims.size(), NAME##_dims.data());
 
 #define MAKE_OUTPUT_TENSOR(OP_NAME, NAME, NUM, DIMS, TYPE, CTX, STATUS)        \
-  uint64_t total_##NAME##_elements = 1;                                        \
+  uint64_t total_##NAME##_elements = DIMS.size() > 0;                          \
   for (uint64_t i = 0; i < DIMS.size(); i++) {                                 \
     total_##NAME##_elements *= DIMS[i];                                        \
   }                                                                            \
