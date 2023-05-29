@@ -1,6 +1,11 @@
 #include "Basic_ops.h"
 
 #include "../../shaders/headers/BasicOps/BasicOps.comp.h"
+#include "Vulten_backend/Vulten_backend.h"
+#include "Vulten_backend/Vulten_utills.h"
+
+#define NUM_BUFFERS 5
+#define NUM_SETS 1
 
 namespace vulten_ops {
 
@@ -34,71 +39,37 @@ void Basic_op::run_op(Data_type dt, uint32_t op, Vulten_tensor x,
                    ", " + op_as_str(op) + ">")
   inst->main_queue_mutex.lock();
 
-  // A future optimization could be the check if x_dims and y_dims are swaped so
-  // we could do y + x instead of x + y and avoid an extra pipeline
   std::string basic_pipe_string =
-      "Basic_" + op_as_str(op) + "_" + Data_type_to_str(dt) + "_" +
-      std::to_string(output.dims[0]) + "_" + std::to_string(x.dims[0]) + "_" +
-      std::to_string(x.dims[1]) + "_" + std::to_string(x.dims[2]) + "_" +
-      std::to_string(x.dims[3]) + "_" + std::to_string(y.dims[0]) + "_" +
-      std::to_string(y.dims[1]) + "_" + std::to_string(y.dims[2]) + "_" +
-      std::to_string(y.dims[3]) + "_" + std::to_string(op);
+      "Basic_" + op_as_str(op) + "_" + Data_type_to_str(dt);
   Vulten_pipeline *vulten_pipeline = nullptr;
   if (!is_pipeline_cached(basic_pipe_string)) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Basic_op<" + Data_type_to_str(dt) +
                      ", " + op_as_str(op) + "> " + basic_pipe_string)
 
     struct Spec {
-      uint32_t max_batches;
-
-      uint32_t x_size_1;
-      uint32_t x_size_2;
-      uint32_t x_size_3;
-      uint32_t x_size_4;
-
-      uint32_t y_size_1;
-      uint32_t y_size_2;
-      uint32_t y_size_3;
-      uint32_t y_size_4;
+      uint32_t local_x;
 
       uint32_t op;
     } spec;
 
-    spec.max_batches = output.dims[0];
-
-    spec.x_size_1 = x.dims[0];
-    spec.x_size_2 = x.dims[1];
-    spec.x_size_3 = x.dims[2];
-    spec.x_size_4 = x.dims[3];
-
-    spec.y_size_1 = y.dims[0];
-    spec.y_size_2 = y.dims[1];
-    spec.y_size_3 = y.dims[2];
-    spec.y_size_4 = y.dims[3];
+    spec.local_x =
+        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
 
     spec.op = op;
 
     const std::vector<vk::SpecializationMapEntry> specs = {
-        {0, 0, sizeof(uint32_t)},
-        {1, offsetof(Spec, x_size_1), sizeof(uint32_t)},
-        {2, offsetof(Spec, x_size_2), sizeof(uint32_t)},
-        {3, offsetof(Spec, x_size_3), sizeof(uint32_t)},
-        {4, offsetof(Spec, x_size_4), sizeof(uint32_t)},
-        {5, offsetof(Spec, y_size_1), sizeof(uint32_t)},
-        {6, offsetof(Spec, y_size_2), sizeof(uint32_t)},
-        {7, offsetof(Spec, y_size_3), sizeof(uint32_t)},
-        {8, offsetof(Spec, y_size_4), sizeof(uint32_t)},
-        {9, offsetof(Spec, op), sizeof(uint32_t)}};
+        {0, 0, sizeof(uint32_t)}, {1, offsetof(Spec, op), sizeof(uint32_t)}};
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
 
     const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t)}};
+        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t) * 3},
+    };
 
     std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline =
-        create_pipeline(basic_pipe_string, 3, BasicOps_comp, type_chain.data(),
-                        type_chain.size(), &spec_info, push_const_ranges);
+    vulten_pipeline = create_pipeline(
+        basic_pipe_string, NUM_BUFFERS, BasicOps_comp, type_chain.data(),
+        type_chain.size(), &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Basic_op<" +
                      Data_type_to_str(dt) + ", " + op_as_str(op) + "> " +
@@ -108,15 +79,15 @@ void Basic_op::run_op(Data_type dt, uint32_t op, Vulten_tensor x,
 
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer, 3);
+      vk::DescriptorType::eStorageBuffer, NUM_BUFFERS);
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
-      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 1,
+      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, NUM_SETS,
       descriptor_pool_size);
   descriptor_pool =
       inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
 
   vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(
-      descriptor_pool, 1, &vulten_pipeline->descriptor_set_layout);
+      descriptor_pool, NUM_SETS, &vulten_pipeline->descriptor_set_layout);
   vk::DescriptorSet descriptor_set =
       inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info)
           .front();
@@ -125,6 +96,41 @@ void Basic_op::run_op(Data_type dt, uint32_t op, Vulten_tensor x,
                                          x.buffer->buffer_size);
   vk::DescriptorBufferInfo y_buffer_info(y.buffer->vk_buffer, 0,
                                          y.buffer->buffer_size);
+
+  std::vector<uint32_t> adj_strides =
+      vulten_utills::calculate_adj_strides(x.dims, x.num_dims);
+  std::vector<uint32_t> y_strides =
+      vulten_utills::calculate_adj_strides(y.dims, y.num_dims);
+  adj_strides.insert(adj_strides.end(), y_strides.begin(), y_strides.end());
+  std::vector<uint32_t> output_strides =
+      vulten_utills::calculate_adj_strides(output.dims, output.num_dims);
+  adj_strides.insert(adj_strides.end(), output_strides.begin(),
+                     output_strides.end());
+  auto strides_stageing = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
+      inst->create_host_mappable_buffer((uint8_t *)adj_strides.data(),
+                                        sizeof(uint32_t) * adj_strides.size()));
+  auto strides = std::unique_ptr<vulten_backend::Device_buffer>(
+      inst->create_device_buffer(strides_stageing->buffer_size, false, true));
+  inst->copy_buffer(strides_stageing.get(), strides.get(), false);
+  vk::DescriptorBufferInfo strides_buffer_info(strides->vk_buffer, 0,
+                                               strides->buffer_size);
+
+  std::vector<uint32_t> dims_vec = std::vector<uint32_t>();
+  for (uint32_t i = 0; i < x.num_dims; i++) {
+    dims_vec.push_back(x.dims[i]);
+  }
+  for (uint32_t i = 0; i < y.num_dims; i++) {
+    dims_vec.push_back(y.dims[i]);
+  }
+  auto dims_stageing = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
+      inst->create_host_mappable_buffer((uint8_t *)dims_vec.data(),
+                                        sizeof(uint32_t) * dims_vec.size()));
+  auto dims = std::unique_ptr<vulten_backend::Device_buffer>(
+      inst->create_device_buffer(dims_stageing->buffer_size, false, true));
+  inst->copy_buffer(dims_stageing.get(), dims.get(), false);
+  vk::DescriptorBufferInfo dims_buffer_info(dims->vk_buffer, 0,
+                                            dims->buffer_size);
+
   vk::DescriptorBufferInfo output_buffer_info(output.buffer->vk_buffer, 0,
                                               output.buffer->buffer_size);
   const std::vector<vk::WriteDescriptorSet> WriteDescriptorSets = {
@@ -133,47 +139,51 @@ void Basic_op::run_op(Data_type dt, uint32_t op, Vulten_tensor x,
       {descriptor_set, 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
        &y_buffer_info},
       {descriptor_set, 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &strides_buffer_info},
+      {descriptor_set, 3, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &dims_buffer_info},
+      {descriptor_set, 4, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
        &output_buffer_info},
   };
   inst->logical_dev.updateDescriptorSets(WriteDescriptorSets, {});
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
-      inst->cmd_pool, vk::CommandBufferLevel::ePrimary, output.dims[0]);
-  std::vector<vk::CommandBuffer> cmd_buffs =
-      inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
+      inst->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
+  vk::CommandBuffer cmd_buffs =
+      inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info).front();
 
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 
-  for (uint32_t i = 0; i < output.dims[0]; i++) {
-    cmd_buffs[i].begin(cmd_buff_begin_info);
-    cmd_buffs[i].bindPipeline(vk::PipelineBindPoint::eCompute,
-                              vulten_pipeline->pipeline);
-    cmd_buffs[i].bindDescriptorSets(
-        vk::PipelineBindPoint::eCompute,   // Bind point
-        vulten_pipeline->pipeline_layout,  // Pipeline Layout
-        0,                                 // First descriptor set
-        {descriptor_set},                  // List of descriptor sets
-        {});                               // Dynamic offsets
+  cmd_buffs.begin(cmd_buff_begin_info);
+  cmd_buffs.bindPipeline(vk::PipelineBindPoint::eCompute,
+                         vulten_pipeline->pipeline);
+  cmd_buffs.bindDescriptorSets(
+      vk::PipelineBindPoint::eCompute,   // Bind point
+      vulten_pipeline->pipeline_layout,  // Pipeline Layout
+      0,                                 // First descriptor set
+      {descriptor_set},                  // List of descriptor sets
+      {});                               // Dynamic offsets
 
-    Push_const push_data = Push_const();
-    push_data.batch_num = i;
-    cmd_buffs[i].pushConstants(vulten_pipeline->pipeline_layout,
-                               vk::ShaderStageFlagBits::eCompute, 0,
-                               sizeof(push_data), &push_data);
-
-    cmd_buffs[i].dispatch(uint32_t(output.dims[1]), uint32_t(output.dims[2]),
-                          uint32_t(output.dims[3]));
-    cmd_buffs[i].end();
-  }
+  uint32_t pushes[3] = {uint32_t(x.num_dims), uint32_t(y.num_dims),
+                        uint32_t(output.num_dims)};
+  cmd_buffs.pushConstants(vulten_pipeline->pipeline_layout,
+                          vk::ShaderStageFlagBits::eCompute, 0,
+                          sizeof(uint32_t) * 3, pushes);
+  uint32_t threads =
+      uint32_t(output.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
+  threads += 1;
+  cmd_buffs.dispatch(threads, 1, 1);
+  cmd_buffs.end();
 
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
 
-  vk::SubmitInfo SubmitInfo(0,                  // Num Wait Semaphores
-                            nullptr,            // Wait Semaphores
-                            nullptr,            // Pipeline Stage Flags
-                            cmd_buffs.size(),   // Num Command Buffers
-                            cmd_buffs.data());  // List of command buffers
+  vk::SubmitInfo SubmitInfo(0,            // Num Wait Semaphores
+                            nullptr,      // Wait Semaphores
+                            nullptr,      // Pipeline Stage Flags
+                            1,            // Num Command Buffers
+                            &cmd_buffs);  // List of command buffers
   inst->main_queue.submit({SubmitInfo}, fence);
   vk::Result fenceRes =
       inst->logical_dev.waitForFences({fence},        // List of fences
