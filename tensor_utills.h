@@ -94,6 +94,11 @@ static void copyFunc(TF_OpKernelContext* ctx, TF_Tensor* source,
   TensorSafePtr dest_safe_ptr(dest);
   auto dest_buffer = VOID_TO_DEVICE_BUFFER(TF_TensorData(dest_safe_ptr.get()));
 
+  if (TF_TensorElementCount(source_safe_ptr.get()) <= 0 ||
+      TF_TensorElementCount(dest_safe_ptr.get()) <= 0) {
+    return;
+  }
+
   VOID_TO_INSTANCE(stream->instance)->copy_buffer(source_buffer, dest_buffer);
 }
 
