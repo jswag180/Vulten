@@ -39,6 +39,7 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
     std::cout << "Error: " << OP_NAME << " at " << #NAME << "\n";  \
     return;                                                        \
   }                                                                \
+  if (TF_TensorElementCount(NAME##_safe_ptr.get()) == 0) return;   \
   absl::InlinedVector<int64_t, 4> NAME##_dims(                     \
       TF_NumDims(NAME##_safe_ptr.get()));                          \
   for (auto i = 0; i < TF_NumDims(NAME##_safe_ptr.get()); ++i) {   \

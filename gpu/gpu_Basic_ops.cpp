@@ -19,8 +19,6 @@ void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   GET_INPUT_TENSOR("Basic", y, 1, ctx, status)
 
-  if (TF_TensorElementCount(x_safe_ptr.get()) == 0) return;
-  if (TF_TensorElementCount(y_safe_ptr.get()) == 0) return;
 
   if (x_dims.size() == 0 && TF_TensorElementCount(x_safe_ptr.get()) == 1) {
     x_tensor.num_dims = 1;
