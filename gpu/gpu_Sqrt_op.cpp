@@ -23,6 +23,13 @@ void SqrtOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   MAKE_OUTPUT_TENSOR("Sqrt", output, 0, input_dims, T, ctx, status)
 
+  if (input_dims.size() == 0 &&
+      TF_TensorElementCount(output_safe_ptr.get()) == 1) {
+    input_dims.resize(1, 1);
+    output_tensor.num_dims = 1;
+    input_tensor.dims = input_dims.data();
+  }
+
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 

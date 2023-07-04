@@ -25,16 +25,24 @@ void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   uint32_t scalar = 0;
   absl::InlinedVector<int64_t, 4>& out_dims = x_dims;
-  if (x_tensor.get_total_elements() == 1 &&
-      y_tensor.get_total_elements() != 1) {
+  if (TF_TensorElementCount(x_safe_ptr.get()) <= 1 &&
+      !(TF_TensorElementCount(y_safe_ptr.get()) <= 1)) {
     scalar = 1;
     out_dims = y_dims;
-  } else if (y_tensor.get_total_elements() == 1 &&
-             x_tensor.get_total_elements() != 1) {
+  } else if (TF_TensorElementCount(y_safe_ptr.get()) <= 1 &&
+             !(TF_TensorElementCount(x_safe_ptr.get()) <= 1)) {
     scalar = 2;
   }
 
   MAKE_OUTPUT_TENSOR("Pow", output, 0, out_dims, T, ctx, status)
+
+  if (out_dims.size() == 0 &&
+      TF_TensorElementCount(output_safe_ptr.get()) == 1) {
+    out_dims.resize(1, 1);
+    output_tensor.num_dims = 1;
+    x_tensor.dims = out_dims.data();
+    y_tensor.dims = out_dims.data();
+  }
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
