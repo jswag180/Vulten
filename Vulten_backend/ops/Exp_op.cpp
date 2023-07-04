@@ -1,5 +1,7 @@
 #include "Exp_op.h"
 
+#include <cmath>
+
 #include "shaders/headers/Exp/Exp.comp.h"
 
 #define NUM_BUFFERS 2
@@ -88,10 +90,9 @@ void Exp_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
       0,                                 // First descriptor set
       {descriptor_set},                  // List of descriptor sets
       {});                               // Dynamic offsets
-  uint32_t threads =
-      uint32_t(input.get_total_elements()) /
-      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
-  threads += 1;
+  uint32_t threads = std::ceil(
+      float(input.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
   cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();

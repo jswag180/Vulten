@@ -1,5 +1,6 @@
 #include "Softmax_op.h"
 
+#include <cmath>
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
 
@@ -204,10 +205,9 @@ void Softmax_op::run_op(Data_type dt, Vulten_tensor input,
                               0,                     // First descriptor set
                               {descriptor_sets[0]},  // List of descriptor sets
                               {});                   // Dynamic offsets
-  uint32_t threads =
-      uint32_t(input.get_total_elements()) /
-      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
-  threads += 1;
+  uint32_t threads = std::ceil(
+      float(input.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
   cmd_buff.dispatch(threads, 1, 1);
 
@@ -230,9 +230,9 @@ void Softmax_op::run_op(Data_type dt, Vulten_tensor input,
                          vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t),
                          &num_logits);
 
-  threads = (uint32_t(input.get_total_elements()) / num_logits) /
-            inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
-  threads += 1;
+  threads = std::ceil(
+      (float(input.get_total_elements()) / num_logits) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
   cmd_buff.dispatch(threads, 1, 1);
 
@@ -254,9 +254,9 @@ void Softmax_op::run_op(Data_type dt, Vulten_tensor input,
                          vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t),
                          &num_logits);
 
-  threads = uint32_t(input.get_total_elements()) /
-            inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
-  threads += 1;
+  threads = std::ceil(
+      float(input.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
   cmd_buff.dispatch(threads, 1, 1);
 

@@ -1,5 +1,6 @@
 #include "Pow_op.h"
 
+#include <cmath>
 #include <vulkan/vulkan_enums.hpp>
 
 #include "shaders/headers/Pow/Pow.comp.h"
@@ -104,18 +105,15 @@ void Pow_op::run_op(Data_type dt, uint32_t scalar, Vulten_tensor x,
                          &scalar);
   uint32_t threads = 0;
   if (scalar == 1) {
-    threads =
-        uint32_t(y.get_total_elements()) /
-        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
+    threads = std::ceil(
+        float(y.get_total_elements()) /
+        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
   } else {
-    threads =
-        uint32_t(x.get_total_elements()) /
-        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
+    threads = std::ceil(
+        float(x.get_total_elements()) /
+        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
   }
 
-  if (threads == 0) {
-    threads += 1;
-  }
   cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());

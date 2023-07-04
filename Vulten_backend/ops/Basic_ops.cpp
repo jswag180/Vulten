@@ -1,5 +1,7 @@
 #include "Basic_ops.h"
 
+#include <cmath>
+
 #include "../../shaders/headers/BasicOps/BasicOps.comp.h"
 #include "Vulten_backend/Vulten_backend.h"
 #include "Vulten_backend/Vulten_utills.h"
@@ -170,10 +172,10 @@ void Basic_op::run_op(Data_type dt, uint32_t op, Vulten_tensor x,
   cmd_buffs.pushConstants(vulten_pipeline->pipeline_layout,
                           vk::ShaderStageFlagBits::eCompute, 0,
                           sizeof(uint32_t) * 3, pushes);
-  uint32_t threads =
-      uint32_t(output.get_total_elements()) /
-      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
-  threads += 1;
+  uint32_t threads = std::ceil(
+      float(output.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
+
   cmd_buffs.dispatch(threads, 1, 1);
   cmd_buffs.end();
 

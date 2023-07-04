@@ -1,5 +1,7 @@
 #include "BiasAdd_op.h"
 
+#include <cmath>
+
 #include "shaders/headers/BiasAdd/BiasAdd.comp.h"
 
 #define NUM_BUFFERS 3
@@ -103,10 +105,9 @@ void BiasAdd_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor bias,
                          vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t),
                          &bias_dim);
 
-  uint32_t threads =
-      uint32_t(input.get_total_elements()) /
-      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
-  threads += 1;
+  uint32_t threads = std::ceil(
+      float(input.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
   cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();
