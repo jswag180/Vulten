@@ -256,6 +256,30 @@ void Instance::copy_buffer(Buffer *src, Buffer *dest, bool lock) {
   if (lock) main_queue_mutex.unlock();
 }
 
+void Instance::fill_buffer(Buffer *dstBuffer, uint64_t offset, uint64_t size,
+                           uint32_t data, bool lock) {
+  if (lock) main_queue_mutex.lock();
+
+  vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
+      cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
+  vk::CommandBuffer cmd_buff =
+      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
+
+  vk::CommandBufferBeginInfo cmd_buff_begin_info(
+      vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+  cmd_buff.begin(cmd_buff_begin_info);
+
+  cmd_buff.fillBuffer(dstBuffer->vk_buffer, offset, size, data);
+
+  cmd_buff.end();
+
+  vk::SubmitInfo submit_info({}, {}, {}, 1, &cmd_buff);
+  main_queue.submit(submit_info, {});
+  main_queue.waitIdle();
+  logical_dev.freeCommandBuffers(cmd_pool, cmd_buff);
+  if (lock) main_queue_mutex.unlock();
+}
+
 Instance::~Instance() { logical_dev.destroyCommandPool(cmd_pool); }
 
 }  // namespace vulten_backend
