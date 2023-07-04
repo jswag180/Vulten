@@ -1,8 +1,13 @@
 #pragma once
 
+#include <memory>
+
+#include "Vulten_backend/ops/Vulten_backend_ops.h"
+#include "absl/container/inlined_vector.h"
 #include "tensorflow/c/kernels.h"
+#include "tensorflow/c/tf_datatype.h"
+#include "tensorflow/c/tf_status.h"
 #include "tensorflow/c/tf_tensor.h"
-#include "vulten_device.h"
 
 struct StatusDeleter {
   void operator()(TF_Status* s) {
@@ -47,7 +52,11 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
   }                                                                \
   vulten_ops::Vulten_tensor NAME##_tensor(                         \
       VOID_TO_DEVICE_BUFFER(TF_TensorData(NAME##_safe_ptr.get())), \
-      NAME##_dims.size(), NAME##_dims.data());
+      NAME##_dims.size(), NAME##_dims.data());                     \
+  if (NAME##_dims.size() == 0 &&                                   \
+      TF_TensorElementCount(NAME##_safe_ptr.get()) == 1) {         \
+    NAME##_tensor.num_dims = 1;                                    \
+  }
 
 #define GET_INPUT_FROM_VAR(NAME, NUM, CTX, LOCKING, STATUS)                   \
   std::unique_ptr<TF_Tensor*> NAME##_ref =                                    \
@@ -83,24 +92,47 @@ using TensorSafePtr = std::unique_ptr<TF_Tensor, TensorDeleter>;
 
 namespace tensor_utills {
 
-static void copyFunc(TF_OpKernelContext* ctx, TF_Tensor* source,
-                     TF_Tensor* dest) {
-  StatusSafePtr status(TF_NewStatus());
-  SP_Stream stream = TF_GetStream(ctx, status.get());
+struct Input_tensor {
+  TF_Tensor* tf_tensor;
+  absl::InlinedVector<int64_t, 4> dims;
+  vulten_ops::Vulten_tensor vulten_tensor;
+  bool is_scalar;
+  bool is_empty;
 
-  TensorSafePtr source_safe_ptr(source);
-  auto source_buffer =
-      VOID_TO_DEVICE_BUFFER(TF_TensorData(source_safe_ptr.get()));
+  ~Input_tensor();
+};
 
-  TensorSafePtr dest_safe_ptr(dest);
-  auto dest_buffer = VOID_TO_DEVICE_BUFFER(TF_TensorData(dest_safe_ptr.get()));
+struct Input_host_tensor {
+  TF_Tensor* tf_tensor;
+  absl::InlinedVector<int64_t, 4> dims;
+  TF_DataType type;
+  void* data;
+  bool is_scalar;
+  bool is_empty;
 
-  if (TF_TensorElementCount(source_safe_ptr.get()) <= 0 ||
-      TF_TensorElementCount(dest_safe_ptr.get()) <= 0) {
-    return;
-  }
+  ~Input_host_tensor();
+};
 
-  VOID_TO_INSTANCE(stream->instance)->copy_buffer(source_buffer, dest_buffer);
-}
+struct Output_tensor {
+  TF_Tensor* tf_tensor;
+  vulten_ops::Vulten_tensor vulten_tensor;
+
+  ~Output_tensor();
+};
+
+Input_tensor get_input_tensor(const char* name, int input_num,
+                              TF_OpKernelContext* ctx, TF_Status* status);
+Input_tensor get_input_tensor_from_var(const char* name, int input_num,
+                                       bool lock, TF_OpKernelContext* ctx,
+                                       TF_Status* status);
+Input_host_tensor get_input_host_tensor(const char* name, int input_num,
+                                        TF_OpKernelContext* ctx,
+                                        TF_Status* status);
+Output_tensor make_output_tensor(const char* name, int output_num,
+                                 absl::InlinedVector<int64_t, 4> dims,
+                                 TF_DataType type, TF_OpKernelContext* ctx,
+                                 TF_Status* status);
+
+void copyFunc(TF_OpKernelContext* ctx, TF_Tensor* source, TF_Tensor* dest);
 
 };  // namespace tensor_utills

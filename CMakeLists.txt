@@ -4,7 +4,7 @@ include(FetchContent)
 project( Vulten )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(SOURCES "Vulten.cpp" "vulten_device.cpp" "vulten_kernel.cpp")
+set(SOURCES "Vulten.cpp" "vulten_device.cpp" "vulten_kernel.cpp" "tensor_utills.cpp")
 
 file(GLOB GPU_FIELS gpu/*)
 list(APPEND SOURCES ${GPU_FIELS})
