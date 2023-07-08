@@ -15,40 +15,48 @@ void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   StatusSafePtr status(TF_NewStatus());
 
-  GET_INPUT_TENSOR("Basic", x, 0, ctx, status)
-
-  GET_INPUT_TENSOR("Basic", y, 1, ctx, status)
-
-
-  if (x_dims.size() == 0 && TF_TensorElementCount(x_safe_ptr.get()) == 1) {
-    x_tensor.num_dims = 1;
-  }
-  if (y_dims.size() == 0 && TF_TensorElementCount(y_safe_ptr.get()) == 1) {
-    y_tensor.num_dims = 1;
+  tensor_utills::Input_tensor x =
+      tensor_utills::get_input_tensor("BasicOp:x", 0, ctx, status.get());
+  if (x.is_empty) {
+    return;
   }
 
-  if (x_dims.size() != y_dims.size()) {
-    if (x_dims.size() > y_dims.size()) {
-      y_dims.resize(x_dims.size(), 1);
+  tensor_utills::Input_tensor y =
+      tensor_utills::get_input_tensor("BasicOp:y", 1, ctx, status.get());
+  if (y.is_empty) {
+    return;
+  }
+
+  if (x.dims.size() != y.dims.size()) {
+    if (x.dims.size() > y.dims.size()) {
+      y.dims.resize(x.dims.size(), 1);
     } else {
-      x_dims.resize(y_dims.size(), 1);
+      x.dims.resize(y.dims.size(), 1);
     }
   }
 
   absl::InlinedVector<int64_t, 4> res_dims =
-      absl::InlinedVector<int64_t, 4>(x_dims.size(), 0);
+      absl::InlinedVector<int64_t, 4>(x.dims.size(), 0);
   for (int64_t i = 0; i < res_dims.size(); i++) {
-    res_dims[i] = std::max(x_dims[i], y_dims[i]);
+    res_dims[i] = std::max(x.dims[i], y.dims[i]);
   }
 
-  MAKE_OUTPUT_TENSOR("Basic", output, 0, res_dims, T, ctx, status)
+  tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+      "BasicOp:output", 0, res_dims, T, ctx, status.get());
 
-  if (res_dims.size() == 0 &&
-      TF_TensorElementCount(output_safe_ptr.get()) == 1) {
+  if (output.is_scalar) {
     res_dims.resize(1, 1);
-    output_tensor.num_dims = 1;
-    x_tensor.dims = res_dims.data();
-    y_tensor.dims = res_dims.data();
+    output.vulten_tensor.num_dims = 1;
+  }
+
+  if (x.is_scalar) {
+    x.dims.resize(1, 1);
+    x.vulten_tensor.num_dims = 1;
+  }
+
+  if (y.is_scalar) {
+    y.dims.resize(1, 1);
+    y.vulten_tensor.num_dims = 1;
   }
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
@@ -64,8 +72,8 @@ void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
   basic_op = (vulten_ops::Basic_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  basic_op->run_op((vulten_ops::Data_type)T, OP, x_tensor, y_tensor,
-                   output_tensor);
+  basic_op->run_op((vulten_ops::Data_type)T, OP, x.vulten_tensor,
+                   y.vulten_tensor, output.vulten_tensor);
 }
 
 template <TF_DataType T, uint32_t OP>
