@@ -116,6 +116,7 @@ struct Input_host_tensor {
 struct Output_tensor {
   TF_Tensor* tf_tensor;
   vulten_ops::Vulten_tensor vulten_tensor;
+  bool is_scalar;
 
   ~Output_tensor();
 };

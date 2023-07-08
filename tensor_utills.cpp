@@ -125,6 +125,9 @@ Output_tensor make_output_tensor(const char* name, int output_num,
       vulten_ops::Vulten_tensor(VOID_TO_DEVICE_BUFFER(TF_TensorData(tf_tensor)),
                                 dims.size(), dims.data());
 
+  output_tensor.is_scalar =
+      dims.size() == 0 && TF_TensorElementCount(tf_tensor) == 1;
+
   return output_tensor;
 }
 
