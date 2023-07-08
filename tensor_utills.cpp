@@ -100,7 +100,7 @@ Input_host_tensor get_input_host_tensor(const char* name, int input_num,
 Output_tensor::~Output_tensor() { TF_DeleteTensor(tf_tensor); }
 
 Output_tensor make_output_tensor(const char* name, int output_num,
-                                 absl::InlinedVector<int64_t, 4> dims,
+                                 absl::InlinedVector<int64_t, 4>& dims,
                                  TF_DataType type, TF_OpKernelContext* ctx,
                                  TF_Status* status) {
   Output_tensor output_tensor;
