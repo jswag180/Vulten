@@ -43,3 +43,45 @@ def test_sum(data_type):
                         print('Got:')
                         print(res2)
                         assert False
+
+def test_sum_scalar():
+    x = 1
+    
+    axis = []
+    
+    with tf.device('CPU:0'):
+        res1 = tf.raw_ops.Sum(input=x, axis=axis, keep_dims=False)
+                
+    with tf.device(utills.DEVICE_NAME + ':0'):
+        res2 = tf.raw_ops.Sum(input=x, axis=axis, keep_dims=False)
+    
+    if not tf.reduce_all(res1 == res2):
+        print(f' Shape: {dims} axis: {axis}')
+        print('Input tensor:')
+        print(x)
+        print('Expected output:')
+        print(res1)
+        print('Got:')
+        print(res2)
+        assert False
+
+def test_sum_empty():
+    x = []
+    
+    axis = []
+    
+    with tf.device('CPU:0'):
+        res1 = tf.raw_ops.Sum(input=x, axis=axis, keep_dims=False)
+                
+    with tf.device(utills.DEVICE_NAME + ':0'):
+        res2 = tf.raw_ops.Sum(input=x, axis=axis, keep_dims=False)
+    
+    if not tf.reduce_all(res1 == res2):
+        print(f' Shape: {dims} axis: {axis}')
+        print('Input tensor:')
+        print(x)
+        print('Expected output:')
+        print(res1)
+        print('Got:')
+        print(res2)
+        assert False
