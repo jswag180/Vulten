@@ -10,7 +10,7 @@ def param_types(op):
             (np.uint16, op), (np.int8, op), (np.uint8, op), (np.complex64, op), (np.complex128, op)]
 
 @pytest.mark.parametrize("data_type, op", param_types(tf.raw_ops.Mul) + param_types(tf.raw_ops.AddV2) + param_types(tf.raw_ops.Sub))
-def test_basic_mul(data_type, op):
+def test_basic(data_type, op):
     MAX_BATCH = 5
     MAX_HIGHT = 5
     MAX_WIDTH = 5
@@ -61,3 +61,92 @@ def test_basic_mul(data_type, op):
                                             print('Got:')
                                             print(res2)
                                             assert False
+
+@pytest.mark.parametrize("data_type, op", param_types(tf.raw_ops.Mul) + param_types(tf.raw_ops.AddV2) + param_types(tf.raw_ops.Sub))
+def test_basic_2_scalars(data_type, op):
+    x = data_type(1)
+    y = data_type(2)
+    
+    with tf.device('CPU:0'):
+        res1 = op(x=x, y=y)
+                                            
+    with tf.device(utills.DEVICE_NAME + ':0'):
+        res2 = op(x=x, y=y)
+    
+    if not tf.reduce_all(res1 == res2):
+        print('Input tensor x:')
+        print(x)
+        print('Input tensor y:')
+        print(y)
+        print('Expected output:')
+        print(res1)
+        print('Got:')
+        print(res2)
+        assert False
+
+@pytest.mark.parametrize("data_type, op", param_types(tf.raw_ops.Mul) + param_types(tf.raw_ops.AddV2) + param_types(tf.raw_ops.Sub))
+def test_basic_1_scalar(data_type, op):
+    x = data_type(1)
+    y = np.array([1, 2, 3, 4, 5], dtype=data_type)
+    
+    with tf.device('CPU:0'):
+        res1 = op(x=x, y=y)
+                                            
+    with tf.device(utills.DEVICE_NAME + ':0'):
+        res2 = op(x=x, y=y)
+    
+    if not tf.reduce_all(res1 == res2):
+        print('Input tensor x:')
+        print(x)
+        print('Input tensor y:')
+        print(y)
+        print('Expected output:')
+        print(res1)
+        print('Got:')
+        print(res2)
+        assert False
+
+@pytest.mark.parametrize("data_type, op", param_types(tf.raw_ops.Mul) + param_types(tf.raw_ops.AddV2) + param_types(tf.raw_ops.Sub))
+def test_basic_2_empty(data_type, op):
+    x = np.array([], dtype=data_type)
+    y = np.array([], dtype=data_type)
+    
+    with tf.device('CPU:0'):
+        res1 = op(x=x, y=y)
+                                            
+    with tf.device(utills.DEVICE_NAME + ':0'):
+        res2 = op(x=x, y=y)
+    
+    if not tf.reduce_all(res1 == res2):
+        print('Input tensor x:')
+        print(x)
+        print('Input tensor y:')
+        print(y)
+        print('Expected output:')
+        print(res1)
+        print('Got:')
+        print(res2)
+        assert False
+
+@pytest.mark.parametrize("data_type, op", param_types(tf.raw_ops.Mul) + param_types(tf.raw_ops.AddV2) + param_types(tf.raw_ops.Sub))
+def test_basic_1_empty(data_type, op):
+    x = np.array([], dtype=data_type)
+    y = np.array([1,], dtype=data_type)
+    
+    with tf.device('CPU:0'):
+        res1 = op(x=x, y=y)
+                                            
+    with tf.device(utills.DEVICE_NAME + ':0'):
+        res2 = op(x=x, y=y)
+    
+    if not tf.reduce_all(res1 == res2):
+        print('Input tensor x:')
+        print(x)
+        print('Input tensor y:')
+        print(y)
+        print('Expected output:')
+        print(res1)
+        print('Got:')
+        print(res2)
+        assert False
+
