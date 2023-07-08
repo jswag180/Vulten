@@ -38,55 +38,76 @@ void SumOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   SumOp* sumOp_info = static_cast<SumOp*>(kernel);
 
-  GET_INPUT_TENSOR("Sum", input, 0, ctx, status)
+  tensor_utills::Input_tensor input =
+      tensor_utills::get_input_tensor("SumOp:input", 0, ctx, status.get());
 
-  // This input is a host buffer
-  TF_Tensor* axis = nullptr;
-  TF_GetInput(ctx, 1, &axis, status.get());
-  TensorSafePtr axis_safe_ptr(axis);
-  if (TF_GetCode(status.get()) != TF_OK) {
-    TF_OpKernelContext_Failure(ctx, status.get());
-    std::cout << "Error: "
-              << "axis"
-              << " at " << axis << "\n";
+  if (input.is_empty) {
+    absl::InlinedVector<int64_t, 4> out_dims(0);
+    tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+        "SumOp:output", 0, out_dims, T, ctx, status.get());
+
+    SP_Stream stream = TF_GetStream(ctx, status.get());
+    vulten_backend::Instance* inst = stream->instance;
+    inst->fill_buffer(output.vulten_tensor.buffer, 0, VK_WHOLE_SIZE, 0);
     return;
   }
-  absl::InlinedVector<int64_t, 4> axis_dims(TF_NumDims(axis_safe_ptr.get()));
-  for (auto i = 0; i < TF_NumDims(axis_safe_ptr.get()); ++i) {
-    axis_dims[i] = TF_Dim(axis_safe_ptr.get(), i);
+  if (input.is_scalar) {
+    tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+        "SumOp:output", 0, input.dims, T, ctx, status.get());
+
+    SP_Stream stream = TF_GetStream(ctx, status.get());
+    vulten_backend::Instance* inst = stream->instance;
+    inst->copy_buffer(input.vulten_tensor.buffer, output.vulten_tensor.buffer);
+    return;
   }
 
-  std::vector<int32_t> axis_vec = std::vector<int32_t>(axis_dims[0]);
-  if (TF_TensorType(axis_safe_ptr.get()) == TF_INT32) {
-    int32_t* axis_data = (int32_t*)TF_TensorData(axis_safe_ptr.get());
-    memcpy(axis_vec.data(), axis_data, sizeof(int32_t) * axis_vec.size());
-  } else if (TF_TensorType(axis_safe_ptr.get()) == TF_INT64) {
-    int64_t* axis_data = (int64_t*)TF_TensorData(axis_safe_ptr.get());
-    for (uint32_t i = 0; i < axis_vec.size(); i++) {
-      axis_vec[i] = uint32_t(axis_data[i]);
-    }
+  tensor_utills::Input_host_tensor axis =
+      tensor_utills::get_input_host_tensor("SumOp:axis", 1, ctx, status.get());
+
+  if (axis.is_scalar) {
+    axis.dims.resize(1, 1);
+  }
+
+  std::vector<int32_t> axis_vec = std::vector<int32_t>(axis.dims[0]);
+
+  // For now we convert int64 axis tensors to int32, but we could make the
+  // shader accept both if need be.
+  switch (axis.type) {
+    case TF_INT32:
+      memcpy(axis_vec.data(), axis.data, sizeof(int32_t) * axis_vec.size());
+      break;
+    case TF_INT64:
+      for (uint32_t i = 0; i < axis_vec.size(); i++) {
+        axis_vec[i] = uint32_t(((int64_t*)axis.data)[i]);
+      }
+      break;
+    default:
+      std::cerr << "Error invalid axis tensor proved to SumOp\n";
+      exit(-1);
   }
 
   for (uint32_t i = 0; i < axis_vec.size(); i++) {
     if (axis_vec[i] < 0) {
-      axis_vec[i] += int32_t(input_dims.size());
+      axis_vec[i] += int32_t(input.dims.size());
     }
   }
 
-  // sort from low to high
-  int32_t i, key, j;
-  for (i = 1; i < axis_vec.size(); i++) {
-    key = axis_vec[i];
-    j = i - 1;
+  if (!axis.is_scalar) {
+    // sort from low to high
+    int32_t i, key, j;
+    for (i = 1; i < axis_vec.size(); i++) {
+      key = axis_vec[i];
+      j = i - 1;
 
-    while (j >= 0 && axis_vec[j] > key) {
-      axis_vec[j + 1] = axis_vec[j];
-      j = j - 1;
+      while (j >= 0 && axis_vec[j] > key) {
+        axis_vec[j + 1] = axis_vec[j];
+        j = j - 1;
+      }
+      axis_vec[j + 1] = key;
     }
-    axis_vec[j + 1] = key;
   }
 
-  absl::InlinedVector<int64_t, 4> out_dims = input_dims;
+  absl::InlinedVector<int64_t, 4> out_dims = input.dims;
   if (axis_vec.size() != 0) {
     if (sumOp_info->keep_dims_) {
       for (uint32_t i = 0; i < axis_vec.size(); i++) {
@@ -99,13 +120,14 @@ void SumOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     }
   }
 
-  MAKE_OUTPUT_TENSOR("Sum", output, 0, out_dims, T, ctx, status)
+  tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+      "SumOp:output", 0, out_dims, T, ctx, status.get());
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 
   if (axis_vec.size() == 0) {
-    inst->copy_buffer(input_tensor.buffer, output_tensor.buffer);
+    inst->copy_buffer(input.vulten_tensor.buffer, output.vulten_tensor.buffer);
     return;
   }
 
@@ -121,8 +143,8 @@ void SumOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   std::reverse(axis_vec.begin(), axis_vec.end());
 
-  sum_op->run_op((vulten_ops::Data_type)T, input_tensor, axis_vec,
-                 output_tensor);
+  sum_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor, axis_vec,
+                 output.vulten_tensor);
 }
 
 template <TF_DataType T>
