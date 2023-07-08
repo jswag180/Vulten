@@ -74,31 +74,45 @@ void ResourceApplyAdamOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
       input_to_lock.size(), &tensor_utills::copyFunc, var_lock.get(),
       status.get());
 
-  GET_INPUT_FROM_VAR(var, 0, ctx, resourceApplyAdamOp->locking_, status.get())
+  tensor_utills::Input_tensor var = tensor_utills::get_input_tensor_from_var(
+      "ResourceApplyAdamOp:var", 0, resourceApplyAdamOp->locking_, ctx,
+      status.get());
 
-  GET_INPUT_FROM_VAR(m, 1, ctx, resourceApplyAdamOp->locking_, status.get())
+  tensor_utills::Input_tensor m = tensor_utills::get_input_tensor_from_var(
+      "ResourceApplyAdamOp:m", 1, resourceApplyAdamOp->locking_, ctx,
+      status.get());
 
-  GET_INPUT_FROM_VAR(v, 2, ctx, resourceApplyAdamOp->locking_, status.get())
+  tensor_utills::Input_tensor v = tensor_utills::get_input_tensor_from_var(
+      "ResourceApplyAdamOp:v", 2, resourceApplyAdamOp->locking_, ctx,
+      status.get());
 
-  GET_INPUT_TENSOR("ResourceApplyAdamOp", beta1_power, 3, ctx, status)
+  tensor_utills::Input_tensor beta1_power = tensor_utills::get_input_tensor(
+      "ResourceApplyAdamOp:beta1_power", 3, ctx, status.get());
 
-  GET_INPUT_TENSOR("ResourceApplyAdamOp", beta2_power, 4, ctx, status)
+  tensor_utills::Input_tensor beta2_power = tensor_utills::get_input_tensor(
+      "ResourceApplyAdamOp:beta2_power", 4, ctx, status.get());
 
-  GET_INPUT_TENSOR("ResourceApplyAdamOp", lr, 5, ctx, status)
+  tensor_utills::Input_tensor lr = tensor_utills::get_input_tensor(
+      "ResourceApplyAdamOp:lr", 5, ctx, status.get());
 
-  GET_INPUT_TENSOR("ResourceApplyAdamOp", beta1, 6, ctx, status)
+  tensor_utills::Input_tensor beta1 = tensor_utills::get_input_tensor(
+      "ResourceApplyAdamOp:beta1", 6, ctx, status.get());
 
-  GET_INPUT_TENSOR("ResourceApplyAdamOp", beta2, 7, ctx, status)
+  tensor_utills::Input_tensor beta2 = tensor_utills::get_input_tensor(
+      "ResourceApplyAdamOp:beta2", 7, ctx, status.get());
 
-  GET_INPUT_TENSOR("ResourceApplyAdamOp", epsilon, 8, ctx, status)
+  tensor_utills::Input_tensor epsilon = tensor_utills::get_input_tensor(
+      "ResourceApplyAdamOp:epsilon", 8, ctx, status.get());
 
-  GET_INPUT_TENSOR("ResourceApplyAdamOp", grad, 9, ctx, status)
+  tensor_utills::Input_tensor grad = tensor_utills::get_input_tensor(
+      "ResourceApplyAdamOp:grad", 9, ctx, status.get());
 
-  resource_apply_adam_op->run_op((vulten_ops::Data_type)T, var_tensor, m_tensor,
-                                 v_tensor, beta1_power_tensor,
-                                 beta2_power_tensor, lr_tensor, beta1_tensor,
-                                 beta2_tensor, epsilon_tensor, grad_tensor,
-                                 resourceApplyAdamOp->nesterov_);
+  resource_apply_adam_op->run_op(
+      (vulten_ops::Data_type)T, var.vulten_tensor, m.vulten_tensor,
+      v.vulten_tensor, beta1_power.vulten_tensor, beta2_power.vulten_tensor,
+      lr.vulten_tensor, beta1.vulten_tensor, beta2.vulten_tensor,
+      epsilon.vulten_tensor, grad.vulten_tensor,
+      resourceApplyAdamOp->nesterov_);
 
   TF_ReleaseVariableInputLockHolder(*var_lock.get());
 }
