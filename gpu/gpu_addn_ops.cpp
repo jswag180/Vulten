@@ -18,27 +18,29 @@ void AddnOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   int num_tensors = TF_NumInputs(ctx);
 
-  GET_INPUT_TENSOR("Addn", input, 0, ctx, status)
+  tensor_utills::Input_tensor input =
+      tensor_utills::get_input_tensor("AddnOp:input", 0, ctx, status.get());
 
   std::vector<vulten_ops::Vulten_tensor> tensors(num_tensors);
 
-  tensors[0] = input_tensor;
+  tensors[0] = input.vulten_tensor;
   for (int i = 1; i < num_tensors; i++) {
     TF_Tensor* tensor_ptr = nullptr;
     TF_GetInput(ctx, i, &tensor_ptr, status.get());
     std::shared_ptr<TF_Tensor> tensor_safe_ptr(tensor_ptr, TensorDeleter{});
     tensors[i] = vulten_ops::Vulten_tensor(
         VOID_TO_DEVICE_BUFFER(TF_TensorData(tensor_safe_ptr.get())),
-        input_dims.size(), input_dims.data());
+        input.dims.size(), input.dims.data());
   }
 
-  MAKE_OUTPUT_TENSOR("Addn", output, 0, input_dims, T, ctx, status)
+  tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+      "AddnOp:output", 0, input.dims, T, ctx, status.get());
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 
   if (num_tensors == 1) {
-    inst->copy_buffer(input_tensor.buffer, output_tensor.buffer);
+    inst->copy_buffer(input.vulten_tensor.buffer, output.vulten_tensor.buffer);
     return;
   }
 
@@ -52,7 +54,7 @@ void AddnOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   addn_op = (vulten_ops::Addn_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  addn_op->run_op((vulten_ops::Data_type)T, tensors, output_tensor);
+  addn_op->run_op((vulten_ops::Data_type)T, tensors, output.vulten_tensor);
 }
 
 template <TF_DataType T>
