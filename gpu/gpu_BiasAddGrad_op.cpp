@@ -40,20 +40,21 @@ void BiasAddGradOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   BiasAddGradOp* biasAddGradOp_info = static_cast<BiasAddGradOp*>(kernel);
 
-  GET_INPUT_TENSOR("BiasAddGradOp", input, 0, ctx, status)
+  tensor_utills::Input_tensor input = tensor_utills::get_input_tensor(
+      "BiasAddGradOp:input", 0, ctx, status.get());
 
   std::vector<int32_t> axis_vec = std::vector<int32_t>();
 
   absl::InlinedVector<int64_t, 4> out_dims(1);
   if (biasAddGradOp_info->format == "NHWC") {
-    out_dims[0] = input_dims[input_dims.size() - 1];
-    for (uint32_t i = 0; i < input_dims.size() - 1; i++) {
+    out_dims[0] = input.dims[input.dims.size() - 1];
+    for (uint32_t i = 0; i < input.dims.size() - 1; i++) {
       axis_vec.push_back(i);
     }
     std::reverse(axis_vec.begin(), axis_vec.end());
   } else if (biasAddGradOp_info->format == "NCHW") {
-    out_dims[0] = input_dims[1];
-    for (uint32_t i = 0; i < input_dims.size(); i++) {
+    out_dims[0] = input.dims[1];
+    for (uint32_t i = 0; i < input.dims.size(); i++) {
       if (i != 1) {
         axis_vec.push_back(i);
       }
@@ -61,10 +62,16 @@ void BiasAddGradOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     std::reverse(axis_vec.begin(), axis_vec.end());
   }
 
-  MAKE_OUTPUT_TENSOR("BiasAddGradOp", output, 0, out_dims, T, ctx, status)
+  tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+      "BiasAddGradOp:output", 0, out_dims, T, ctx, status.get());
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
+
+  if (input.is_empty) {
+    inst->fill_buffer(output.vulten_tensor.buffer, 0, VK_WHOLE_SIZE, 0);
+    return;
+  }
 
   vulten_ops::Sum_op* sum_op = nullptr;
   std::string op_cache_name = "Sum";
@@ -76,8 +83,8 @@ void BiasAddGradOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   sum_op = (vulten_ops::Sum_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  sum_op->run_op((vulten_ops::Data_type)T, input_tensor, axis_vec,
-                 output_tensor);
+  sum_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor, axis_vec,
+                 output.vulten_tensor);
 }
 
 template <TF_DataType T>
