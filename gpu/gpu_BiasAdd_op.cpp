@@ -19,11 +19,23 @@ void BiasAddOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   StatusSafePtr status(TF_NewStatus());
 
-  GET_INPUT_TENSOR("BiasAdd", input, 0, ctx, status)
+  tensor_utills::Input_tensor input =
+      tensor_utills::get_input_tensor("BiasAddOp:input", 0, ctx, status.get());
+  if (input.is_empty) {
+    tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+        "BiasAddOp:output", 0, input.dims, T, ctx, status.get());
 
-  GET_INPUT_TENSOR("BiasAdd", bias, 1, ctx, status)
+    return;
+  }
 
-  MAKE_OUTPUT_TENSOR("BiasAdd", output, 0, input_dims, T, ctx, status)
+  tensor_utills::Input_tensor bias =
+      tensor_utills::get_input_tensor("BiasAddOp:bias", 1, ctx, status.get());
+  if (bias.is_empty) {
+    return;
+  }
+
+  tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+      "BiasAddOp:output", 0, input.dims, T, ctx, status.get());
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
@@ -38,8 +50,9 @@ void BiasAddOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   biasAdd_op = (vulten_ops::BiasAdd_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  biasAdd_op->run_op((vulten_ops::Data_type)T, input_tensor, bias_tensor,
-                     uint32_t(bias_dims[0]), output_tensor);
+  biasAdd_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor,
+                     bias.vulten_tensor, uint32_t(bias.dims[0]),
+                     output.vulten_tensor);
 }
 
 template <TF_DataType T>
