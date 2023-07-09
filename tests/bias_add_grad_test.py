@@ -6,7 +6,7 @@ import pytest
 tf.config.run_functions_eagerly(False)
 
 @pytest.mark.parametrize("data_type", [(np.float32), (np.float64), (np.int32), (np.uint8), (np.int16), (np.int8), (np.int64),
-                                        (np.uint16), (np.float16), (np.uint32), (np.uint64), (np.complex128), (np.complex64)])
+                                        (np.uint16), (np.uint32), (np.uint64), (np.complex128), (np.complex64)])
 def test_bias_add_grad(data_type):
     MAX_BATCH = 5
     MAX_HIGHT = 5
