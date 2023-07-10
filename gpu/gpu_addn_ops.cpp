@@ -34,7 +34,7 @@ void AddnOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   }
 
   tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
-      "AddnOp:output", 0, input.dims, T, ctx, status.get());
+      "AddnOp:output", 0, input.dims, ctx, status.get());
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;

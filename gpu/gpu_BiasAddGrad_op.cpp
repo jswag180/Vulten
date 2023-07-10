@@ -63,7 +63,7 @@ void BiasAddGradOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   }
 
   tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
-      "BiasAddGradOp:output", 0, out_dims, T, ctx, status.get());
+      "BiasAddGradOp:output", 0, out_dims, ctx, status.get());
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;

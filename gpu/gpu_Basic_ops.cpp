@@ -42,7 +42,7 @@ void BasicOps_Compute(void* kernel, TF_OpKernelContext* ctx) {
   }
 
   tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
-      "BasicOp:output", 0, res_dims, T, ctx, status.get());
+      "BasicOp:output", 0, res_dims, ctx, status.get());
 
   if (output.is_scalar) {
     res_dims.resize(1, 1);
