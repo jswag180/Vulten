@@ -19,29 +19,28 @@ void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   StatusSafePtr status(TF_NewStatus());
 
-  GET_INPUT_TENSOR("Pow", x, 0, ctx, status)
+  tensor_utills::Input_tensor x =
+      tensor_utills::get_input_tensor("PowOp:x", 0, ctx, status.get());
 
-  GET_INPUT_TENSOR("Pow", y, 1, ctx, status)
+  tensor_utills::Input_tensor y =
+      tensor_utills::get_input_tensor("PowOp:y", 1, ctx, status.get());
 
   uint32_t scalar = 0;
-  absl::InlinedVector<int64_t, 4>& out_dims = x_dims;
-  if (TF_TensorElementCount(x_safe_ptr.get()) <= 1 &&
-      !(TF_TensorElementCount(y_safe_ptr.get()) <= 1)) {
+  absl::InlinedVector<int64_t, 4>& out_dims = x.dims;
+  if (TF_TensorElementCount(x.tf_tensor) <= 1 &&
+      !(TF_TensorElementCount(y.tf_tensor) <= 1)) {
     scalar = 1;
-    out_dims = y_dims;
-  } else if (TF_TensorElementCount(y_safe_ptr.get()) <= 1 &&
-             !(TF_TensorElementCount(x_safe_ptr.get()) <= 1)) {
+    out_dims = y.dims;
+  } else if (TF_TensorElementCount(y.tf_tensor) <= 1 &&
+             !(TF_TensorElementCount(x.tf_tensor) <= 1)) {
     scalar = 2;
   }
 
-  MAKE_OUTPUT_TENSOR("Pow", output, 0, out_dims, T, ctx, status)
+  tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+      "PowOp:output", 0, out_dims, ctx, status.get());
 
-  if (out_dims.size() == 0 &&
-      TF_TensorElementCount(output_safe_ptr.get()) == 1) {
-    out_dims.resize(1, 1);
-    output_tensor.num_dims = 1;
-    x_tensor.dims = out_dims.data();
-    y_tensor.dims = out_dims.data();
+  if (x.is_empty || y.is_empty) {
+    return;
   }
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
@@ -57,8 +56,8 @@ void PowOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   pow_op = (vulten_ops::Pow_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  pow_op->run_op((vulten_ops::Data_type)T, scalar, x_tensor, y_tensor,
-                 output_tensor);
+  pow_op->run_op((vulten_ops::Data_type)T, scalar, x.vulten_tensor,
+                 y.vulten_tensor, output.vulten_tensor);
 }
 
 template <TF_DataType T>
