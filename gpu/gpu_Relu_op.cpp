@@ -19,9 +19,15 @@ void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   StatusSafePtr status(TF_NewStatus());
 
-  GET_INPUT_TENSOR("Relu", input, 0, ctx, status)
+  tensor_utills::Input_tensor input =
+      tensor_utills::get_input_tensor("ReluOp:input", 0, ctx, status.get());
 
-  MAKE_OUTPUT_TENSOR("Relu", output, 0, input_dims, T, ctx, status)
+  tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+      "ReluOp:output", 0, input.dims, ctx, status.get());
+
+  if (input.is_empty) {
+    return;
+  }
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
@@ -36,7 +42,8 @@ void ReluOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   relu_op = (vulten_ops::Relu_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  relu_op->run_op((vulten_ops::Data_type)T, input_tensor, output_tensor);
+  relu_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor,
+                  output.vulten_tensor);
 }
 
 template <TF_DataType T>
