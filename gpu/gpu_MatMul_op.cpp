@@ -65,8 +65,8 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   }
 
   absl::InlinedVector<int64_t, 4> out_dims = {ax, by};
-  tensor_utills::Output_tensor output =
-      tensor_utills::make_output_tensor("MatMulOp:output", 0, out_dims, ctx, status.get());
+  tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+      "MatMulOp:output", 0, out_dims, ctx, status.get());
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
