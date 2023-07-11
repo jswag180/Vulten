@@ -225,7 +225,7 @@ void Softmax_op::run_op(Data_type dt, Vulten_tensor input,
       {descriptor_sets[1]},                // List of descriptor sets
       {});                                 // Dynamic offsets
 
-  uint32_t num_logits = uint32_t(input.dims[1]);
+  uint32_t num_logits = uint32_t(input.dims[input.num_dims - 1]);
   cmd_buff.pushConstants(batchAdd_pipeline->pipeline_layout,
                          vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t),
                          &num_logits);
