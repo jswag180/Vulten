@@ -19,10 +19,18 @@ void ReluGradOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   StatusSafePtr status(TF_NewStatus());
 
-  GET_INPUT_TENSOR("ReluGrad", gradients, 0, ctx, status)
-  GET_INPUT_TENSOR("ReluGrad", features, 1, ctx, status)
+  tensor_utills::Input_tensor gradients = tensor_utills::get_input_tensor(
+      "ReluGradOp:gradients", 0, ctx, status.get());
 
-  MAKE_OUTPUT_TENSOR("ReluGrad", output, 0, gradients_dims, T, ctx, status)
+  tensor_utills::Input_tensor features = tensor_utills::get_input_tensor(
+      "ReluGradOp:features", 1, ctx, status.get());
+
+  tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+      "ReluGradOp:output", 0, gradients.dims, ctx, status.get());
+
+  if (gradients.is_empty || features.is_empty) {
+    return;
+  }
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
@@ -37,8 +45,8 @@ void ReluGradOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   reluGrad_op = (vulten_ops::ReluGrad_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  reluGrad_op->run_op((vulten_ops::Data_type)T, gradients_tensor,
-                      features_tensor, output_tensor);
+  reluGrad_op->run_op((vulten_ops::Data_type)T, gradients.vulten_tensor,
+                      features.vulten_tensor, output.vulten_tensor);
 }
 
 template <TF_DataType T>
