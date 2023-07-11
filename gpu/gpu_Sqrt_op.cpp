@@ -19,15 +19,14 @@ void SqrtOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   StatusSafePtr status(TF_NewStatus());
 
-  GET_INPUT_TENSOR("Sqrt", input, 0, ctx, status)
+  tensor_utills::Input_tensor input =
+      tensor_utills::get_input_tensor("SqrtOp:input", 0, ctx, status.get());
 
-  MAKE_OUTPUT_TENSOR("Sqrt", output, 0, input_dims, T, ctx, status)
+  tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
+      "SqrtOp:output", 0, input.dims, ctx, status.get());
 
-  if (input_dims.size() == 0 &&
-      TF_TensorElementCount(output_safe_ptr.get()) == 1) {
-    input_dims.resize(1, 1);
-    output_tensor.num_dims = 1;
-    input_tensor.dims = input_dims.data();
+  if (input.is_empty) {
+    return;
   }
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
@@ -43,7 +42,8 @@ void SqrtOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   sqrt_op = (vulten_ops::Sqrt_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  sqrt_op->run_op((vulten_ops::Data_type)T, input_tensor, output_tensor);
+  sqrt_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor,
+                  output.vulten_tensor);
 }
 
 template <TF_DataType T>
