@@ -1,39 +1,35 @@
 # Vulten
 A Vulkan PluggableDevice for Tensorflow
 
-# Why?
-Well, I started this project because AMD does not have great support for consumer cards (except the 6900 XT) for Tensorflow.
-I wanted to be able to use my 6700 XT in Tensorflow and what better api then Vulkan! I think this project has far more use the AMD cards
-because there is no easy way to use Arm or RISC-V gpus in Tensorflow.
-
 # Compatibility
-It should **hopefully** work with any Vulkan 1.2 complient device on Arm or x86 (idk about RISC-V).
-I have not tested this on Windows or MacOs.
+It should **hopefully** work with any Vulkan 1.2 complient device.
 
 # Ops / kernels
-- Conv2d
-    - no dilations
-    - no explicit padding
 - Relu
+- ReluGrad
 - SoftMax
 - BiasAdd
+- BiasAddGrad
 - MatMul
 - AssignAddVariable
+- AssignSubVariable
 - ReadVariableOp
 - Identity
+- IdentityN
 - Pow
 - ResourceApplyAdam
 - Cast
-    - uint
-    - int
-    - float
-    - uint64
-    - int64
 - Mul
 - Add
+- AddV2
 - Sub
 - Div
 - DivNoNan
+- AssignVariable
+- Sum
+- Addn
+- Exp
+- Sqrt
 
 # Example
 ```
