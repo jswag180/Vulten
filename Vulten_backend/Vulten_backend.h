@@ -24,11 +24,48 @@
 #define VOID_TO_DEVICE_BUFFER(X) static_cast<vulten_backend::Device_buffer *>(X)
 #define VOID_TO_HOST_MAPPABLE_BUFFER(X) \
   static_cast<vulten_backend::Host_mappable_buffer *>(X)
-#define CALL_ALL_BASIC_TYPES(func)                                            \
-  func(TF_FLOAT) func(TF_HALF) func(TF_DOUBLE) func(TF_INT32) func(TF_UINT32) \
-      func(TF_INT8) func(TF_UINT8) func(TF_INT64) func(TF_UINT64)             \
-          func(TF_INT16) func(TF_UINT16)
-#define CALL_COMPLEX(func) func(TF_COMPLEX64) func(TF_COMPLEX128)
+
+#ifndef VULTEN_DISABLE_16BIT
+#define CALL_HALF(func) func(TF_HALF)
+#define CALL_INT16(func) func(TF_INT16)
+#define CALL_UINT16(func) func(TF_UINT16)
+#else
+#define CALL_HALF(func)
+#define CALL_INT16(func)
+#define CALL_UINT16(func)
+#endif
+
+#ifndef VULTEN_DISABLE_8BIT
+#define CALL_INT8(func) func(TF_INT8)
+#define CALL_UINT8(func) func(TF_UINT8)
+#define CALL_BOOL(func) func(TF_BOOL)
+#else
+#define CALL_INT8(func)
+#define CALL_UINT8(func)
+#define CALL_BOOL(func)
+#endif
+
+#ifndef VULTEN_DISABLE_INT64
+#define CALL_INT64(func) func(TF_INT64)
+#define CALL_UINT64(func) func(TF_UINT64)
+#else
+#define CALL_INT8(func)
+#define CALL_UINT8(func)
+#endif
+
+#ifndef VULTEN_DISABLE_DOUBLE
+#define CALL_DOUBLE(func) func(TF_DOUBLE)
+#define CALL_COMPLEX128(func) func(TF_COMPLEX128)
+#else
+#define CALL_DOUBLE(func)
+#define CALL_COMPLEX128(func)
+#endif
+
+#define CALL_ALL_BASIC_TYPES(func)                                      \
+  func(TF_FLOAT) CALL_HALF(func) CALL_DOUBLE(func) func(TF_INT32)       \
+      func(TF_UINT32) CALL_INT8(func) CALL_UINT8(func) CALL_INT64(func) \
+          CALL_INT64(func) CALL_INT16(func) CALL_INT16(func)
+#define CALL_COMPLEX(func) func(TF_COMPLEX64) CALL_COMPLEX128(func)
 #define CALL_ALL_TYPES(func) CALL_ALL_BASIC_TYPES(func) CALL_COMPLEX(func)
 namespace vulten_ops {
 class Vulten_op;
