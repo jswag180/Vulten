@@ -12,6 +12,10 @@ list(APPEND SOURCES ${GPU_FIELS})
 option(ENABLE_SCOPE_TIMERS "Enable timers for ops" ON)
 
 set(VULTEN_LOG_LEVEL "2" CACHE STRING "Vulten log level")
+set(VULTEN_DISABLE_16BIT false CACHE STRING "Disable float16/half/int16/uint16 ops")
+set(VULTEN_DISABLE_8BIT false CACHE STRING "Disable int8/uint8/bool ops")
+set(VULTEN_DISABLE_INT64 false CACHE STRING "Disable int64/uint64 ops")
+set(VULTEN_DISABLE_DOUBLE false CACHE STRING "Disable float64/double and complex128 ops")
 add_subdirectory(Vulten_backend Vulten_backend/)
 
 #Set the location of tensorflow site-packages wether it is is installed system/user or in a venv
@@ -39,6 +43,19 @@ target_link_libraries(Vulten Vulten_backend Vulkan::Vulkan :_pywrap_tensorflow_i
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/gpu)
+
+if(VULTEN_DISABLE_16BIT)
+    add_compile_definitions(VULTEN_DISABLE_16BIT)
+endif()
+if(VULTEN_DISABLE_8BIT)
+    add_compile_definitions(VULTEN_DISABLE_8BIT)
+endif()
+if(VULTEN_DISABLE_INT64)
+    add_compile_definitions(VULTEN_DISABLE_INT64)
+endif()
+if(VULTEN_DISABLE_DOUBLE)
+    add_compile_definitions(VULTEN_DISABLE_DOUBLE)
+endif()
 
 
 SET(CMAKE_CXX_FLAGS "-pthread -fPIC" CACHE STRING "C++ flags" FORCE)

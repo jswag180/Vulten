@@ -177,19 +177,27 @@ Instance::Instance(uint32_t dev_num) {
 
   vk::PhysicalDeviceShaderFloat16Int8Features half_char_feat =
       vk::PhysicalDeviceShaderFloat16Int8Features();
+#ifndef VULTEN_DISABLE_16BIT
   half_char_feat.setShaderFloat16(true);
+#endif
+#ifndef VULTEN_DISABLE_8BIT
   half_char_feat.setShaderInt8(true);
+#endif
 
   vk::PhysicalDevice8BitStorageFeatures char_buffer_feat =
       vk::PhysicalDevice8BitStorageFeatures();
+#ifndef VULTEN_DISABLE_8BIT
   char_buffer_feat.setStoragePushConstant8(true);
   char_buffer_feat.setStorageBuffer8BitAccess(true);
+#endif
   char_buffer_feat.setPNext(&half_char_feat);
 
   vk::PhysicalDevice16BitStorageFeatures half_buffer_feat =
       vk::PhysicalDevice16BitStorageFeatures();
+#ifndef VULTEN_DISABLE_16BIT
   half_buffer_feat.setStorageBuffer16BitAccess(true);
   half_buffer_feat.setStorageInputOutput16(true);
+#endif
   half_buffer_feat.setPNext(&char_buffer_feat);
 
   vk::PhysicalDeviceShaderSubgroupExtendedTypesFeatures extend_sub =
@@ -198,9 +206,15 @@ Instance::Instance(uint32_t dev_num) {
   extend_sub.setPNext(&half_buffer_feat);
 
   vk::PhysicalDeviceFeatures2 dev_features2 = vk::PhysicalDeviceFeatures2();
+#ifndef VULTEN_DISABLE_16BIT
   dev_features2.features.setShaderInt16(true);
+#endif
+#ifndef VULTEN_DISABLE_INT64
   dev_features2.features.setShaderInt64(true);
+#endif
+#ifndef VULTEN_DISABLE_DOUBLE
   dev_features2.features.setShaderFloat64(true);
+#endif
   dev_features2.setPNext(&extend_sub);
 
   auto dev_create_info = vk::DeviceCreateInfo(
