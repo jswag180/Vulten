@@ -34,11 +34,14 @@ target_link_directories(Vulten PUBLIC ${TF_LOCAL}/tensorflow/python)
 
 find_library(PYWARP _pywrap_tensorflow_internal)
 
+link_directories(${Vulkan_LIBRARIES})
+
 target_link_libraries(Vulten Vulten_backend Vulkan::Vulkan :_pywrap_tensorflow_internal.so)
 
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/gpu)
+include_directories(${Vulkan_INCLUDE_DIRS})
 
 
 SET(CMAKE_CXX_FLAGS "-pthread -fPIC" CACHE STRING "C++ flags" FORCE)

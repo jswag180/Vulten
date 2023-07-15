@@ -79,8 +79,11 @@ endif()
 
 find_package(Vulkan REQUIRED)
 
+link_directories(${Vulkan_LIBRARIES})
+
 target_link_libraries(Vulten_backend Vulkan::Vulkan shaderc_shared)
 
 include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${Vulkan_INCLUDE_DIRS})
 
 SET(CMAKE_CXX_FLAGS "-pthread -fPIC" CACHE STRING "C++ flags" FORCE)
