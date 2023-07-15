@@ -90,7 +90,7 @@ void RegisterDeviceCast(const char* device_type) {
 #ifndef VULTEN_DISABLE_DOUBLE
 #define REGISTER_DOUBLE(s) RegisterCastOpKernel<s, TF_DOUBLE>(device_type);
 #define REGISTER_COMPLEX128(s) \
-  RegisterCastOpKernel<s, TF_COMMPLEX128>(device_type);
+  RegisterCastOpKernel<s, TF_COMPLEX128>(device_type);
 #else
 #define REGISTER_DOUBLE(s)
 #define REGISTER_COMPLEX128(s)
