@@ -49,8 +49,8 @@
 #define CALL_INT64(func) func(TF_INT64)
 #define CALL_UINT64(func) func(TF_UINT64)
 #else
-#define CALL_INT8(func)
-#define CALL_UINT8(func)
+#define CALL_INT64(func)
+#define CALL_UINT64(func)
 #endif
 
 #ifndef VULTEN_DISABLE_DOUBLE
