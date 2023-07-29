@@ -6,8 +6,8 @@
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_structs.hpp>
 
+#include "../assign_add_sub/Assign_add_sub_shader.h"
 #include "Vulten_backend/Vulten_backend.h"
-#include "shaders/headers/AddSubInPlace/AddSubInPlace.comp.h"
 
 #define NUM_BUFFERS 2
 
@@ -32,10 +32,11 @@ void Addn_op::run_op(Data_type dt, std::vector<Vulten_tensor> &inputs,
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(int32_t)}};
 
-    std::vector<Data_type> type_chain = {dt};
+    Generate_assign_add_sub_shader_info generate_assign_add_sub_shader_info{dt};
     vulten_pipeline = create_pipeline(
-        pipe_string, NUM_BUFFERS, AddSubInPlace_comp, type_chain.data(),
-        type_chain.size(), nullptr, push_const_ranges);
+        pipe_string, NUM_BUFFERS,
+        generate_assign_add_sub_shader(generate_assign_add_sub_shader_info),
+        nullptr, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Assign_add_sub_op pipeline " +
                      pipe_string)
