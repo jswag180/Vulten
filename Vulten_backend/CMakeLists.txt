@@ -81,7 +81,10 @@ find_package(Vulkan REQUIRED)
 
 link_directories(${Vulkan_LIBRARIES})
 
-target_link_libraries(Vulten_backend Vulkan::Vulkan shaderc_shared)
+find_library(GLSLANG NAMES libglslang.a glslang)
+find_library(SPIRV NAMES libSPIRV.a SPIRV)
+
+target_link_libraries(Vulten_backend Vulkan::Vulkan shaderc_combined ${GLSLANG} MachineIndependent OSDependent OGLCompiler GenericCodeGen ${SPIRV} SPIRV-Tools-opt SPIRV-Tools)
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${Vulkan_INCLUDE_DIRS})
