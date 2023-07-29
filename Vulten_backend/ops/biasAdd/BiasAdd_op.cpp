@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "shaders/headers/BiasAdd/BiasAdd.comp.h"
+#include "BiasAdd_shader.h"
 
 #define NUM_BUFFERS 3
 #define NUM_SETS 1
@@ -41,10 +41,11 @@ void BiasAdd_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor bias,
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t)}};
 
-    std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline = create_pipeline(pipe_string, NUM_BUFFERS, BiasAdd_comp,
-                                      type_chain.data(), type_chain.size(),
-                                      &spec_info, push_const_ranges);
+    Generate_biasAdd_shader_info generate_biasAdd_shader_info{dt};
+    vulten_pipeline =
+        create_pipeline(pipe_string, NUM_BUFFERS,
+                        generate_biasAdd_shader(generate_biasAdd_shader_info),
+                        &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::BiasAdd_op pipeline " +
                      pipe_string)

@@ -16,9 +16,6 @@ add_custom_target( prelude
 add_custom_target( cast
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/Cast.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/
 )
-add_custom_target( biasAdd
-    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/BiasAdd.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
-)
 add_custom_target( conv2d
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/conv2d.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/conv2dOld.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
@@ -57,7 +54,7 @@ add_custom_target(sqrt
 
 add_library(Vulten_backend STATIC ${SOURCES} ${OPS})
 
-add_dependencies(Vulten_backend prelude cast biasAdd conv2d transpose matMul pow relu applyAdam softmax biasAddGrad sum sqrt)
+add_dependencies(Vulten_backend prelude cast conv2d transpose matMul pow relu applyAdam softmax biasAddGrad sum sqrt)
 
 if(VULTEN_LOG_LEVEL EQUAL "0")
     message("-- Vulten log level: 0")

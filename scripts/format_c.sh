@@ -8,3 +8,4 @@ clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/relu/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/assign_add_sub/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/addn/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/basic/*
+clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/biasAdd/*
