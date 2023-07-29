@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(VULTEN_LOG_LEVEL "0" CACHE STRING "Vulten log level")
 
 file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/*.cpp)
-file(GLOB OPS ${PROJECT_SOURCE_DIR}/ops/*.cpp)
+file(GLOB_RECURSE OPS ${PROJECT_SOURCE_DIR}/ops/*.cpp)
 
 add_custom_target( prelude
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/prelude.h -o ${CMAKE_SOURCE_DIR}/shaders/headers/
@@ -41,7 +41,6 @@ add_custom_target( pow
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/Pow.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
 )
 add_custom_target( relu
-    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/Relu.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/ReluGrad.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
 )
 add_custom_target( applyAdam

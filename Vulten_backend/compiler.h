@@ -1,7 +1,8 @@
 #pragma once
 
-#include <shaderc/shaderc.hpp>
 #include <stdint.h>
+
+#include <shaderc/shaderc.hpp>
 #include <vector>
 
 namespace shader_wizard {

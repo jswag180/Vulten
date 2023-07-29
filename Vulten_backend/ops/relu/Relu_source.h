@@ -1,6 +1,7 @@
-//#/types, 1
+#pragma once
+
+const char* relu_source = R"(
 #version 450
-#extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
 
 #include "prelude.h"
@@ -17,3 +18,4 @@ void main() {
         outData[gl_GlobalInvocationID.x] = TYPE_0(0);
     }
 }
+)";

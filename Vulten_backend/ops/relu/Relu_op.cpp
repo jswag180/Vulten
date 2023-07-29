@@ -1,6 +1,6 @@
 #include "Relu_op.h"
 
-#include "shaders/headers/Relu/Relu.comp.h"
+#include "Relu_shader.h"
 
 namespace vulten_ops {
 
@@ -17,9 +17,9 @@ void Relu_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
 
   if (!is_pipeline_cached(pipe_string)) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Relu_op pipeline " + pipe_string)
-    std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline = create_pipeline(pipe_string, 2, Relu_comp,
-                                      type_chain.data(), type_chain.size());
+    Generate_relu_shader_info generate_relu_shader_info{dt};
+    vulten_pipeline = create_pipeline(
+        pipe_string, 2, generate_relu_shader(generate_relu_shader_info));
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Relu_op pipeline " + pipe_string)
     vulten_pipeline = pipelines[pipe_string];
