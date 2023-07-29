@@ -1,4 +1,6 @@
-//#/types, 1
+#pragma once
+
+const char* basic_source = R"(
 #version 450
 
 #extension GL_ARB_separate_shader_objects : enable
@@ -100,3 +102,4 @@ void main(){
     }
 
 }
+)";

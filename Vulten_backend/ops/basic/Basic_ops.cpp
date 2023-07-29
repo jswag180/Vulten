@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "../../shaders/headers/BasicOps/BasicOps.comp.h"
+#include "Basic_shader.h"
 #include "Vulten_backend/Vulten_backend.h"
 #include "Vulten_backend/Vulten_utills.h"
 
@@ -68,10 +68,11 @@ void Basic_op::run_op(Data_type dt, uint32_t op, Vulten_tensor x,
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t) * 3},
     };
 
-    std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline = create_pipeline(
-        basic_pipe_string, NUM_BUFFERS, BasicOps_comp, type_chain.data(),
-        type_chain.size(), &spec_info, push_const_ranges);
+    Generate_basic_shader_info generate_basic_shader_info{dt};
+    vulten_pipeline =
+        create_pipeline(basic_pipe_string, NUM_BUFFERS,
+                        generate_basic_shader(generate_basic_shader_info),
+                        &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Basic_op<" +
                      Data_type_to_str(dt) + ", " + op_as_str(op) + "> " +
