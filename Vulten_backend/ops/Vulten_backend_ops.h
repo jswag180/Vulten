@@ -94,6 +94,10 @@ class Vulten_op {
       Data_type *type_chain, uint32_t type_chain_size,
       vk::SpecializationInfo *spec_info = {},
       std::vector<vk::PushConstantRange> push_ranges = {});
+  virtual Vulten_pipeline *create_pipeline(
+      std::string pipe_string, uint32_t num_buffers,
+      std::vector<uint32_t> shader_spv, vk::SpecializationInfo *spec_info = {},
+      std::vector<vk::PushConstantRange> push_ranges = {});
 
   Vulten_op(vulten_backend::Instance *inst);
   ~Vulten_op();

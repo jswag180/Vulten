@@ -218,6 +218,15 @@ Vulten_pipeline* Vulten_op::create_pipeline(
   return pipelines[pipe_string];
 }
 
+Vulten_pipeline* Vulten_op::create_pipeline(
+    std::string pipe_string, uint32_t num_buffers,
+    std::vector<uint32_t> shader_spv, vk::SpecializationInfo* spec_info,
+    std::vector<vk::PushConstantRange> push_ranges) {
+  pipelines[pipe_string] = new Vulten_pipeline(*inst, num_buffers, shader_spv,
+                                               spec_info, push_ranges);
+  return pipelines[pipe_string];
+}
+
 Vulten_op::~Vulten_op() {
   for (auto pipe : pipelines) {
     delete pipe.second;
