@@ -1,6 +1,6 @@
 #include "Assign_add_sub_op.h"
 
-#include "shaders/headers/AddSubInPlace/AddSubInPlace.comp.h"
+#include "Assign_add_sub_shader.h"
 
 namespace vulten_ops {
 
@@ -30,10 +30,11 @@ void Assign_add_sub_op::run_op(Data_type dt, Vulten_tensor input,
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(int32_t)}};
 
-    std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline =
-        create_pipeline(pipe_string, 2, AddSubInPlace_comp, type_chain.data(),
-                        type_chain.size(), nullptr, push_const_ranges);
+    Generate_assign_add_sub_shader_info generate_assign_add_sub_shader_info{dt};
+    vulten_pipeline = create_pipeline(
+        pipe_string, 2,
+        generate_assign_add_sub_shader(generate_assign_add_sub_shader_info),
+        nullptr, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Assign_add_sub_op pipeline " +
                      pipe_string)
