@@ -1,6 +1,6 @@
 #include "Cast_op.h"
 
-#include "../../shaders/headers/Cast/Cast.comp.h"
+#include "Cast_shader.h"
 
 namespace vulten_ops {
 
@@ -21,9 +21,9 @@ void Cast_op::run_op(Data_type src, Data_type dst, Vulten_tensor input,
   if (!is_pipeline_cached(pipe_string)) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Cast_op pipeline " + pipe_string)
 
-    std::vector<Data_type> type_chain = {src, dst};
-    vulten_pipeline = create_pipeline(pipe_string, 2, Cast_comp,
-                                      type_chain.data(), type_chain.size());
+    Generate_cast_shader_info generate_cast_shader_info{src, dst};
+    vulten_pipeline = create_pipeline(
+        pipe_string, 2, generate_cast_shader(generate_cast_shader_info));
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Cast_op pipeline " + pipe_string)
     vulten_pipeline = pipelines[pipe_string];

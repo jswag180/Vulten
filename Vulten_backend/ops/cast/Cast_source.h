@@ -1,4 +1,6 @@
-//#/types, 2
+#pragma once
+
+const char* cast_source = R"(
 #version 450
 
 #extension GL_ARB_separate_shader_objects : enable
@@ -31,3 +33,4 @@ void main(){
     outData[gl_GlobalInvocationID.x] = TYPE_1(inData[gl_GlobalInvocationID.x]);
     #endif
 }
+)";
