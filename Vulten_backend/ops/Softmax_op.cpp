@@ -5,8 +5,8 @@
 #include <vulkan/vulkan_handles.hpp>
 
 #include "Vulten_backend/ops/Vulten_backend_ops.h"
+#include "exp/Exp_shader.h"
 #include "shaders/headers/BatchAdd/BatchAdd.comp.h"
-#include "shaders/headers/Exp/Exp.comp.h"
 #include "shaders/headers/Softmax/Softmax.comp.h"
 
 #define NUM_BUFFERS_BATCHADD 2
@@ -40,9 +40,10 @@ Softmax_op::Softmax_op(vulten_backend::Instance* inst)
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
 
-    std::vector<Data_type> type_chain = {dt};
-    return create_pipeline(pipe_string, NUM_BUFFERS_EXP, Exp_comp,
-                           type_chain.data(), type_chain.size(), &spec_info);
+    Generate_exp_shader_info generate_exp_shader_info{dt};
+    return create_pipeline(pipe_string, NUM_BUFFERS_EXP,
+                           generate_exp_shader(generate_exp_shader_info),
+                           &spec_info);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Softmax_op pipeline " +
                      pipe_string)

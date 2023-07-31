@@ -1,4 +1,6 @@
-//#/types, 1
+#pragma once
+
+const char* exp_source = R"(
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
@@ -13,3 +15,4 @@ layout(set = 0, binding = 1) buffer b { writeonly TYPE_0 outData[]; };
 void main(){
     outData[gl_GlobalInvocationID.x] = exp(inData[gl_GlobalInvocationID.x]);
 }
+)";

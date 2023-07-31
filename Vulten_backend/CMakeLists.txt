@@ -36,7 +36,6 @@ add_custom_target( applyAdam
 )
 add_custom_target(softmax
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/Softmax.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  #float
-    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/Exp.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  #float #int64,int8,double does not have exp...
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/BatchAdd.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  #float
 )
 add_custom_target(biasAddGrad

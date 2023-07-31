@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "shaders/headers/Exp/Exp.comp.h"
+#include "Exp_shader.h"
 
 #define NUM_BUFFERS 2
 #define NUM_SETS 1
@@ -36,10 +36,10 @@ void Exp_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
 
-    std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline =
-        create_pipeline(pipe_string, NUM_BUFFERS, Exp_comp, type_chain.data(),
-                        type_chain.size(), &spec_info);
+    Generate_exp_shader_info generate_exp_shader_info{dt};
+    vulten_pipeline = create_pipeline(
+        pipe_string, NUM_BUFFERS, generate_exp_shader(generate_exp_shader_info),
+        &spec_info);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Exp_op pipeline " + pipe_string)
     vulten_pipeline = pipelines[pipe_string];

@@ -10,3 +10,4 @@ clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/addn/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/basic/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/biasAdd/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/cast/*
+clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/exp/*
