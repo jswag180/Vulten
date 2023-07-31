@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include "Vulten_backend/ops/Pow_op.h"
+#include "Vulten_backend/ops/pow/Pow_op.h"
 #include "absl/container/inlined_vector.h"
 #include "scope_timer.h"
 #include "tensor_utills.h"

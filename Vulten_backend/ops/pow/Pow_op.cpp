@@ -3,7 +3,7 @@
 #include <cmath>
 #include <vulkan/vulkan_enums.hpp>
 
-#include "shaders/headers/Pow/Pow.comp.h"
+#include "Pow_shader.h"
 
 #define NUM_BUFFERS 3
 #define NUM_SETS 1
@@ -41,10 +41,10 @@ void Pow_op::run_op(Data_type dt, uint32_t scalar, Vulten_tensor x,
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t)}};
 
-    std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline =
-        create_pipeline(pipe_string, NUM_BUFFERS, Pow_comp, type_chain.data(),
-                        type_chain.size(), &spec_info, push_const_ranges);
+    Generate_pow_shader_info generate_pow_shader_info{dt};
+    vulten_pipeline = create_pipeline(
+        pipe_string, NUM_BUFFERS, generate_pow_shader(generate_pow_shader_info),
+        &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Pow_op pipeline " + pipe_string)
     vulten_pipeline = pipelines[pipe_string];

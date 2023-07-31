@@ -1,4 +1,6 @@
-//#/types, 1
+#pragma once
+
+const char* pow_source = R"(
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
@@ -40,3 +42,4 @@ void main(){
         power(x[gl_GlobalInvocationID.x], y[gl_GlobalInvocationID.x], outData[gl_GlobalInvocationID.x]);
     }
 }
+)";
