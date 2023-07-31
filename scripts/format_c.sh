@@ -11,3 +11,5 @@ clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/basic/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/biasAdd/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/cast/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/exp/*
+clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/matMul/*
+clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/transpose/*

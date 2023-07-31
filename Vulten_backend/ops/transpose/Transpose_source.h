@@ -1,4 +1,6 @@
-//#/types, 1
+#pragma once
+
+const char* transpose_source = R"(
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
@@ -19,3 +21,4 @@ void main(){
     uint j = gl_GlobalInvocationID.x % push_const.hight;
     outData[gl_GlobalInvocationID.x] = inData[push_const.width * j + i];
 }
+)";

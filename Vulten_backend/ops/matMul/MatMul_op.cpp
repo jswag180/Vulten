@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include "../../shaders/headers/MatMul/MatMul.comp.h"
-#include "../../shaders/headers/Transpose/Transpose.comp.h"
+#include "../transpose/Transpose_shader.h"
+#include "MatMul_shader.h"
 
 namespace vulten_ops {
 
@@ -29,10 +29,11 @@ void MatMul_op::run_op(Data_type dt, Vulten_tensor a, bool trans_a,
           {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t) * 2},
       };
 
-      std::vector<Data_type> type_chain = {dt};
+      Generate_transpose_shader_info generate_transpose_shader_info{dt};
       transpose_pipeline = create_pipeline(
-          transpose_pipe_string, 2, Transpose_comp, type_chain.data(),
-          type_chain.size(), nullptr, push_const_ranges);
+          transpose_pipe_string, 2,
+          generate_transpose_shader(generate_transpose_shader_info), nullptr,
+          push_const_ranges);
     } else {
       VULTEN_LOG_DEBUG("Using cached vulten_ops::MatMul_op pipeline " +
                        transpose_pipe_string)
@@ -49,10 +50,11 @@ void MatMul_op::run_op(Data_type dt, Vulten_tensor a, bool trans_a,
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t) * 2}};
 
-    std::vector<Data_type> type_chain = {dt};
+    Generate_matMul_shader_info generate_matMul_shader_info{dt};
     matmul_pipeline =
-        create_pipeline(matmul_pipe_string, 3, MatMul_comp, type_chain.data(),
-                        type_chain.size(), nullptr, push_const_ranges);
+        create_pipeline(matmul_pipe_string, 3,
+                        generate_matMul_shader(generate_matMul_shader_info),
+                        nullptr, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::MatMul_op pipeline " +
                      matmul_pipe_string)

@@ -19,12 +19,6 @@ add_custom_target( conv2d
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/im2colSame.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/im2colValid.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
 )
-add_custom_target( transpose
-    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/Transpose.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
-)
-add_custom_target( matMul
-    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/MatMul.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
-)
 add_custom_target( pow
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/Pow.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
 )
@@ -50,7 +44,7 @@ add_custom_target(sqrt
 
 add_library(Vulten_backend STATIC ${SOURCES} ${OPS})
 
-add_dependencies(Vulten_backend prelude conv2d transpose matMul pow relu applyAdam softmax biasAddGrad sum sqrt)
+add_dependencies(Vulten_backend prelude conv2d pow relu applyAdam softmax biasAddGrad sum sqrt)
 
 if(VULTEN_LOG_LEVEL EQUAL "0")
     message("-- Vulten log level: 0")
