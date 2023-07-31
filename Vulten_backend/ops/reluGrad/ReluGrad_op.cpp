@@ -1,6 +1,6 @@
 #include "ReluGrad_op.h"
 
-#include "shaders/headers/ReluGrad/ReluGrad.comp.h"
+#include "ReluGrad_shader.h"
 
 #define NUM_BUFFERS 3
 #define NUM_SETS 1
@@ -22,9 +22,10 @@ void ReluGrad_op::run_op(Data_type dt, Vulten_tensor gradients,
 
   if (!is_pipeline_cached(pipe_string)) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::ReluGrad_op pipeline " + pipe_string)
-    std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline = create_pipeline(pipe_string, NUM_BUFFERS, ReluGrad_comp,
-                                      type_chain.data(), type_chain.size());
+    Generate_reluGrad_shader_info generate_reluGrad_shader_info{dt};
+    vulten_pipeline = create_pipeline(
+        pipe_string, NUM_BUFFERS,
+        generate_reluGrad_shader(generate_reluGrad_shader_info));
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::ReluGrad_op pipeline " +
                      pipe_string)

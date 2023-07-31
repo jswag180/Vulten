@@ -19,9 +19,6 @@ add_custom_target( conv2d
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/im2colSame.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/im2colValid.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
 )
-add_custom_target( relu
-    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/ReluGrad.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  
-)
 add_custom_target( applyAdam
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/ApplyAdam.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/  #float,int,uint #extended types do not have pow...
 )
@@ -41,7 +38,7 @@ add_custom_target(sqrt
 
 add_library(Vulten_backend STATIC ${SOURCES} ${OPS})
 
-add_dependencies(Vulten_backend prelude conv2d relu applyAdam softmax biasAddGrad sum sqrt)
+add_dependencies(Vulten_backend prelude conv2d applyAdam softmax biasAddGrad sum sqrt)
 
 if(VULTEN_LOG_LEVEL EQUAL "0")
     message("-- Vulten log level: 0")
