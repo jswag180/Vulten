@@ -1,4 +1,6 @@
-//#/types, 1
+#pragma once
+
+const char* batchAdd_source = R"(
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
@@ -23,3 +25,4 @@ void main(){
     }
     outData[gl_GlobalInvocationID.x] = temp;
 }
+)";

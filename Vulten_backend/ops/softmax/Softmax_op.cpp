@@ -4,10 +4,10 @@
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
 
+#include "../exp/Exp_shader.h"
+#include "BatchAdd_shader.h"
+#include "Softmax_shader.h"
 #include "Vulten_backend/ops/Vulten_backend_ops.h"
-#include "exp/Exp_shader.h"
-#include "shaders/headers/BatchAdd/BatchAdd.comp.h"
-#include "shaders/headers/Softmax/Softmax.comp.h"
 
 #define NUM_BUFFERS_BATCHADD 2
 #define NUM_BUFFERS_EXP 2
@@ -73,10 +73,11 @@ vulten_ops::Vulten_pipeline* Softmax_op::get_batchAdd_pipeline(Data_type dt) {
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t)}};
 
-    std::vector<Data_type> type_chain = {dt};
-    return create_pipeline(pipe_string, NUM_BUFFERS_BATCHADD, BatchAdd_comp,
-                           type_chain.data(), type_chain.size(), &spec_info,
-                           push_const_ranges);
+    Generate_batchAdd_shader_info generate_batchAdd_shader_info{dt};
+    return create_pipeline(
+        pipe_string, NUM_BUFFERS_BATCHADD,
+        generate_batchAdd_shader(generate_batchAdd_shader_info), &spec_info,
+        push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Softmax_op pipeline " +
                      pipe_string)
@@ -106,10 +107,11 @@ vulten_ops::Vulten_pipeline* Softmax_op::get_softmax_pipeline(Data_type dt) {
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t)}};
 
-    std::vector<Data_type> type_chain = {dt};
-    return create_pipeline(pipe_string, NUM_BUFFERS_SOFTMAX, Softmax_comp,
-                           type_chain.data(), type_chain.size(), &spec_info,
-                           push_const_ranges);
+    Generate_softmax_shader_info generate_softmax_shader_info{dt};
+    return create_pipeline(
+        pipe_string, NUM_BUFFERS_SOFTMAX,
+        generate_softmax_shader(generate_softmax_shader_info), &spec_info,
+        push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Softmax_op pipeline " +
                      pipe_string)

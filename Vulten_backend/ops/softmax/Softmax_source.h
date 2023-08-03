@@ -1,4 +1,6 @@
-//#/types, 1
+#pragma once
+
+const char* softmax_source = R"(
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
@@ -19,3 +21,4 @@ layout(push_constant) uniform PushConstants {
 void main(){
     outData[gl_GlobalInvocationID.x] = inData[gl_GlobalInvocationID.x] / logitSums[uint(floor(float(gl_GlobalInvocationID.x) / float(push_const.numLogits)))];
 }
+)";
