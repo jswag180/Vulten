@@ -15,3 +15,4 @@ clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/matMul/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/transpose/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/pow/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/reluGrad/*
+clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/resource_apply_adam/*

@@ -1,6 +1,6 @@
 #include "Resource_apply_adam_op.h"
 
-#include "shaders/headers/ApplyAdam/ApplyAdam.comp.h"
+#include "Resource_apply_adam_shader.h"
 
 namespace vulten_ops {
 
@@ -39,10 +39,13 @@ void Resource_apply_adam_op::run_op(Data_type dt, Vulten_tensor var,
     vk::SpecializationInfo spec_info(1, specs.data(), sizeof(spec_data),
                                      &spec_data);
 
-    std::vector<Data_type> type_chain = {dt};
+    Generate_resource_apply_adam_shader_info
+        generate_resource_apply_adam_shader_info{dt};
     vulten_pipeline =
-        create_pipeline(pipe_string, 10, ApplyAdam_comp, type_chain.data(),
-                        type_chain.size(), &spec_info);
+        create_pipeline(pipe_string, 10,
+                        generate_resource_apply_adam_shader(
+                            generate_resource_apply_adam_shader_info),
+                        &spec_info);
   } else {
     VULTEN_LOG_DEBUG(
         "Using cached vulten_ops::Resource_apply_adam_op pipeline " +
