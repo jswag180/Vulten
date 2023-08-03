@@ -1,7 +1,7 @@
 #include "Sum_op.h"
 
+#include "Sum_shader.h"
 #include "Vulten_backend/Vulten_utills.h"
-#include "shaders/headers/Sum/Sum.comp.h"
 
 #define NUM_BUFFERS 2
 
@@ -42,10 +42,10 @@ void Sum_op::run_op(Data_type dt, Vulten_tensor input,
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t) * 3}};
 
-    std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline =
-        create_pipeline(pipe_string, NUM_BUFFERS, Sum_comp, type_chain.data(),
-                        type_chain.size(), &spec_info, push_const_ranges);
+    Generate_sum_shader_info generate_sum_shader_info{dt};
+    vulten_pipeline = create_pipeline(
+        pipe_string, NUM_BUFFERS, generate_sum_shader(generate_sum_shader_info),
+        &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Sum_op pipeline " + pipe_string)
     vulten_pipeline = pipelines[pipe_string];
