@@ -3,9 +3,6 @@
 #include <filesystem>
 #include <fstream>
 
-#include "shaderc/shaderc.hpp"
-#include "shaders/headers/prelude/prelude.h.h"
-
 namespace vulten_ops {
 
 std::string Data_type_to_str(Data_type dt) {
@@ -123,75 +120,6 @@ Vulten_pipeline::~Vulten_pipeline() {
   inst->logical_dev.destroyPipeline(pipeline);
 }
 
-class Includer : shaderc::CompileOptions::IncluderInterface {
-  shaderc_include_result* GetInclude(const char* requested_source,
-                                     shaderc_include_type type,
-                                     const char* requesting_source,
-                                     size_t include_depth) {
-    shaderc_include_result* include_result = new shaderc_include_result();
-
-    if (std::string(requested_source) == "prelude.h") {
-      include_result->source_name = "prelude.h";
-      include_result->source_name_length = strlen(include_result->source_name);
-
-      include_result->content = prelude_h;
-      include_result->content_length = strlen(prelude_h);
-    }
-
-    return include_result;
-  }
-
-  void ReleaseInclude(shaderc_include_result* data) { delete data; }
-};
-
-std::vector<uint32_t> compile_shader(const char* name, const char* source,
-                                     Data_type* type_chain,
-                                     uint32_t type_chain_size) {
-  shaderc::Compiler compiler;
-  shaderc::CompileOptions options;
-
-  for (uint32_t i = 0; i < type_chain_size; i++) {
-    options.AddMacroDefinition("TYPE_" + std::to_string(i),
-                               Data_type_to_str(type_chain[i]));
-    options.AddMacroDefinition("TYPE_NUM_" + std::to_string(i),
-                               std::to_string(uint32_t(type_chain[i])));
-  }
-
-  options.SetOptimizationLevel(shaderc_optimization_level_performance);
-  options.SetTargetEnvironment(shaderc_target_env_vulkan,
-                               shaderc_env_version_vulkan_1_2);
-  options.SetSourceLanguage(shaderc_source_language_glsl);
-  options.SetIncluder(
-      std::unique_ptr<shaderc::CompileOptions::IncluderInterface>(
-          (shaderc::CompileOptions::IncluderInterface*)new Includer()));
-
-  shaderc::SpvCompilationResult module =
-      compiler.CompileGlslToSpv(source, shaderc_compute_shader, name, options);
-
-  if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
-    std::cerr << "Shader compile error:\n";
-    std::cerr << module.GetErrorMessage();
-    exit(-1);
-  }
-
-  if (std::getenv("VULTEN_DUMP_SPV") != nullptr) {
-    if (std::string(std::getenv("VULTEN_DUMP_SPV")) == "1") {
-      std::filesystem::path cwd =
-          std::filesystem::current_path() / (std::string(name) + ".spv");
-
-      std::vector<uint32_t> result_vec =
-          std::vector<uint32_t>{module.begin(), module.end()};
-
-      std::ofstream file(cwd.string());
-      file.write(reinterpret_cast<char*>(result_vec.data()),
-                 sizeof(uint32_t) * result_vec.size());
-      file.close();
-    }
-  }
-
-  return {module.begin(), module.end()};
-}
-
 bool Vulten_op::is_pipeline_cached(std::string pipe_string) {
   if (pipelines.find(pipe_string) == pipelines.end()) return false;
   return true;
@@ -203,19 +131,6 @@ Vulten_op::Vulten_op(vulten_backend::Instance* inst) : inst(inst) {
 
 void Vulten_op::run_op() {
   //
-}
-
-Vulten_pipeline* Vulten_op::create_pipeline(
-    std::string pipe_string, uint32_t num_buffers, const char* shader_source,
-    Data_type* type_chain, uint32_t type_chain_size,
-    vk::SpecializationInfo* spec_info,
-    std::vector<vk::PushConstantRange> push_ranges) {
-  auto compiled_shader = compile_shader(pipe_string.c_str(), shader_source,
-                                        type_chain, type_chain_size);
-
-  pipelines[pipe_string] = new Vulten_pipeline(
-      *inst, num_buffers, compiled_shader, spec_info, push_ranges);
-  return pipelines[pipe_string];
 }
 
 Vulten_pipeline* Vulten_op::create_pipeline(
