@@ -25,13 +25,10 @@ add_custom_target(biasAddGrad
 add_custom_target(sum
     COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/Sum.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/
 )
-add_custom_target(sqrt
-    COMMAND ${CMAKE_SOURCE_DIR}/venv/bin/python3 ${CMAKE_SOURCE_DIR}/scripts/to_header.py -s ${CMAKE_SOURCE_DIR}/shaders/Sqrt.comp -o ${CMAKE_SOURCE_DIR}/shaders/headers/
-)
 
 add_library(Vulten_backend STATIC ${SOURCES} ${OPS})
 
-add_dependencies(Vulten_backend prelude conv2d biasAddGrad sum sqrt)
+add_dependencies(Vulten_backend prelude conv2d biasAddGrad sum)
 
 if(VULTEN_LOG_LEVEL EQUAL "0")
     message("-- Vulten log level: 0")

@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "shaders/headers/Sqrt/Sqrt.comp.h"
+#include "Sqrt_shader.h"
 
 #define NUM_BUFFERS 2
 #define NUM_SETS 1
@@ -36,10 +36,10 @@ void Sqrt_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
 
-    std::vector<Data_type> type_chain = {dt};
-    vulten_pipeline =
-        create_pipeline(pipe_string, NUM_BUFFERS, Sqrt_comp, type_chain.data(),
-                        type_chain.size(), &spec_info);
+    Generate_sqrt_shader_info generate_sqrt_shader_info{dt};
+    vulten_pipeline = create_pipeline(
+        pipe_string, NUM_BUFFERS,
+        generate_sqrt_shader(generate_sqrt_shader_info), &spec_info);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Sqrt_op pipeline " + pipe_string)
     vulten_pipeline = pipelines[pipe_string];
