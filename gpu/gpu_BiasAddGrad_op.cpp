@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "Vulten_backend/ops/sum/Sum_op.h"
+#include "Vulten_backend/ops/reduce/Reduce_op.h"
 #include "absl/container/inlined_vector.h"
 #include "scope_timer.h"
 #include "tensor_utills.h"
@@ -73,18 +73,18 @@ void BiasAddGradOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     return;
   }
 
-  vulten_ops::Sum_op* sum_op = nullptr;
-  std::string op_cache_name = "Sum";
+  vulten_ops::Reduce_op* reduce_op = nullptr;
+  std::string op_cache_name = "Reduce";
   inst->main_queue_mutex.lock();
   if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
     inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Sum_op(inst);
+        (vulten_ops::Vulten_op*)new vulten_ops::Reduce_op(inst);
   }
-  sum_op = (vulten_ops::Sum_op*)inst->op_chache[op_cache_name];
+  reduce_op = (vulten_ops::Reduce_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
-  sum_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor, axis_vec,
-                 output.vulten_tensor);
+  reduce_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor, axis_vec,
+                    output.vulten_tensor, OP_SUM);
 }
 
 template <TF_DataType T>

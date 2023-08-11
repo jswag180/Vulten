@@ -1,4 +1,4 @@
-#include "Vulten_backend/ops/sum/Sum_op.h"
+#include "Vulten_backend/ops/reduce/Reduce_op.h"
 #include "absl/container/inlined_vector.h"
 #include "scope_timer.h"
 #include "tensor_utills.h"
@@ -8,13 +8,13 @@
 #include "tensorflow/c/tf_status.h"
 #include "vulten_device.h"
 
-struct SumOp {
-  SumOp() : keep_dims_(false) {}
+struct ReduceOp {
+  ReduceOp() : keep_dims_(false) {}
   bool keep_dims_;
 };
 
-void* SumOp_Create(TF_OpKernelConstruction* ctx) {
-  auto kernel = new SumOp();
+void* ReduceOp_Create(TF_OpKernelConstruction* ctx) {
+  auto kernel = new ReduceOp();
 
   StatusSafePtr status(TF_NewStatus());
 
@@ -24,27 +24,27 @@ void* SumOp_Create(TF_OpKernelConstruction* ctx) {
   return kernel;
 }
 
-void SumOp_Delete(void* kernel) {
+void ReduceOp_Delete(void* kernel) {
   if (kernel != nullptr) {
-    delete static_cast<SumOp*>(kernel);
+    delete static_cast<ReduceOp*>(kernel);
   }
 }
 
-template <TF_DataType T>
-void SumOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
-  SCOPE_TIMER("SumOp")
+template <TF_DataType T, uint32_t OP>
+void ReduceOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
+  SCOPE_TIMER("ReduceOp")
 
   StatusSafePtr status(TF_NewStatus());
 
-  SumOp* sumOp_info = static_cast<SumOp*>(kernel);
+  ReduceOp* reduceOp_info = static_cast<ReduceOp*>(kernel);
 
   tensor_utills::Input_tensor input =
-      tensor_utills::get_input_tensor("SumOp:input", 0, ctx, status.get());
+      tensor_utills::get_input_tensor("ReduceOp:input", 0, ctx, status.get());
 
   if (input.is_empty) {
     absl::InlinedVector<int64_t, 4> out_dims(0);
     tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
-        "SumOp:output", 0, out_dims, ctx, status.get());
+        "ReduceOp:output", 0, out_dims, ctx, status.get());
 
     SP_Stream stream = TF_GetStream(ctx, status.get());
     vulten_backend::Instance* inst = stream->instance;
@@ -53,7 +53,7 @@ void SumOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   }
   if (input.is_scalar) {
     tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
-        "SumOp:output", 0, input.dims, ctx, status.get());
+        "ReduceOp:output", 0, input.dims, ctx, status.get());
 
     SP_Stream stream = TF_GetStream(ctx, status.get());
     vulten_backend::Instance* inst = stream->instance;
@@ -61,8 +61,8 @@ void SumOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     return;
   }
 
-  tensor_utills::Input_host_tensor axis =
-      tensor_utills::get_input_host_tensor("SumOp:axis", 1, ctx, status.get());
+  tensor_utills::Input_host_tensor axis = tensor_utills::get_input_host_tensor(
+      "ReduceOp:axis", 1, ctx, status.get());
 
   if (axis.is_scalar) {
     axis.dims.resize(1, 1);
@@ -82,7 +82,7 @@ void SumOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
       }
       break;
     default:
-      std::cerr << "Error invalid axis tensor proved to SumOp\n";
+      std::cerr << "Error invalid axis tensor proved to ReduceOp\n";
       exit(-1);
   }
 
@@ -109,7 +109,7 @@ void SumOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   absl::InlinedVector<int64_t, 4> out_dims = input.dims;
   if (axis_vec.size() != 0) {
-    if (sumOp_info->keep_dims_) {
+    if (reduceOp_info->keep_dims_) {
       for (uint32_t i = 0; i < axis_vec.size(); i++) {
         out_dims[axis_vec[i]] = 1;
       }
@@ -121,7 +121,7 @@ void SumOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   }
 
   tensor_utills::Output_tensor output = tensor_utills::make_output_tensor(
-      "SumOp:output", 0, out_dims, ctx, status.get());
+      "ReduceOp:output", 0, out_dims, ctx, status.get());
 
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
@@ -131,40 +131,47 @@ void SumOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     return;
   }
 
-  vulten_ops::Sum_op* sum_op = nullptr;
-  std::string op_cache_name = "Sum";
+  vulten_ops::Reduce_op* reduce_op = nullptr;
+  std::string op_cache_name = "Reduce";
   inst->main_queue_mutex.lock();
   if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
     inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Sum_op(inst);
+        (vulten_ops::Vulten_op*)new vulten_ops::Reduce_op(inst);
   }
-  sum_op = (vulten_ops::Sum_op*)inst->op_chache[op_cache_name];
+  reduce_op = (vulten_ops::Reduce_op*)inst->op_chache[op_cache_name];
   inst->main_queue_mutex.unlock();
 
   std::reverse(axis_vec.begin(), axis_vec.end());
 
-  sum_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor, axis_vec,
-                 output.vulten_tensor);
+  reduce_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor, axis_vec,
+                    output.vulten_tensor, OP);
 }
 
-template <TF_DataType T>
-void RegisterSumOpKernel(const char* device_type) {
+template <TF_DataType T, uint32_t OP>
+void RegisterReduceOpKernel(const char* device_type) {
+  std::string op = vulten_ops::Reduce_op::op_as_str(OP);
+
   StatusSafePtr status(TF_NewStatus());
-  auto* builder = TF_NewKernelBuilder("Sum", device_type, SumOp_Create,
-                                      &SumOp_Compute<T>, &SumOp_Delete);
+  auto* builder =
+      TF_NewKernelBuilder(op.c_str(), device_type, ReduceOp_Create,
+                          &ReduceOp_Compute<T, OP>, &ReduceOp_Delete);
   TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
-    std::cout << " Error while registering Sum kernel with attribute T";
+    std::cout << " Error while registering Reduce kernel with attribute T";
 
   TF_KernelBuilder_HostMemory(builder, "reduction_indices");
 
-  TF_RegisterKernelBuilder("Sum", builder, status.get());
+  TF_RegisterKernelBuilder(op.c_str(), builder, status.get());
   if (TF_OK != TF_GetCode(status.get()))
-    std::cout << " Error while registering Sum kernel";
+    std::cout << " Error while registering Reduce kernel";
 }
 
-void RegisterDeviceSum(const char* device_type) {
-#define REGISTER_KERNEL(T) RegisterSumOpKernel<T>(device_type);
+void RegisterDeviceReduce(const char* device_type) {
+#define REGISTER_SUM_KERNEL(T) RegisterReduceOpKernel<T, OP_SUM>(device_type);
+#define REGISTER_MAX_MIN_KERNEL(T)                \
+  RegisterReduceOpKernel<T, OP_MAX>(device_type); \
+  RegisterReduceOpKernel<T, OP_MIN>(device_type);
 
-  CALL_ALL_TYPES(REGISTER_KERNEL)
+  CALL_ALL_TYPES(REGISTER_SUM_KERNEL)
+  CALL_ALL_BASIC_TYPES(REGISTER_MAX_MIN_KERNEL)
 }

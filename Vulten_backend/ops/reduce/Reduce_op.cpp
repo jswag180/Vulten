@@ -1,30 +1,54 @@
-#include "Sum_op.h"
+#include "Reduce_op.h"
 
-#include "Sum_shader.h"
+#include "Reduce_shader.h"
 #include "Vulten_backend/Vulten_utills.h"
 
 #define NUM_BUFFERS 2
 
+struct Push_const {
+  uint32_t axi_size;
+  uint32_t adj_stride;
+  uint32_t adj_stride_adv;
+  uint32_t op;
+};
+
 namespace vulten_ops {
 
+std::string Reduce_op::op_as_str(uint32_t op) {
+  switch (op) {
+    case OP_SUM:
+      return "Sum";
+      break;
+    case OP_MAX:
+      return "Max";
+      break;
+    case OP_MIN:
+      return "Min";
+      break;
+    default:
+      return "INVALID";
+  }
+}
+
 // clang-format off
-Sum_op::Sum_op(vulten_backend::Instance *inst)
-    : Vulten_op(inst){VULTEN_LOG_DEBUG("Creating vulten_ops::Sum_op")}
+Reduce_op::Reduce_op(vulten_backend::Instance *inst)
+    : Vulten_op(inst){VULTEN_LOG_DEBUG("Creating vulten_ops::Reduce_op")}
 // clang-format on
 
-void Sum_op::run_op(Data_type dt, Vulten_tensor input,
-                    std::vector<int32_t> &axis, Vulten_tensor output) {
-  VULTEN_LOG_DEBUG("Running vulten_ops::Sum_op<" + Data_type_to_str(dt) + ">")
+void Reduce_op::run_op(Data_type dt, Vulten_tensor input,
+                       std::vector<int32_t> &axis, Vulten_tensor output,
+                       uint32_t op) {
+  VULTEN_LOG_DEBUG("Running vulten_ops::Reduce_op<" + Data_type_to_str(dt) + ">")
   inst->main_queue_mutex.lock();
 
   std::string pipe_string =
-      "Sum_" + Data_type_to_str(dt) + "_" +
+      "Reduce_" + Data_type_to_str(dt) + "_" +
       std::to_string(
           inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
   Vulten_pipeline *vulten_pipeline = nullptr;
 
   if (!is_pipeline_cached(pipe_string)) {
-    VULTEN_LOG_DEBUG("Creating vulten_ops::Sum_op pipeline " + pipe_string)
+    VULTEN_LOG_DEBUG("Creating vulten_ops::Reduce_op pipeline " + pipe_string)
 
     struct Spec {
       uint32_t localX;
@@ -40,14 +64,16 @@ void Sum_op::run_op(Data_type dt, Vulten_tensor input,
                                      &spec);
 
     const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t) * 3}};
+        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(Push_const)}};
 
-    Generate_sum_shader_info generate_sum_shader_info{dt};
-    vulten_pipeline = create_pipeline(
-        pipe_string, NUM_BUFFERS, generate_sum_shader(generate_sum_shader_info),
-        &spec_info, push_const_ranges);
+    Generate_reduce_shader_info generate_reduce_shader_info{dt};
+    vulten_pipeline =
+        create_pipeline(pipe_string, NUM_BUFFERS,
+                        generate_reduce_shader(generate_reduce_shader_info),
+                        &spec_info, push_const_ranges);
   } else {
-    VULTEN_LOG_DEBUG("Using cached vulten_ops::Sum_op pipeline " + pipe_string)
+    VULTEN_LOG_DEBUG("Using cached vulten_ops::Reduce_op pipeline " +
+                     pipe_string)
     vulten_pipeline = pipelines[pipe_string];
   }
 
@@ -158,15 +184,15 @@ void Sum_op::run_op(Data_type dt, Vulten_tensor input,
         {});                               // Dynamic offsets
 
     adj_strides = vulten_utills::calculate_adj_strides(dims);
-    uint32_t push_consts[3] = {uint32_t(dims[axis[i]]),
-                               uint32_t(adj_strides[axis[i]]),
-                               uint32_t(adj_strides[axis[i] + 1])};
+    Push_const push_const{uint32_t(dims[axis[i]]),
+                          uint32_t(adj_strides[axis[i]]),
+                          uint32_t(adj_strides[axis[i] + 1]), op};
     dims.erase(dims.begin() + axis[i]);
     cmd_buffs[i].pushConstants(vulten_pipeline->pipeline_layout,
                                vk::ShaderStageFlagBits::eCompute, 0,
-                               sizeof(uint32_t) * 3, &push_consts);
+                               sizeof(Push_const), &push_const);
 
-    total_elements /= push_consts[0];
+    total_elements /= push_const.axi_size;
     cmd_buffs[i].dispatch(
         (total_elements /
          inst->device_propertys.props.limits.maxComputeWorkGroupInvocations) +
@@ -198,15 +224,15 @@ void Sum_op::run_op(Data_type dt, Vulten_tensor input,
       {});                                      // Dynamic offsets
 
   adj_strides = vulten_utills::calculate_adj_strides(dims);
-  uint32_t push_consts[3] = {
+  Push_const push_const = {
       uint32_t(dims[axis[final_cmd_buffer_ind]]),
       uint32_t(adj_strides[axis[final_cmd_buffer_ind]]),
-      uint32_t(adj_strides[axis[final_cmd_buffer_ind] + 1])};
+      uint32_t(adj_strides[axis[final_cmd_buffer_ind] + 1]), op};
   cmd_buffs[final_cmd_buffer_ind].pushConstants(
       vulten_pipeline->pipeline_layout, vk::ShaderStageFlagBits::eCompute, 0,
-      sizeof(uint32_t) * 3, &push_consts);
+      sizeof(Push_const), &push_const);
 
-  total_elements /= push_consts[0];
+  total_elements /= push_const.axi_size;
   cmd_buffs[final_cmd_buffer_ind].dispatch(
       (total_elements /
        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations) +
@@ -240,6 +266,6 @@ void Sum_op::run_op(Data_type dt, Vulten_tensor input,
   inst->main_queue_mutex.unlock();
 }
 
-Sum_op::~Sum_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Sum_op") }
+Reduce_op::~Reduce_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Reduce_op") }
 
 }  // namespace vulten_ops

@@ -14,7 +14,7 @@ void RegisterDeviceReadVariableOp(const char* device_type);
 void RegisterDeviceMatMul(const char* device_type);
 void RegisterDeviceReluGrad(const char* device_type);
 void RegisterDeviceBiasAddGradOp(const char* device_type);
-void RegisterDeviceSum(const char* device_type);
+void RegisterDeviceReduce(const char* device_type);
 void RegisterDeviceAddn(const char* device_type);
 void RegisterDeviceExp(const char* device_type);
 void RegisterDeviceIdentity(const char* device_type);

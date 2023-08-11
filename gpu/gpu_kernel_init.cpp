@@ -21,7 +21,7 @@ void RegisterDeviceKernels(const char* device_type) {
   RegisterDeviceReadVariableOp(device_type);
   RegisterDeviceMatMul(device_type);
   RegisterDeviceBiasAddGradOp(device_type);
-  RegisterDeviceSum(device_type);
+  RegisterDeviceReduce(device_type);
   RegisterDeviceAddn(device_type);
   RegisterDeviceExp(device_type);
   RegisterDeviceIdentity(device_type);
