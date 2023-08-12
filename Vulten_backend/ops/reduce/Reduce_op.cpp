@@ -38,7 +38,8 @@ Reduce_op::Reduce_op(vulten_backend::Instance *inst)
 void Reduce_op::run_op(Data_type dt, Vulten_tensor input,
                        std::vector<int32_t> &axis, Vulten_tensor output,
                        uint32_t op) {
-  VULTEN_LOG_DEBUG("Running vulten_ops::Reduce_op<" + Data_type_to_str(dt) + ">")
+  VULTEN_LOG_DEBUG("Running vulten_ops::Reduce_op<" + Data_type_to_str(dt) +
+                   ">")
   inst->main_queue_mutex.lock();
 
   std::string pipe_string =

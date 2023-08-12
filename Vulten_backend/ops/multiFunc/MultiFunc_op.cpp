@@ -1,27 +1,49 @@
-#include "Sqrt_op.h"
+#include "MultiFunc_op.h"
 
 #include <cmath>
 
-#include "Sqrt_shader.h"
+#include "MultiFunc_shader.h"
 
 #define NUM_BUFFERS 2
 #define NUM_SETS 1
 
 namespace vulten_ops {
 
-Sqrt_op::Sqrt_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Sqrt_op")
+std::string MultiFunc_op::op_as_str(uint32_t op) {
+  switch (op) {
+    case OP_SQRT:
+      return "Sqrt";
+      break;
+    case OP_EXP:
+      return "Exp";
+      break;
+    case OP_LOG:
+      return "Log";
+      break;
+    case OP_SQUARE:
+      return "Square";
+      break;
+    default:
+      return "INVALID";
+  }
 }
 
-void Sqrt_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
-  VULTEN_LOG_DEBUG("Running vulten_ops::Sqrt_op<" + Data_type_to_str(dt) + ">")
+MultiFunc_op::MultiFunc_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
+  VULTEN_LOG_DEBUG("Creating vulten_ops::MultiFunc_op")
+}
+
+void MultiFunc_op::run_op(Data_type dt, Vulten_tensor input,
+                          Vulten_tensor output, uint32_t op) {
+  VULTEN_LOG_DEBUG("Running vulten_ops::MultiFunc_op<" + Data_type_to_str(dt) +
+                   ">")
   inst->main_queue_mutex.lock();
 
-  std::string pipe_string = "Sqrt_" + Data_type_to_str(dt);
+  std::string pipe_string = "MultiFunc_" + Data_type_to_str(dt);
   Vulten_pipeline *vulten_pipeline = nullptr;
 
   if (!is_pipeline_cached(pipe_string)) {
-    VULTEN_LOG_DEBUG("Creating vulten_ops::Sqrt_op pipeline " + pipe_string)
+    VULTEN_LOG_DEBUG("Creating vulten_ops::MultiFunc_op pipeline " +
+                     pipe_string)
 
     struct Spec {
       uint32_t localX;
@@ -36,12 +58,17 @@ void Sqrt_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
 
-    Generate_sqrt_shader_info generate_sqrt_shader_info{dt};
+    const std::vector<vk::PushConstantRange> push_const_ranges = {
+        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(multiFunc::Push_const)}};
+
+    Generate_multiFunc_shader_info generate_multiFunc_shader_info{dt};
     vulten_pipeline = create_pipeline(
         pipe_string, NUM_BUFFERS,
-        generate_sqrt_shader(generate_sqrt_shader_info), &spec_info);
+        generate_multiFunc_shader(generate_multiFunc_shader_info), &spec_info,
+        push_const_ranges);
   } else {
-    VULTEN_LOG_DEBUG("Using cached vulten_ops::Sqrt_op pipeline " + pipe_string)
+    VULTEN_LOG_DEBUG("Using cached vulten_ops::MultiFunc_op pipeline " +
+                     pipe_string)
     vulten_pipeline = pipelines[pipe_string];
   }
 
@@ -94,6 +121,10 @@ void Sqrt_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
       float(input.get_total_elements()) /
       inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
+  multiFunc::Push_const push_const{op};
+  cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
+                         vk::ShaderStageFlagBits::eCompute, 0,
+                         sizeof(multiFunc::Push_const), &push_const);
   cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
@@ -116,6 +147,8 @@ void Sqrt_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output) {
   inst->main_queue_mutex.unlock();
 }
 
-Sqrt_op::~Sqrt_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Sqrt_op") }
+MultiFunc_op::~MultiFunc_op() {
+  VULTEN_LOG_DEBUG("Freeing vulten_ops::MultiFunc_op")
+}
 
 }  // namespace vulten_ops

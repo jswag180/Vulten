@@ -16,11 +16,10 @@ void RegisterDeviceReluGrad(const char* device_type);
 void RegisterDeviceBiasAddGradOp(const char* device_type);
 void RegisterDeviceReduce(const char* device_type);
 void RegisterDeviceAddn(const char* device_type);
-void RegisterDeviceExp(const char* device_type);
 void RegisterDeviceIdentity(const char* device_type);
 void RegisterDevicePow(const char* device_type);
 void RegisterDeviceIdentityN(const char* device_type);
-void RegisterDeviceSqrt(const char* device_type);
+void RegisterDeviceMultiFunc(const char* device_type);
 void RegisterDeviceBiasAdd(const char* device_type);
 void RegisterDeviceSoftmax(const char* device_type);
 

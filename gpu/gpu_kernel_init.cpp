@@ -23,10 +23,9 @@ void RegisterDeviceKernels(const char* device_type) {
   RegisterDeviceBiasAddGradOp(device_type);
   RegisterDeviceReduce(device_type);
   RegisterDeviceAddn(device_type);
-  RegisterDeviceExp(device_type);
   RegisterDeviceIdentity(device_type);
   RegisterDevicePow(device_type);
   RegisterDeviceIdentityN(device_type);
-  RegisterDeviceSqrt(device_type);
+  RegisterDeviceMultiFunc(device_type);
   RegisterDeviceBiasAdd(device_type);
 }

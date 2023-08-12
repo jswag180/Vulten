@@ -7,7 +7,7 @@ class Softmax_op : Vulten_op {
  private:
   //
  public:
-  vulten_ops::Vulten_pipeline* get_exp_pipeline(Data_type dt);
+  vulten_ops::Vulten_pipeline* get_multiFunc_pipeline(Data_type dt);
   vulten_ops::Vulten_pipeline* get_batchAdd_pipeline(Data_type dt);
   vulten_ops::Vulten_pipeline* get_softmax_pipeline(Data_type dt);
 

@@ -4,13 +4,14 @@
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
 
-#include "../exp/Exp_shader.h"
+#include "../multiFunc/MultiFunc_shader.h"
 #include "BatchAdd_shader.h"
 #include "Softmax_shader.h"
 #include "Vulten_backend/ops/Vulten_backend_ops.h"
+#include "Vulten_backend/ops/multiFunc/MultiFunc_op.h"
 
 #define NUM_BUFFERS_BATCHADD 2
-#define NUM_BUFFERS_EXP 2
+#define NUM_BUFFERS_MULTIFUNC 2
 #define NUM_BUFFERS_SOFTMAX 3
 #define NUM_SETS 3
 
@@ -21,8 +22,8 @@ Softmax_op::Softmax_op(vulten_backend::Instance* inst)
 
       vulten_ops::Vulten_pipeline
       *
-      Softmax_op::get_exp_pipeline(Data_type dt) {
-  std::string pipe_string = "Exp_" + Data_type_to_str(dt);
+      Softmax_op::get_multiFunc_pipeline(Data_type dt) {
+  std::string pipe_string = "MultiFunc_" + Data_type_to_str(dt);
 
   if (!is_pipeline_cached(pipe_string)) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Softmax_op pipeline " + pipe_string)
@@ -40,10 +41,14 @@ Softmax_op::Softmax_op(vulten_backend::Instance* inst)
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
 
-    Generate_exp_shader_info generate_exp_shader_info{dt};
-    return create_pipeline(pipe_string, NUM_BUFFERS_EXP,
-                           generate_exp_shader(generate_exp_shader_info),
-                           &spec_info);
+    const std::vector<vk::PushConstantRange> push_const_ranges = {
+        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(multiFunc::Push_const)}};
+
+    Generate_multiFunc_shader_info generate_multiFunc_shader_info{dt};
+    return create_pipeline(
+        pipe_string, NUM_BUFFERS_MULTIFUNC,
+        generate_multiFunc_shader(generate_multiFunc_shader_info), &spec_info,
+        push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Softmax_op pipeline " +
                      pipe_string)
@@ -125,14 +130,14 @@ void Softmax_op::run_op(Data_type dt, Vulten_tensor input,
                    ">")
   inst->main_queue_mutex.lock();
 
-  vulten_ops::Vulten_pipeline* exp_pipeline = get_exp_pipeline(dt);
+  vulten_ops::Vulten_pipeline* exp_pipeline = get_multiFunc_pipeline(dt);
   vulten_ops::Vulten_pipeline* batchAdd_pipeline = get_batchAdd_pipeline(dt);
   vulten_ops::Vulten_pipeline* softmax_pipeline = get_softmax_pipeline(dt);
 
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
       vk::DescriptorType::eStorageBuffer,
-      NUM_BUFFERS_BATCHADD * NUM_BUFFERS_EXP * NUM_BUFFERS_SOFTMAX);
+      NUM_BUFFERS_BATCHADD * NUM_BUFFERS_MULTIFUNC * NUM_BUFFERS_SOFTMAX);
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
       vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, NUM_SETS,
       descriptor_pool_size);
@@ -212,6 +217,10 @@ void Softmax_op::run_op(Data_type dt, Vulten_tensor input,
       float(input.get_total_elements()) /
       inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
+  multiFunc::Push_const push_const{OP_EXP};
+  cmd_buff.pushConstants(exp_pipeline->pipeline_layout,
+                         vk::ShaderStageFlagBits::eCompute, 0,
+                         sizeof(multiFunc::Push_const), &push_const);
   cmd_buff.dispatch(threads, 1, 1);
 
   cmd_buff.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
