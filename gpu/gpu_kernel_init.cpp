@@ -28,4 +28,5 @@ void RegisterDeviceKernels(const char* device_type) {
   RegisterDeviceIdentityN(device_type);
   RegisterDeviceMultiFunc(device_type);
   RegisterDeviceBiasAdd(device_type);
+  RegisterDeviceSparseSoftmaxCrossEntropyWithLogits(device_type);
 }
