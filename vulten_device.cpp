@@ -271,7 +271,8 @@ void plugin_memcpy_dtod(const SP_Device* device, SP_Stream stream,
           ->inst->create_host_mappable_buffer(host_maped.data, size));
   VOID_TO_DEVICE_BUFFER(device_dst->opaque)
       ->inst->copy_buffer(dst_host_buff.get(),
-                          VOID_TO_DEVICE_BUFFER(device_dst->opaque));
+                          VOID_TO_DEVICE_BUFFER(device_dst->opaque), true,
+                          size);
 }
 
 // Blocks the caller while a data segment of the given size is
