@@ -232,7 +232,8 @@ Device_buffer *Instance::create_device_buffer(uint32_t size, bool trans_src,
   return new Device_buffer(this, size, trans_src, trans_dst);
 }
 
-void Instance::copy_buffer(Buffer *src, Buffer *dest, bool lock) {
+void Instance::copy_buffer(Buffer *src, Buffer *dest, bool lock,
+                           uint32_t size) {
   if (lock) main_queue_mutex.lock();
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
@@ -244,7 +245,13 @@ void Instance::copy_buffer(Buffer *src, Buffer *dest, bool lock) {
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
   cmd_buff.begin(cmd_buff_begin_info);
 
-  vk::BufferCopy buff_copy(0, 0, src->buffer_size);
+  vk::BufferCopy buff_copy;
+  if (size > 0) {
+    buff_copy = vk::BufferCopy(0, 0, size);
+  } else {
+    buff_copy =
+        vk::BufferCopy(0, 0, std::min(src->buffer_size, dest->buffer_size));
+  }
   cmd_buff.copyBuffer(src->vk_buffer, dest->vk_buffer, buff_copy);
 
   cmd_buff.end();
