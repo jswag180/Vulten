@@ -83,7 +83,7 @@ struct Mapped_memory {
 };
 
 class Instance;
-struct Buffer {
+struct alignas(64) Buffer {
  private:
  public:
   Instance *inst;
@@ -100,7 +100,7 @@ struct Buffer {
   ~Buffer();
 };
 
-struct Host_mappable_buffer : Buffer {
+struct alignas(64) Host_mappable_buffer : Buffer {
  private:
   //
  public:
@@ -111,7 +111,7 @@ struct Host_mappable_buffer : Buffer {
   ~Host_mappable_buffer();
 };
 
-struct Device_buffer : Buffer {
+struct alignas(64) Device_buffer : Buffer {
  private:
   //
  public:
@@ -120,7 +120,7 @@ struct Device_buffer : Buffer {
   ~Device_buffer();
 };
 
-class Instance {
+class alignas(64) Instance {
  private:
   //
  public:
