@@ -251,9 +251,11 @@ void plugin_memcpy_dtod(const SP_Device* device, SP_Stream stream,
                         TF_Status* status) {
   SCOPE_TIMER("DTD Transfer")
 #ifndef NDEBUG
-  std::cout << "Vulten [INFO]: " << device->ordinal
-            << " Device to device transfer "
-            << "\n";
+  std::cout << "Vulten [INFO]: "
+            << VOID_TO_DEVICE_BUFFER(device_src->opaque)->inst->device_num
+            << ":"
+            << VOID_TO_DEVICE_BUFFER(device_dst->opaque)->inst->device_num
+            << " Device to device transfer Size: " << size << "\n";
 #endif
 
   auto src_host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
