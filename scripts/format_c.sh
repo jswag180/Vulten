@@ -19,3 +19,4 @@ clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/softmax/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/reduce/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/multiFunc/*
 clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/xent/*
+clang-format --style=file -i $SOURCE_DIR/Vulten_backend/ops/broadcast/*

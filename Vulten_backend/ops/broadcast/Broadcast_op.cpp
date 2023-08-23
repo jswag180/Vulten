@@ -1,0 +1,179 @@
+#include "Broadcast_op.h"
+
+#include <cmath>
+
+#include "Broadcast_shader.h"
+#include "Vulten_backend/Vulten_backend.h"
+#include "Vulten_backend/Vulten_utills.h"
+
+#define NUM_BUFFERS 4
+#define NUM_SETS 1
+
+namespace vulten_ops {
+
+const std::string Broadcast_op::op_name = "Broadcast";
+
+Broadcast_op::Broadcast_op(vulten_backend::Instance *inst)
+    : Vulten_op(inst){VULTEN_LOG_DEBUG("Creating vulten_ops::Broadcast_op")}
+
+      Vulten_pipeline
+      *
+      Broadcast_op::get_broadcast_pipeline(std::string pipe_string,
+                                           Data_type dt) {
+  if (!is_pipeline_cached(pipe_string)) {
+    VULTEN_LOG_DEBUG("Creating vulten_ops::Broadcast_op<" +
+                     Data_type_to_str(dt) + "> " + pipe_string)
+
+    broadcast_shader::Spec_cons spec = broadcast_shader::Spec_cons();
+    spec.local_x =
+        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
+
+    const std::vector<vk::SpecializationMapEntry> specs = {
+        {0, 0, sizeof(uint32_t)},
+    };
+    vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
+                                     &spec);
+
+    const std::vector<vk::PushConstantRange> push_const_ranges = {
+        {vk::ShaderStageFlagBits::eCompute, 0,
+         sizeof(broadcast_shader::Push_const)},
+    };
+
+    broadcast_shader::Generate_broadcast_shader_info
+        generate_broadcast_shader_info{dt};
+    return create_pipeline(pipe_string, NUM_BUFFERS,
+                           broadcast_shader::generate_broadcast_shader(
+                               generate_broadcast_shader_info),
+                           &spec_info, push_const_ranges);
+  } else {
+    VULTEN_LOG_DEBUG("Using cached vulten_ops::Broadcast_op<" +
+                     Data_type_to_str(dt) + "> " + pipe_string)
+    return pipelines[pipe_string];
+  }
+}
+
+void Broadcast_op::run_op(Data_type dt, Vulten_tensor input,
+                          Vulten_tensor output) {
+  VULTEN_LOG_DEBUG("Running vulten_ops::Broadcast_op<" + Data_type_to_str(dt) +
+                   ">")
+  inst->main_queue_mutex.lock();
+
+  std::string broadcast_pipe_string = op_name + "_" + Data_type_to_str(dt);
+  Vulten_pipeline *vulten_pipeline =
+      get_broadcast_pipeline(broadcast_pipe_string, dt);
+
+  vk::DescriptorPool descriptor_pool;
+  vk::DescriptorPoolSize descriptor_pool_size(
+      vk::DescriptorType::eStorageBuffer, NUM_BUFFERS);
+  vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
+      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, NUM_SETS,
+      descriptor_pool_size);
+  descriptor_pool =
+      inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
+
+  vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(
+      descriptor_pool, NUM_SETS, &vulten_pipeline->descriptor_set_layout);
+  vk::DescriptorSet descriptor_set =
+      inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info)
+          .front();
+
+  vk::DescriptorBufferInfo input_buffer_info(input.buffer->vk_buffer, 0,
+                                             input.buffer->buffer_size);
+
+  std::vector<uint32_t> adj_strides =
+      vulten_utills::calculate_adj_strides(input.dims, input.num_dims);
+  std::vector<uint32_t> output_strides =
+      vulten_utills::calculate_adj_strides(output.dims, output.num_dims);
+  adj_strides.insert(adj_strides.end(), output_strides.begin(),
+                     output_strides.end());
+  auto strides_stageing = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
+      inst->create_host_mappable_buffer((uint8_t *)adj_strides.data(),
+                                        sizeof(uint32_t) * adj_strides.size()));
+  auto strides = std::unique_ptr<vulten_backend::Device_buffer>(
+      inst->create_device_buffer(strides_stageing->buffer_size, false, true));
+  inst->copy_buffer(strides_stageing.get(), strides.get(), false);
+  vk::DescriptorBufferInfo strides_buffer_info(strides->vk_buffer, 0,
+                                               strides->buffer_size);
+
+  std::vector<uint32_t> dims_vec = std::vector<uint32_t>();
+  for (uint32_t i = 0; i < input.num_dims; i++) {
+    dims_vec.push_back(input.dims[i]);
+  }
+  auto dims_stageing = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
+      inst->create_host_mappable_buffer((uint8_t *)dims_vec.data(),
+                                        sizeof(uint32_t) * dims_vec.size()));
+  auto dims = std::unique_ptr<vulten_backend::Device_buffer>(
+      inst->create_device_buffer(dims_stageing->buffer_size, false, true));
+  inst->copy_buffer(dims_stageing.get(), dims.get(), false);
+  vk::DescriptorBufferInfo dims_buffer_info(dims->vk_buffer, 0,
+                                            dims->buffer_size);
+
+  vk::DescriptorBufferInfo output_buffer_info(output.buffer->vk_buffer, 0,
+                                              output.buffer->buffer_size);
+  const std::vector<vk::WriteDescriptorSet> WriteDescriptorSets = {
+      {descriptor_set, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &input_buffer_info},
+      {descriptor_set, 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &strides_buffer_info},
+      {descriptor_set, 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &dims_buffer_info},
+      {descriptor_set, 3, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+       &output_buffer_info},
+  };
+  inst->logical_dev.updateDescriptorSets(WriteDescriptorSets, {});
+
+  vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
+      inst->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
+  vk::CommandBuffer cmd_buffs =
+      inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info).front();
+
+  vk::CommandBufferBeginInfo cmd_buff_begin_info(
+      vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+
+  cmd_buffs.begin(cmd_buff_begin_info);
+  cmd_buffs.bindPipeline(vk::PipelineBindPoint::eCompute,
+                         vulten_pipeline->pipeline);
+  cmd_buffs.bindDescriptorSets(
+      vk::PipelineBindPoint::eCompute,   // Bind point
+      vulten_pipeline->pipeline_layout,  // Pipeline Layout
+      0,                                 // First descriptor set
+      {descriptor_set},                  // List of descriptor sets
+      {});                               // Dynamic offsets
+
+  broadcast_shader::Push_const pushes = {uint32_t(input.num_dims),
+                                         uint32_t(output.num_dims)};
+  cmd_buffs.pushConstants(vulten_pipeline->pipeline_layout,
+                          vk::ShaderStageFlagBits::eCompute, 0,
+                          sizeof(broadcast_shader::Push_const), &pushes);
+  uint32_t threads = std::ceil(
+      float(output.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
+
+  cmd_buffs.dispatch(threads, 1, 1);
+  cmd_buffs.end();
+
+  vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
+
+  vk::SubmitInfo SubmitInfo(0,            // Num Wait Semaphores
+                            nullptr,      // Wait Semaphores
+                            nullptr,      // Pipeline Stage Flags
+                            1,            // Num Command Buffers
+                            &cmd_buffs);  // List of command buffers
+  inst->main_queue.submit({SubmitInfo}, fence);
+  vk::Result fenceRes =
+      inst->logical_dev.waitForFences({fence},        // List of fences
+                                      true,           // Wait All
+                                      uint64_t(-1));  // Timeout
+
+  inst->logical_dev.destroyFence(fence);
+  inst->logical_dev.freeCommandBuffers(inst->cmd_pool, cmd_buffs);
+  inst->logical_dev.freeDescriptorSets(descriptor_pool, 1, &descriptor_set);
+  inst->logical_dev.destroyDescriptorPool(descriptor_pool);
+  inst->main_queue_mutex.unlock();
+}
+
+Broadcast_op::~Broadcast_op() {
+  VULTEN_LOG_DEBUG("Freeing vulten_ops::Broadcast_op")
+}
+
+}  // namespace vulten_ops

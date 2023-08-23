@@ -23,5 +23,6 @@ void RegisterDeviceMultiFunc(const char* device_type);
 void RegisterDeviceBiasAdd(const char* device_type);
 void RegisterDeviceSoftmax(const char* device_type);
 void RegisterDeviceSparseSoftmaxCrossEntropyWithLogits(const char* device_type);
+void RegisterDeviceBroadcastOp(const char* device_type);
 
 void RegisterDeviceKernels(const char* device_type);
