@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -30,9 +31,6 @@
           func(TF_INT16) func(TF_UINT16)
 #define CALL_COMPLEX(func) func(TF_COMPLEX64) func(TF_COMPLEX128)
 #define CALL_ALL_TYPES(func) CALL_ALL_BASIC_TYPES(func) CALL_COMPLEX(func)
-namespace vulten_ops {
-class Vulten_op;
-};
 
 namespace vulten_backend {
 
@@ -120,6 +118,32 @@ struct alignas(64) Device_buffer : Buffer {
   ~Device_buffer();
 };
 
+struct Vulten_pipeline {
+ private:
+  //
+ public:
+  bool auto_clean;
+  vulten_backend::Instance *inst;
+  vk::Pipeline pipeline;
+  vk::PipelineLayout pipeline_layout;
+  vk::ShaderModule shader;
+  vk::DescriptorSetLayout descriptor_set_layout;
+  vk::PipelineCache pipeline_cache;
+
+  /**
+   * @param instance reference to vulten_backend::Instance
+   * @param num_buffers Number of buffers needed for op.
+   * @param shader_source Source spv for shader.
+   * @param specs Vector of spec contrantes.
+   */
+  Vulten_pipeline(vulten_backend::Instance *instance, uint32_t num_buffers,
+                  const std::vector<uint32_t> &shader_source,
+                  vk::SpecializationInfo *spec_info = {},
+                  std::vector<vk::PushConstantRange> push_ranges = {});
+  Vulten_pipeline();
+  ~Vulten_pipeline();
+};
+
 class alignas(64) Instance {
  private:
   //
@@ -132,7 +156,9 @@ class alignas(64) Instance {
   vk::Queue main_queue;
   vk::CommandPool cmd_pool;
   // opName_Data_type
-  std::unordered_map<std::string, vulten_ops::Vulten_op *> op_chache;
+  // std::unordered_map<std::string, vulten_ops::Vulten_op *> op_chache;
+  mutable std::shared_timed_mutex pipe_mutex;
+  std::unordered_map<std::string, Vulten_pipeline *> pipelines;
 
   Host_mappable_buffer *create_host_mappable_buffer(uint8_t *data,
                                                     uint32_t size,
@@ -145,6 +171,11 @@ class alignas(64) Instance {
                    uint32_t size = 0);
   void fill_buffer(Buffer *dstBuffer, uint64_t offset, uint64_t size,
                    uint32_t data, bool lock = true);
+  Vulten_pipeline *get_cached_pipeline(std::string pipe_string);
+  Vulten_pipeline *create_pipeline(
+      std::string pipe_string, uint32_t num_buffers,
+      std::vector<uint32_t> shader_spv, vk::SpecializationInfo *spec_info = {},
+      std::vector<vk::PushConstantRange> push_ranges = {});
 
   // Instance(const Instance&) = delete;
   Instance(uint32_t dev_num);

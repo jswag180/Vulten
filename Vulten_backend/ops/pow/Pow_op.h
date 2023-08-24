@@ -3,16 +3,11 @@
 #include "../Vulten_backend_ops.h"
 
 namespace vulten_ops {
-class Pow_op : Vulten_op {
- private:
-  //
- public:
-  //
+namespace pow {
+static const int NUM_BUFFERS = 3;
+static const int NUM_SETS = 1;
 
-  void run_op(Data_type dt, uint32_t scalar, Vulten_tensor x, Vulten_tensor y,
-              Vulten_tensor output);
-
-  Pow_op(vulten_backend::Instance *inst);
-  ~Pow_op();
-};
+void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t scalar,
+            Vulten_tensor x, Vulten_tensor y, Vulten_tensor output);
+}  // namespace pow
 }  // namespace vulten_ops

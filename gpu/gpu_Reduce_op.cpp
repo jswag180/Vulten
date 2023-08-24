@@ -131,25 +131,16 @@ void ReduceOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     return;
   }
 
-  vulten_ops::Reduce_op* reduce_op = nullptr;
-  std::string op_cache_name = "Reduce";
-  inst->main_queue_mutex.lock();
-  if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
-    inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Reduce_op(inst);
-  }
-  reduce_op = (vulten_ops::Reduce_op*)inst->op_chache[op_cache_name];
-  inst->main_queue_mutex.unlock();
-
   std::reverse(axis_vec.begin(), axis_vec.end());
 
-  reduce_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor, axis_vec,
-                    output.vulten_tensor, OP);
+  vulten_ops::reduce::run_op(inst, (vulten_ops::Data_type)T,
+                             input.vulten_tensor, axis_vec,
+                             output.vulten_tensor, OP);
 }
 
 template <TF_DataType T, uint32_t OP>
 void RegisterReduceOpKernel(const char* device_type) {
-  std::string op = vulten_ops::Reduce_op::op_as_str(OP);
+  std::string op = vulten_ops::reduce::op_as_str(OP);
 
   StatusSafePtr status(TF_NewStatus());
   auto* builder =

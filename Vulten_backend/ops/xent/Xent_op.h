@@ -6,16 +6,12 @@
 #define OP_GRAD 1
 
 namespace vulten_ops {
-class Xent_op : Vulten_op {
- private:
-  //
- public:
-  //
-  void run_op(Data_type dt, Data_type dt_labels, Vulten_tensor scratch,
-              Vulten_tensor backprop, Vulten_tensor labels,
-              Vulten_tensor output, uint32_t op);
+namespace xent {
+static const int NUM_BUFFERS = 4;
+static const int NUM_SETS = 1;
 
-  Xent_op(vulten_backend::Instance *inst);
-  ~Xent_op();
-};
+void run_op(vulten_backend::Instance *inst, Data_type dt, Data_type dt_labels,
+            Vulten_tensor scratch, Vulten_tensor backprop, Vulten_tensor labels,
+            Vulten_tensor output, uint32_t op);
+}  // namespace xent
 }  // namespace vulten_ops

@@ -3,6 +3,8 @@
 #include "../../compiler.h"
 #include "Cast_source.h"
 
+namespace cast_shader {
+
 std::vector<uint32_t> generate_cast_shader(
     Generate_cast_shader_info generate_cast_shader_info) {
   shaderc::CompileOptions options = shader_wizard::get_compile_options();
@@ -12,3 +14,5 @@ std::vector<uint32_t> generate_cast_shader(
 
   return shader_wizard::compile_shader("Cast", cast_source, options);
 }
+
+}  // namespace cast_shader

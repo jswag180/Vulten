@@ -28,18 +28,9 @@ void CastOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 
-  vulten_ops::Cast_op* cast_op = nullptr;
-  std::string op_cache_name = "Cast";
-  inst->main_queue_mutex.lock();
-  if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
-    inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Cast_op(inst);
-  }
-  cast_op = (vulten_ops::Cast_op*)inst->op_chache[op_cache_name];
-  inst->main_queue_mutex.unlock();
-
-  cast_op->run_op((vulten_ops::Data_type)S, (vulten_ops::Data_type)D,
-                  input.vulten_tensor, output.vulten_tensor);
+  vulten_ops::cast::run_op(inst, (vulten_ops::Data_type)S,
+                           (vulten_ops::Data_type)D, input.vulten_tensor,
+                           output.vulten_tensor);
 }
 
 template <TF_DataType S, TF_DataType D>

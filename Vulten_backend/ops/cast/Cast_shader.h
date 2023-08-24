@@ -2,6 +2,8 @@
 
 #include "../Vulten_backend_ops.h"
 
+namespace cast_shader {
+
 struct Generate_cast_shader_info {
   vulten_ops::Data_type src;
   vulten_ops::Data_type dst;
@@ -9,3 +11,4 @@ struct Generate_cast_shader_info {
 
 std::vector<uint32_t> generate_cast_shader(
     Generate_cast_shader_info generate_cast_shader_info);
+}  // namespace cast_shader

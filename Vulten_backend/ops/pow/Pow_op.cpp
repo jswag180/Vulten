@@ -5,49 +5,40 @@
 
 #include "Pow_shader.h"
 
-#define NUM_BUFFERS 3
-#define NUM_SETS 1
-
 namespace vulten_ops {
+namespace pow {
 
-Pow_op::Pow_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Pow_op")
-}
-
-void Pow_op::run_op(Data_type dt, uint32_t scalar, Vulten_tensor x,
-                    Vulten_tensor y, Vulten_tensor output) {
+void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t scalar,
+            Vulten_tensor x, Vulten_tensor y, Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Pow_op<" + Data_type_to_str(dt) + ">")
   inst->main_queue_mutex.lock();
 
   std::string pipe_string = "Pow_" + Data_type_to_str(dt);
-  Vulten_pipeline *vulten_pipeline = nullptr;
-
-  if (!is_pipeline_cached(pipe_string)) {
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Pow_op pipeline " + pipe_string)
 
-    struct Spec {
-      uint32_t localX;
-    } spec;
-
+    pow_shader::Spec_cons spec;
     spec.localX =
         inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
 
     const std::vector<vk::SpecializationMapEntry> specs = {
-        {0, offsetof(Spec, localX), sizeof(uint32_t)},
+        {0, offsetof(pow_shader::Spec_cons, localX), sizeof(uint32_t)},
     };
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
 
     const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t)}};
+        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(pow_shader::Push_const)}};
 
-    Generate_pow_shader_info generate_pow_shader_info{dt};
-    vulten_pipeline = create_pipeline(
-        pipe_string, NUM_BUFFERS, generate_pow_shader(generate_pow_shader_info),
-        &spec_info, push_const_ranges);
+    pow_shader::Generate_pow_shader_info generate_pow_shader_info{dt};
+    vulten_pipeline = inst->create_pipeline(
+        pipe_string, NUM_BUFFERS,
+        pow_shader::generate_pow_shader(generate_pow_shader_info), &spec_info,
+        push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Pow_op pipeline " + pipe_string)
-    vulten_pipeline = pipelines[pipe_string];
   }
 
   vk::DescriptorPool descriptor_pool;
@@ -100,9 +91,10 @@ void Pow_op::run_op(Data_type dt, uint32_t scalar, Vulten_tensor x,
       {descriptor_set},                  // List of descriptor sets
       {});                               // Dynamic offsets
 
+  pow_shader::Push_const pushes = {scalar};
   cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
-                         vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t),
-                         &scalar);
+                         vk::ShaderStageFlagBits::eCompute, 0,
+                         sizeof(pow_shader::Push_const), &pushes);
   uint32_t threads = 0;
   if (scalar == 1) {
     threads = std::ceil(
@@ -136,6 +128,5 @@ void Pow_op::run_op(Data_type dt, uint32_t scalar, Vulten_tensor x,
   inst->main_queue_mutex.unlock();
 }
 
-Pow_op::~Pow_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Pow_op") }
-
+}  // namespace pow
 }  // namespace vulten_ops

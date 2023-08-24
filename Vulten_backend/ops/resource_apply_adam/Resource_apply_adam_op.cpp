@@ -3,67 +3,58 @@
 #include "Resource_apply_adam_shader.h"
 
 namespace vulten_ops {
+namespace resource_apply_adam {
 
-Resource_apply_adam_op::Resource_apply_adam_op(vulten_backend::Instance *inst)
-    : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Resource_apply_adam_op")
-}
-
-void Resource_apply_adam_op::run_op(Data_type dt, Vulten_tensor var,
-                                    Vulten_tensor m, Vulten_tensor v,
-                                    Vulten_tensor beta1_power,
-                                    Vulten_tensor beta2_power, Vulten_tensor lr,
-                                    Vulten_tensor beta1, Vulten_tensor beta2,
-                                    Vulten_tensor epsilon, Vulten_tensor grad,
-                                    bool use_nesterov) {
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor var,
+            Vulten_tensor m, Vulten_tensor v, Vulten_tensor beta1_power,
+            Vulten_tensor beta2_power, Vulten_tensor lr, Vulten_tensor beta1,
+            Vulten_tensor beta2, Vulten_tensor epsilon, Vulten_tensor grad,
+            bool use_nesterov) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Resource_apply_adam_op<" +
                    Data_type_to_str(dt) + ">")
   inst->main_queue_mutex.lock();
 
   std::string pipe_string = "Resource_apply_adam_" + Data_type_to_str(dt) +
                             "_" + std::to_string(use_nesterov);
-  Vulten_pipeline *vulten_pipeline = nullptr;
-
-  if (!is_pipeline_cached(pipe_string)) {
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Resource_apply_adam_op pipeline " +
                      pipe_string)
 
-    struct Spec_data {
-      bool nesterov;
-    } spec_data;
-
+    resource_apply_adam_shader::Spec_cons spec_data;
     spec_data.nesterov = use_nesterov;
 
     std::vector<vk::SpecializationMapEntry> specs = {
         {0, 0, sizeof(spec_data.nesterov)}};
-    vk::SpecializationInfo spec_info(1, specs.data(), sizeof(spec_data),
-                                     &spec_data);
+    vk::SpecializationInfo spec_info(
+        1, specs.data(), sizeof(resource_apply_adam_shader::Spec_cons),
+        &spec_data);
 
-    Generate_resource_apply_adam_shader_info
+    resource_apply_adam_shader::Generate_resource_apply_adam_shader_info
         generate_resource_apply_adam_shader_info{dt};
-    vulten_pipeline =
-        create_pipeline(pipe_string, 10,
-                        generate_resource_apply_adam_shader(
-                            generate_resource_apply_adam_shader_info),
-                        &spec_info);
+    vulten_pipeline = inst->create_pipeline(
+        pipe_string, NUM_BUFFERS,
+        resource_apply_adam_shader::generate_resource_apply_adam_shader(
+            generate_resource_apply_adam_shader_info),
+        &spec_info);
   } else {
     VULTEN_LOG_DEBUG(
         "Using cached vulten_ops::Resource_apply_adam_op pipeline " +
         pipe_string)
-    vulten_pipeline = pipelines[pipe_string];
   }
 
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer, 10);
+      vk::DescriptorType::eStorageBuffer, NUM_BUFFERS);
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
-      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 1,
+      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, NUM_SETS,
       descriptor_pool_size);
   descriptor_pool =
       inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
 
   vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(
-      descriptor_pool, 1, &vulten_pipeline->descriptor_set_layout);
+      descriptor_pool, NUM_SETS, &vulten_pipeline->descriptor_set_layout);
   vk::DescriptorSet descriptor_set =
       inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info)
           .front();
@@ -152,8 +143,5 @@ void Resource_apply_adam_op::run_op(Data_type dt, Vulten_tensor var,
   inst->main_queue_mutex.unlock();
 }
 
-Resource_apply_adam_op::~Resource_apply_adam_op() {
-  VULTEN_LOG_DEBUG("Freeing vulten_ops::Resource_apply_adam_op")
-}
-
+}  // namespace resource_apply_adam
 }  // namespace vulten_ops

@@ -8,16 +8,14 @@
 #define OP_SQUARE 3
 
 namespace vulten_ops {
-class MultiFunc_op : Vulten_op {
- private:
-  //
- public:
-  //
-  static std::string op_as_str(uint32_t op);
-  void run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output,
-              uint32_t op);
+namespace multiFunc {
+static const int NUM_BUFFERS = 2;
+static const int NUM_SETS = 1;
 
-  MultiFunc_op(vulten_backend::Instance *inst);
-  ~MultiFunc_op();
-};
+std::string op_as_str(uint32_t op);
+vulten_backend::Vulten_pipeline *get_multiFunc_pipeline(
+    vulten_backend::Instance *inst, Data_type dt);
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
+            Vulten_tensor output, uint32_t op);
+}  // namespace multiFunc
 }  // namespace vulten_ops

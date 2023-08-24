@@ -3,6 +3,8 @@
 #include "../../compiler.h"
 #include "Pow_source.h"
 
+namespace pow_shader {
+
 std::vector<uint32_t> generate_pow_shader(
     Generate_pow_shader_info generate_pow_shader_info) {
   shaderc::CompileOptions options = shader_wizard::get_compile_options();
@@ -11,3 +13,5 @@ std::vector<uint32_t> generate_pow_shader(
 
   return shader_wizard::compile_shader("Pow", pow_source, options);
 }
+
+}  // namespace pow_shader

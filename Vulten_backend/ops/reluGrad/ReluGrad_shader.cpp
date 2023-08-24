@@ -3,6 +3,8 @@
 #include "../../compiler.h"
 #include "ReluGrad_source.h"
 
+namespace reluGrad_shader {
+
 std::vector<uint32_t> generate_reluGrad_shader(
     Generate_reluGrad_shader_info generate_reluGrad_shader_info) {
   shaderc::CompileOptions options = shader_wizard::get_compile_options();
@@ -11,3 +13,5 @@ std::vector<uint32_t> generate_reluGrad_shader(
 
   return shader_wizard::compile_shader("ReluGrad", reluGrad_source, options);
 }
+
+}  // namespace reluGrad_shader

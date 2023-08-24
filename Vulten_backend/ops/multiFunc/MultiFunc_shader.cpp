@@ -3,6 +3,8 @@
 #include "../../compiler.h"
 #include "MultiFunc_source.h"
 
+namespace multiFunc_shader {
+
 std::vector<uint32_t> generate_multiFunc_shader(
     Generate_multiFunc_shader_info generate_multiFunc_shader_info) {
   shaderc::CompileOptions options = shader_wizard::get_compile_options();
@@ -11,3 +13,5 @@ std::vector<uint32_t> generate_multiFunc_shader(
 
   return shader_wizard::compile_shader("MultiFunc", multiFunc_source, options);
 }
+
+}  // namespace multiFunc_shader

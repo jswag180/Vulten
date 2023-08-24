@@ -3,6 +3,8 @@
 #include "../../compiler.h"
 #include "Transpose_source.h"
 
+namespace transpose_shader {
+
 std::vector<uint32_t> generate_transpose_shader(
     Generate_transpose_shader_info generate_transpose_shader_info) {
   shaderc::CompileOptions options = shader_wizard::get_compile_options();
@@ -11,3 +13,5 @@ std::vector<uint32_t> generate_transpose_shader(
 
   return shader_wizard::compile_shader("Transpose", transpose_source, options);
 }
+
+}  // namespace transpose_shader

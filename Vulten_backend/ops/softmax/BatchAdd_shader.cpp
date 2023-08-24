@@ -3,6 +3,8 @@
 #include "../../compiler.h"
 #include "BatchAdd_source.h"
 
+namespace batchAdd_shader {
+
 std::vector<uint32_t> generate_batchAdd_shader(
     Generate_batchAdd_shader_info generate_batchAdd_shader_info) {
   shaderc::CompileOptions options = shader_wizard::get_compile_options();
@@ -11,3 +13,5 @@ std::vector<uint32_t> generate_batchAdd_shader(
 
   return shader_wizard::compile_shader("BatchAdd", batchAdd_source, options);
 }
+
+}  // namespace batchAdd_shader

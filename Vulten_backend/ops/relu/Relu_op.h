@@ -3,15 +3,11 @@
 #include "../Vulten_backend_ops.h"
 
 namespace vulten_ops {
-class Relu_op : Vulten_op {
- private:
-  //
- public:
-  //
+namespace relu {
+static const int NUM_BUFFERS = 2;
+static const int NUM_SETS = 1;
 
-  void run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output);
-
-  Relu_op(vulten_backend::Instance *inst);
-  ~Relu_op();
-};
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
+            Vulten_tensor output);
+}  // namespace relu
 }  // namespace vulten_ops

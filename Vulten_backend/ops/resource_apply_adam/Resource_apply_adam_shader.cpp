@@ -3,6 +3,8 @@
 #include "../../compiler.h"
 #include "Resource_apply_adam_source.h"
 
+namespace resource_apply_adam_shader {
+
 std::vector<uint32_t> generate_resource_apply_adam_shader(
     Generate_resource_apply_adam_shader_info
         generate_resource_apply_adam_shader_info) {
@@ -14,3 +16,5 @@ std::vector<uint32_t> generate_resource_apply_adam_shader(
   return shader_wizard::compile_shader("Resource_apply_adam",
                                        resource_apply_adam_source, options);
 }
+
+}  // namespace resource_apply_adam_shader

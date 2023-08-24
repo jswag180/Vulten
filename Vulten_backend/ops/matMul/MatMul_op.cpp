@@ -6,73 +6,73 @@
 #include "MatMul_shader.h"
 
 namespace vulten_ops {
+namespace mat_mul {
 
-MatMul_op::MatMul_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::MatMul_op")
-}
-
-void MatMul_op::run_op(Data_type dt, Vulten_tensor a, bool trans_a,
-                       Mat_size mat_size_a, Vulten_tensor b, bool trans_b,
-                       Mat_size mat_size_b, Vulten_tensor output) {
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
+            bool trans_a, Mat_size mat_size_a, Vulten_tensor b, bool trans_b,
+            Mat_size mat_size_b, Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::MatMul_op<" + Data_type_to_str(dt) +
                    ">")
   inst->main_queue_mutex.lock();
 
-  Vulten_pipeline *transpose_pipeline = nullptr;
+  vulten_backend::Vulten_pipeline *transpose_pipeline = nullptr;
   if (trans_a || trans_b) {
     std::string transpose_pipe_string = "Transpose_" + Data_type_to_str(dt);
-    if (!is_pipeline_cached(transpose_pipe_string)) {
+    transpose_pipeline = inst->get_cached_pipeline(transpose_pipe_string);
+    if (transpose_pipeline == nullptr) {
       VULTEN_LOG_DEBUG("Creating vulten_ops::MatMul_op pipeline " +
                        transpose_pipe_string)
 
       const std::vector<vk::PushConstantRange> push_const_ranges = {
-          {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t) * 2},
+          {vk::ShaderStageFlagBits::eCompute, 0,
+           sizeof(transpose_shader::Push_const)},
       };
 
-      Generate_transpose_shader_info generate_transpose_shader_info{dt};
-      transpose_pipeline = create_pipeline(
-          transpose_pipe_string, 2,
-          generate_transpose_shader(generate_transpose_shader_info), nullptr,
-          push_const_ranges);
+      transpose_shader::Generate_transpose_shader_info
+          generate_transpose_shader_info{dt};
+      transpose_pipeline =
+          inst->create_pipeline(transpose_pipe_string, 2,
+                                transpose_shader::generate_transpose_shader(
+                                    generate_transpose_shader_info),
+                                nullptr, push_const_ranges);
     } else {
       VULTEN_LOG_DEBUG("Using cached vulten_ops::MatMul_op pipeline " +
                        transpose_pipe_string)
-      transpose_pipeline = pipelines[transpose_pipe_string];
     }
   }
 
   std::string matmul_pipe_string = "MatMul_" + Data_type_to_str(dt);
-  Vulten_pipeline *matmul_pipeline = nullptr;
-  if (!is_pipeline_cached(matmul_pipe_string)) {
+  vulten_backend::Vulten_pipeline *matmul_pipeline =
+      inst->get_cached_pipeline(matmul_pipe_string);
+  if (matmul_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::MatMul_op pipeline " +
                      matmul_pipe_string)
 
     const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t) * 2}};
+        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(Mat_size)}};
 
-    Generate_matMul_shader_info generate_matMul_shader_info{dt};
-    matmul_pipeline =
-        create_pipeline(matmul_pipe_string, 3,
-                        generate_matMul_shader(generate_matMul_shader_info),
-                        nullptr, push_const_ranges);
+    mat_mul_shader::Generate_matMul_shader_info generate_matMul_shader_info{dt};
+    matmul_pipeline = inst->create_pipeline(
+        matmul_pipe_string, NUM_BUFFERS,
+        mat_mul_shader::generate_matMul_shader(generate_matMul_shader_info),
+        nullptr, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::MatMul_op pipeline " +
                      matmul_pipe_string)
-    matmul_pipeline = pipelines[matmul_pipe_string];
   }
 
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
       vk::DescriptorType::eStorageBuffer,
-      3 + (trans_a ? 2 : 0) + (trans_b ? 2 : 0));
+      NUM_BUFFERS + (trans_a ? 2 : 0) + (trans_b ? 2 : 0));
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
       vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      1 + (trans_a ? 1 : 0) + (trans_b ? 1 : 0), descriptor_pool_size);
+      NUM_SETS + (trans_a ? 1 : 0) + (trans_b ? 1 : 0), descriptor_pool_size);
   descriptor_pool =
       inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
 
   std::vector<vk::DescriptorSetLayout> descriptor_set_layouts =
-      std::vector<vk::DescriptorSetLayout>(1 + (trans_a ? 1 : 0) +
+      std::vector<vk::DescriptorSetLayout>(NUM_SETS + (trans_a ? 1 : 0) +
                                            (trans_b ? 1 : 0));
   if (trans_a)
     descriptor_set_layouts[0] = transpose_pipeline->descriptor_set_layout;
@@ -260,11 +260,11 @@ void MatMul_op::run_op(Data_type dt, Vulten_tensor a, bool trans_a,
       {matMul_descriptor_set},           // List of descriptor sets
       {});
 
-  uint32_t pushes[2] = {trans_a ? mat_size_a.x : mat_size_a.y,
-                        trans_b ? mat_size_b.x : mat_size_b.y};
+  Mat_size pushes = {trans_a ? mat_size_a.x : mat_size_a.y,
+                     trans_b ? mat_size_b.x : mat_size_b.y};
   cmd_buffs[cmd_buff_indx].pushConstants(matmul_pipeline->pipeline_layout,
                                          vk::ShaderStageFlagBits::eCompute, 0,
-                                         sizeof(uint32_t) * 2, pushes);
+                                         sizeof(Mat_size), &pushes);
   cmd_buffs[cmd_buff_indx].dispatch(output.dims[0], output.dims[1], 1);
   cmd_buffs[cmd_buff_indx].end();
 
@@ -293,6 +293,5 @@ void MatMul_op::run_op(Data_type dt, Vulten_tensor a, bool trans_a,
   inst->main_queue_mutex.unlock();
 }
 
-MatMul_op::~MatMul_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::MatMul_op") }
-
+}  // namespace mat_mul
 }  // namespace vulten_ops

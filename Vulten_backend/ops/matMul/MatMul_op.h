@@ -3,21 +3,15 @@
 #include "../Vulten_backend_ops.h"
 
 namespace vulten_ops {
+namespace mat_mul {
+static const int NUM_BUFFERS = 3;
+static const int NUM_SETS = 1;
 struct Mat_size {
   uint32_t x, y;
 };
 
-class MatMul_op : Vulten_op {
- private:
-  //
- public:
-  //
-
-  void run_op(Data_type dt, Vulten_tensor a, bool trans_a, Mat_size mat_size_a,
-              Vulten_tensor b, bool trans_b, Mat_size mat_size_b,
-              Vulten_tensor output);
-
-  MatMul_op(vulten_backend::Instance *inst);
-  ~MatMul_op();
-};
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
+            bool trans_a, Mat_size mat_size_a, Vulten_tensor b, bool trans_b,
+            Mat_size mat_size_b, Vulten_tensor output);
+}  // namespace mat_mul
 }  // namespace vulten_ops

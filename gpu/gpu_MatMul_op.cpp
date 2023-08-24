@@ -45,13 +45,13 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
 
   tensor_utills::Input_tensor a =
       tensor_utills::get_input_tensor("MatMulOp:a", 0, ctx, status.get());
-  vulten_ops::Mat_size a_mat_size = vulten_ops::Mat_size();
+  vulten_ops::mat_mul::Mat_size a_mat_size = vulten_ops::mat_mul::Mat_size();
   a_mat_size.x = a.dims[0];
   a_mat_size.y = a.dims[1];
 
   tensor_utills::Input_tensor b =
       tensor_utills::get_input_tensor("MatMulOp:b", 1, ctx, status.get());
-  vulten_ops::Mat_size b_mat_size = vulten_ops::Mat_size();
+  vulten_ops::mat_mul::Mat_size b_mat_size = vulten_ops::mat_mul::Mat_size();
   b_mat_size.x = b.dims[0];
   b_mat_size.y = b.dims[1];
 
@@ -71,19 +71,10 @@ void MatMulOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 
-  vulten_ops::MatMul_op* matMul_op = nullptr;
-  std::string op_cache_name = "MatMul";
-  inst->main_queue_mutex.lock();
-  if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
-    inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::MatMul_op(inst);
-  }
-  matMul_op = (vulten_ops::MatMul_op*)inst->op_chache[op_cache_name];
-  inst->main_queue_mutex.unlock();
-
-  matMul_op->run_op((vulten_ops::Data_type)T, a.vulten_tensor,
-                    matMulOpInfo->transA_, a_mat_size, b.vulten_tensor,
-                    matMulOpInfo->transB_, b_mat_size, output.vulten_tensor);
+  vulten_ops::mat_mul::run_op(inst, (vulten_ops::Data_type)T, a.vulten_tensor,
+                              matMulOpInfo->transA_, a_mat_size,
+                              b.vulten_tensor, matMulOpInfo->transB_,
+                              b_mat_size, output.vulten_tensor);
 }
 
 template <TF_DataType T>

@@ -32,18 +32,8 @@ void SoftmaxOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 
-  vulten_ops::Softmax_op* softmax_op = nullptr;
-  std::string op_cache_name = "Softmax";
-  inst->main_queue_mutex.lock();
-  if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
-    inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Softmax_op(inst);
-  }
-  softmax_op = (vulten_ops::Softmax_op*)inst->op_chache[op_cache_name];
-  inst->main_queue_mutex.unlock();
-
-  softmax_op->run_op((vulten_ops::Data_type)T, input.vulten_tensor,
-                     output.vulten_tensor);
+  vulten_ops::softmax::run_op(inst, (vulten_ops::Data_type)T,
+                              input.vulten_tensor, output.vulten_tensor);
 }
 
 template <TF_DataType T>

@@ -3,6 +3,8 @@
 #include "../../compiler.h"
 #include "Xent_source.h"
 
+namespace xent_shader {
+
 std::vector<uint32_t> generate_xent_shader(
     Generate_xent_shader_info generate_xent_shader_info) {
   shaderc::CompileOptions options = shader_wizard::get_compile_options();
@@ -13,3 +15,5 @@ std::vector<uint32_t> generate_xent_shader(
 
   return shader_wizard::compile_shader("Xent", xent_source, options);
 }
+
+}  // namespace xent_shader

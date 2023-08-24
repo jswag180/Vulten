@@ -3,16 +3,11 @@
 #include "../Vulten_backend_ops.h"
 
 namespace vulten_ops {
-class Cast_op : Vulten_op {
- private:
-  //
- public:
-  //
+namespace cast {
+static const int NUM_BUFFERS = 2;
+static const int NUM_SETS = 1;
 
-  void run_op(Data_type src, Data_type dst, Vulten_tensor input,
-              Vulten_tensor output);
-
-  Cast_op(vulten_backend::Instance *inst);
-  ~Cast_op();
-};
+void run_op(vulten_backend::Instance *inst, Data_type src, Data_type dst,
+            Vulten_tensor input, Vulten_tensor output);
+}  // namespace cast
 }  // namespace vulten_ops

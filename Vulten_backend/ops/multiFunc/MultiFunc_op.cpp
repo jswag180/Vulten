@@ -4,12 +4,10 @@
 
 #include "MultiFunc_shader.h"
 
-#define NUM_BUFFERS 2
-#define NUM_SETS 1
-
 namespace vulten_ops {
+namespace multiFunc {
 
-std::string MultiFunc_op::op_as_str(uint32_t op) {
+std::string op_as_str(uint32_t op) {
   switch (op) {
     case OP_SQRT:
       return "Sqrt";
@@ -28,49 +26,50 @@ std::string MultiFunc_op::op_as_str(uint32_t op) {
   }
 }
 
-MultiFunc_op::MultiFunc_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::MultiFunc_op")
-}
-
-void MultiFunc_op::run_op(Data_type dt, Vulten_tensor input,
-                          Vulten_tensor output, uint32_t op) {
-  VULTEN_LOG_DEBUG("Running vulten_ops::MultiFunc_op<" + Data_type_to_str(dt) +
-                   ">")
-  inst->main_queue_mutex.lock();
-
+vulten_backend::Vulten_pipeline *get_multiFunc_pipeline(
+    vulten_backend::Instance *inst, Data_type dt) {
   std::string pipe_string = "MultiFunc_" + Data_type_to_str(dt);
-  Vulten_pipeline *vulten_pipeline = nullptr;
-
-  if (!is_pipeline_cached(pipe_string)) {
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::MultiFunc_op pipeline " +
                      pipe_string)
 
-    struct Spec {
-      uint32_t localX;
-    } spec;
-
+    multiFunc_shader::Spec_cons spec;
     spec.localX =
         inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
 
     const std::vector<vk::SpecializationMapEntry> specs = {
-        {0, offsetof(Spec, localX), sizeof(uint32_t)},
+        {0, offsetof(multiFunc_shader::Spec_cons, localX), sizeof(uint32_t)},
     };
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
 
     const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(multiFunc::Push_const)}};
+        {vk::ShaderStageFlagBits::eCompute, 0,
+         sizeof(multiFunc_shader::Push_const)}};
 
-    Generate_multiFunc_shader_info generate_multiFunc_shader_info{dt};
-    vulten_pipeline = create_pipeline(
-        pipe_string, NUM_BUFFERS,
-        generate_multiFunc_shader(generate_multiFunc_shader_info), &spec_info,
-        push_const_ranges);
+    multiFunc_shader::Generate_multiFunc_shader_info
+        generate_multiFunc_shader_info{dt};
+    return inst->create_pipeline(pipe_string, NUM_BUFFERS,
+                                 multiFunc_shader::generate_multiFunc_shader(
+                                     generate_multiFunc_shader_info),
+                                 &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::MultiFunc_op pipeline " +
                      pipe_string)
-    vulten_pipeline = pipelines[pipe_string];
+    return vulten_pipeline;
   }
+}
+
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
+            Vulten_tensor output, uint32_t op) {
+  VULTEN_LOG_DEBUG("Running vulten_ops::MultiFunc_op<" + Data_type_to_str(dt) +
+                   ">")
+  inst->main_queue_mutex.lock();
+
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      get_multiFunc_pipeline(inst, dt);
 
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
@@ -121,10 +120,10 @@ void MultiFunc_op::run_op(Data_type dt, Vulten_tensor input,
       float(input.get_total_elements()) /
       inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
-  multiFunc::Push_const push_const{op};
+  multiFunc_shader::Push_const push_const{op};
   cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
                          vk::ShaderStageFlagBits::eCompute, 0,
-                         sizeof(multiFunc::Push_const), &push_const);
+                         sizeof(multiFunc_shader::Push_const), &push_const);
   cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
@@ -147,8 +146,5 @@ void MultiFunc_op::run_op(Data_type dt, Vulten_tensor input,
   inst->main_queue_mutex.unlock();
 }
 
-MultiFunc_op::~MultiFunc_op() {
-  VULTEN_LOG_DEBUG("Freeing vulten_ops::MultiFunc_op")
-}
-
+}  // namespace multiFunc
 }  // namespace vulten_ops

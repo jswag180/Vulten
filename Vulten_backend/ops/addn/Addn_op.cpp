@@ -6,48 +6,26 @@
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_structs.hpp>
 
-#include "../assign_add_sub/Assign_add_sub_shader.h"
+#include "../assign_add_sub/Assign_add_sub_op.h"
 #include "Vulten_backend/Vulten_backend.h"
 
-#define NUM_BUFFERS 2
-
 namespace vulten_ops {
+namespace addn {
 
-Addn_op::Addn_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Addn_op")
-}
-
-void Addn_op::run_op(Data_type dt, std::vector<Vulten_tensor> &inputs,
-                     Vulten_tensor output) {
+void run_op(vulten_backend::Instance *inst, Data_type dt,
+            std::vector<Vulten_tensor> &inputs, Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Addn_op<" + Data_type_to_str(dt) + ">")
   inst->main_queue_mutex.lock();
 
-  std::string pipe_string = "Assign_add_sub_" + Data_type_to_str(dt);
-  Vulten_pipeline *vulten_pipeline = nullptr;
-
-  if (!is_pipeline_cached(pipe_string)) {
-    VULTEN_LOG_DEBUG("Creating vulten_ops::Assign_add_sub_op pipeline " +
-                     pipe_string)
-
-    const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(int32_t)}};
-
-    Generate_assign_add_sub_shader_info generate_assign_add_sub_shader_info{dt};
-    vulten_pipeline = create_pipeline(
-        pipe_string, NUM_BUFFERS,
-        generate_assign_add_sub_shader(generate_assign_add_sub_shader_info),
-        nullptr, push_const_ranges);
-  } else {
-    VULTEN_LOG_DEBUG("Using cached vulten_ops::Assign_add_sub_op pipeline " +
-                     pipe_string)
-    vulten_pipeline = pipelines[pipe_string];
-  }
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      assign_add_sub::get_assign_add_sub_pipeline(inst, dt);
 
   uint32_t num_sets = inputs.size() - 1;
 
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer, NUM_BUFFERS * num_sets);
+      vk::DescriptorType::eStorageBuffer,
+      assign_add_sub::NUM_BUFFERS * num_sets);
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
       vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, num_sets,
       descriptor_pool_size);
@@ -62,44 +40,50 @@ void Addn_op::run_op(Data_type dt, std::vector<Vulten_tensor> &inputs,
       inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info);
 
   std::vector<vk::DescriptorBufferInfo> buffer_info =
-      std::vector<vk::DescriptorBufferInfo>(NUM_BUFFERS * num_sets,
-                                            vk::DescriptorBufferInfo());
-  for (uint32_t i = 0; i < buffer_info.size(); i += NUM_BUFFERS) {
+      std::vector<vk::DescriptorBufferInfo>(
+          assign_add_sub::NUM_BUFFERS * num_sets, vk::DescriptorBufferInfo());
+  for (uint32_t i = 0; i < buffer_info.size();
+       i += assign_add_sub::NUM_BUFFERS) {
     buffer_info[i].setBuffer(output.buffer->vk_buffer);
     buffer_info[i].setOffset(0);
     buffer_info[i].setRange(output.buffer->buffer_size);
 
     buffer_info[i + 1].setBuffer(
-        inputs[(i / NUM_BUFFERS) + 1].buffer->vk_buffer);
+        inputs[(i / assign_add_sub::NUM_BUFFERS) + 1].buffer->vk_buffer);
     buffer_info[i + 1].setOffset(0);
     buffer_info[i + 1].setRange(
-        inputs[(i / NUM_BUFFERS) + 1].buffer->buffer_size);
+        inputs[(i / assign_add_sub::NUM_BUFFERS) + 1].buffer->buffer_size);
   }
 
   std::vector<vk::WriteDescriptorSet> writeDescriptorSets =
-      std::vector<vk::WriteDescriptorSet>(num_sets * NUM_BUFFERS);
+      std::vector<vk::WriteDescriptorSet>(num_sets *
+                                          assign_add_sub::NUM_BUFFERS);
   for (uint32_t i = 0; i < num_sets; i++) {
-    writeDescriptorSets[i * NUM_BUFFERS].setDstSet(descriptor_sets[i]);
-    writeDescriptorSets[i * NUM_BUFFERS].setDstBinding(0);
-    writeDescriptorSets[i * NUM_BUFFERS].setDstArrayElement(0);
-    writeDescriptorSets[i * NUM_BUFFERS].setDescriptorCount(1);
-    writeDescriptorSets[i * NUM_BUFFERS].setDescriptorType(
+    writeDescriptorSets[i * assign_add_sub::NUM_BUFFERS].setDstSet(
+        descriptor_sets[i]);
+    writeDescriptorSets[i * assign_add_sub::NUM_BUFFERS].setDstBinding(0);
+    writeDescriptorSets[i * assign_add_sub::NUM_BUFFERS].setDstArrayElement(0);
+    writeDescriptorSets[i * assign_add_sub::NUM_BUFFERS].setDescriptorCount(1);
+    writeDescriptorSets[i * assign_add_sub::NUM_BUFFERS].setDescriptorType(
         vk::DescriptorType::eStorageBuffer);
-    writeDescriptorSets[i * NUM_BUFFERS].setBufferInfo(
-        buffer_info[i * NUM_BUFFERS]);
+    writeDescriptorSets[i * assign_add_sub::NUM_BUFFERS].setBufferInfo(
+        buffer_info[i * assign_add_sub::NUM_BUFFERS]);
 
-    writeDescriptorSets[(i * NUM_BUFFERS) + 1].setDstSet(descriptor_sets[i]);
-    writeDescriptorSets[(i * NUM_BUFFERS) + 1].setDstBinding(1);
-    writeDescriptorSets[(i * NUM_BUFFERS) + 1].setDstArrayElement(0);
-    writeDescriptorSets[(i * NUM_BUFFERS) + 1].setDescriptorCount(1);
-    writeDescriptorSets[(i * NUM_BUFFERS) + 1].setDescriptorType(
-        vk::DescriptorType::eStorageBuffer);
-    writeDescriptorSets[(i * NUM_BUFFERS) + 1].setBufferInfo(
-        buffer_info[(i * NUM_BUFFERS) + 1]);
+    writeDescriptorSets[(i * assign_add_sub::NUM_BUFFERS) + 1].setDstSet(
+        descriptor_sets[i]);
+    writeDescriptorSets[(i * assign_add_sub::NUM_BUFFERS) + 1].setDstBinding(1);
+    writeDescriptorSets[(i * assign_add_sub::NUM_BUFFERS) + 1]
+        .setDstArrayElement(0);
+    writeDescriptorSets[(i * assign_add_sub::NUM_BUFFERS) + 1]
+        .setDescriptorCount(1);
+    writeDescriptorSets[(i * assign_add_sub::NUM_BUFFERS) + 1]
+        .setDescriptorType(vk::DescriptorType::eStorageBuffer);
+    writeDescriptorSets[(i * assign_add_sub::NUM_BUFFERS) + 1].setBufferInfo(
+        buffer_info[(i * assign_add_sub::NUM_BUFFERS) + 1]);
   }
   inst->logical_dev.updateDescriptorSets(writeDescriptorSets, {});
 
-  int32_t op = 0;  // 0: sum 1: sub
+  int32_t op = ADD;
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       inst->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
@@ -174,6 +158,5 @@ void Addn_op::run_op(Data_type dt, std::vector<Vulten_tensor> &inputs,
   inst->main_queue_mutex.unlock();
 }
 
-Addn_op::~Addn_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Addn_op") }
-
+}  // namespace addn
 }  // namespace vulten_ops

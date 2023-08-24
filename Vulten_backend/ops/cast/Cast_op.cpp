@@ -3,37 +3,34 @@
 #include "Cast_shader.h"
 
 namespace vulten_ops {
+namespace cast {
 
-Cast_op::Cast_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Cast_op")
-}
-
-void Cast_op::run_op(Data_type src, Data_type dst, Vulten_tensor input,
-                     Vulten_tensor output) {
+void run_op(vulten_backend::Instance *inst, Data_type src, Data_type dst,
+            Vulten_tensor input, Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Cast_op<" + Data_type_to_str(src) +
                    ", " + Data_type_to_str(dst) + ">")
   inst->main_queue_mutex.lock();
 
   std::string pipe_string =
       "Cast_" + Data_type_to_str(src) + "_" + Data_type_to_str(dst);
-  Vulten_pipeline *vulten_pipeline = nullptr;
-
-  if (!is_pipeline_cached(pipe_string)) {
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Cast_op pipeline " + pipe_string)
 
-    Generate_cast_shader_info generate_cast_shader_info{src, dst};
-    vulten_pipeline = create_pipeline(
-        pipe_string, 2, generate_cast_shader(generate_cast_shader_info));
+    cast_shader::Generate_cast_shader_info generate_cast_shader_info{src, dst};
+    vulten_pipeline = inst->create_pipeline(
+        pipe_string, NUM_BUFFERS,
+        cast_shader::generate_cast_shader(generate_cast_shader_info));
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Cast_op pipeline " + pipe_string)
-    vulten_pipeline = pipelines[pipe_string];
   }
 
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer, 2);
+      vk::DescriptorType::eStorageBuffer, NUM_BUFFERS);
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
-      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 1,
+      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, NUM_SETS,
       descriptor_pool_size);
   descriptor_pool =
       inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
@@ -96,6 +93,5 @@ void Cast_op::run_op(Data_type src, Data_type dst, Vulten_tensor input,
   inst->main_queue_mutex.unlock();
 }
 
-Cast_op::~Cast_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Cast_op") }
-
+}  // namespace cast
 }  // namespace vulten_ops

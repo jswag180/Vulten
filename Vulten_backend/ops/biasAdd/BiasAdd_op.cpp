@@ -4,52 +4,44 @@
 
 #include "BiasAdd_shader.h"
 
-#define NUM_BUFFERS 3
-#define NUM_SETS 1
-
 namespace vulten_ops {
+namespace bias_add {
 
-BiasAdd_op::BiasAdd_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::BiasAdd_op")
-}
-
-void BiasAdd_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor bias,
-                        uint32_t bias_dim, Vulten_tensor output) {
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
+            Vulten_tensor bias, uint32_t bias_dim, Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::BiasAdd_op<" + Data_type_to_str(dt) +
                    ">")
   inst->main_queue_mutex.lock();
 
   std::string pipe_string = "BiasAdd_" + Data_type_to_str(dt);
-  Vulten_pipeline *vulten_pipeline = nullptr;
-
-  if (!is_pipeline_cached(pipe_string)) {
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::BiasAdd_op pipeline " + pipe_string)
 
-    struct Spec {
-      uint32_t localX;
-    } spec;
-
+    bias_add_shader::Spec_cons spec;
     spec.localX =
         inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
 
     const std::vector<vk::SpecializationMapEntry> specs = {
-        {0, offsetof(Spec, localX), sizeof(uint32_t)},
+        {0, offsetof(bias_add_shader::Spec_cons, localX), sizeof(uint32_t)},
     };
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
 
     const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t)}};
+        {vk::ShaderStageFlagBits::eCompute, 0,
+         sizeof(bias_add_shader::Push_const)}};
 
-    Generate_biasAdd_shader_info generate_biasAdd_shader_info{dt};
-    vulten_pipeline =
-        create_pipeline(pipe_string, NUM_BUFFERS,
-                        generate_biasAdd_shader(generate_biasAdd_shader_info),
-                        &spec_info, push_const_ranges);
+    bias_add_shader::Generate_biasAdd_shader_info generate_biasAdd_shader_info{
+        dt};
+    vulten_pipeline = inst->create_pipeline(
+        pipe_string, NUM_BUFFERS,
+        generate_biasAdd_shader(generate_biasAdd_shader_info), &spec_info,
+        push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::BiasAdd_op pipeline " +
                      pipe_string)
-    vulten_pipeline = pipelines[pipe_string];
   }
 
   vk::DescriptorPool descriptor_pool;
@@ -102,9 +94,10 @@ void BiasAdd_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor bias,
       {descriptor_set},                  // List of descriptor sets
       {});                               // Dynamic offsets
 
+  bias_add_shader::Push_const pushes = {bias_dim};
   cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
-                         vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t),
-                         &bias_dim);
+                         vk::ShaderStageFlagBits::eCompute, 0,
+                         sizeof(bias_add_shader::Push_const), &pushes);
 
   uint32_t threads = std::ceil(
       float(input.get_total_elements()) /
@@ -132,6 +125,5 @@ void BiasAdd_op::run_op(Data_type dt, Vulten_tensor input, Vulten_tensor bias,
   inst->main_queue_mutex.unlock();
 }
 
-BiasAdd_op::~BiasAdd_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::BiasAdd_op") }
-
+}  // namespace bias_add
 }  // namespace vulten_ops

@@ -2,34 +2,30 @@
 
 #include "ReluGrad_shader.h"
 
-#define NUM_BUFFERS 3
-#define NUM_SETS 1
-
 namespace vulten_ops {
+namespace reluGrad {
 
-ReluGrad_op::ReluGrad_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::ReluGrad_op")
-}
-
-void ReluGrad_op::run_op(Data_type dt, Vulten_tensor gradients,
-                         Vulten_tensor features, Vulten_tensor output) {
+void run_op(vulten_backend::Instance *inst, Data_type dt,
+            Vulten_tensor gradients, Vulten_tensor features,
+            Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::ReluGrad_op<" + Data_type_to_str(dt) +
                    ">")
   inst->main_queue_mutex.lock();
 
   std::string pipe_string = "ReluGrad_" + Data_type_to_str(dt);
-  Vulten_pipeline *vulten_pipeline = nullptr;
-
-  if (!is_pipeline_cached(pipe_string)) {
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::ReluGrad_op pipeline " + pipe_string)
-    Generate_reluGrad_shader_info generate_reluGrad_shader_info{dt};
-    vulten_pipeline = create_pipeline(
-        pipe_string, NUM_BUFFERS,
-        generate_reluGrad_shader(generate_reluGrad_shader_info));
+    reluGrad_shader::Generate_reluGrad_shader_info
+        generate_reluGrad_shader_info{dt};
+    vulten_pipeline =
+        inst->create_pipeline(pipe_string, NUM_BUFFERS,
+                              reluGrad_shader::generate_reluGrad_shader(
+                                  generate_reluGrad_shader_info));
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::ReluGrad_op pipeline " +
                      pipe_string)
-    vulten_pipeline = pipelines[pipe_string];
   }
 
   vk::DescriptorPool descriptor_pool;
@@ -103,8 +99,5 @@ void ReluGrad_op::run_op(Data_type dt, Vulten_tensor gradients,
   inst->main_queue_mutex.unlock();
 }
 
-ReluGrad_op::~ReluGrad_op() {
-  VULTEN_LOG_DEBUG("Freeing vulten_ops::ReluGrad_op")
-}
-
+}  // namespace reluGrad
 }  // namespace vulten_ops

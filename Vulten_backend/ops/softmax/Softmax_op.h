@@ -3,17 +3,16 @@
 #include "../Vulten_backend_ops.h"
 
 namespace vulten_ops {
-class Softmax_op : Vulten_op {
- private:
-  //
- public:
-  vulten_ops::Vulten_pipeline* get_multiFunc_pipeline(Data_type dt);
-  vulten_ops::Vulten_pipeline* get_batchAdd_pipeline(Data_type dt);
-  vulten_ops::Vulten_pipeline* get_softmax_pipeline(Data_type dt);
+namespace softmax {
+static const int NUM_BUFFERS = 3;
+static const int NUM_SETS = 3;
 
-  void run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output);
+vulten_backend::Vulten_pipeline *get_batchAdd_pipeline(
+    vulten_backend::Instance *inst, Data_type dt);
+vulten_backend::Vulten_pipeline *get_softmax_pipeline(
+    vulten_backend::Instance *inst, Data_type dt);
 
-  Softmax_op(vulten_backend::Instance* inst);
-  ~Softmax_op();
-};
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
+            Vulten_tensor output);
+}  // namespace softmax
 }  // namespace vulten_ops

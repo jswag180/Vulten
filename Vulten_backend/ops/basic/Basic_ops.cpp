@@ -6,14 +6,8 @@
 #include "Vulten_backend/Vulten_backend.h"
 #include "Vulten_backend/Vulten_utills.h"
 
-#define NUM_BUFFERS 5
-#define NUM_SETS 1
-
 namespace vulten_ops {
-
-struct Push_const {
-  uint32_t batch_num;
-};
+namespace basic {
 
 std::string op_as_str(uint32_t op) {
   if (op == OP_MUL) {
@@ -31,53 +25,45 @@ std::string op_as_str(uint32_t op) {
   }
 }
 
-Basic_op::Basic_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Basic_op")
-}
-
-void Basic_op::run_op(Data_type dt, uint32_t op, Vulten_tensor x,
-                      Vulten_tensor y, Vulten_tensor output) {
+void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t op,
+            Vulten_tensor x, Vulten_tensor y, Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Basic_op<" + Data_type_to_str(dt) +
                    ", " + op_as_str(op) + ">")
   inst->main_queue_mutex.lock();
 
   std::string basic_pipe_string =
       "Basic_" + op_as_str(op) + "_" + Data_type_to_str(dt);
-  Vulten_pipeline *vulten_pipeline = nullptr;
-  if (!is_pipeline_cached(basic_pipe_string)) {
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      inst->get_cached_pipeline(basic_pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Basic_op<" + Data_type_to_str(dt) +
                      ", " + op_as_str(op) + "> " + basic_pipe_string)
 
-    struct Spec {
-      uint32_t local_x;
-
-      uint32_t op;
-    } spec;
-
+    basic_shader::Spec_cons spec;
     spec.local_x =
         inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
-
     spec.op = op;
 
     const std::vector<vk::SpecializationMapEntry> specs = {
-        {0, 0, sizeof(uint32_t)}, {1, offsetof(Spec, op), sizeof(uint32_t)}};
+        {0, 0, sizeof(uint32_t)},
+        {1, offsetof(basic_shader::Spec_cons, op), sizeof(uint32_t)}};
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
 
     const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t) * 3},
+        {vk::ShaderStageFlagBits::eCompute, 0,
+         sizeof(basic_shader::Push_const)},
     };
 
-    Generate_basic_shader_info generate_basic_shader_info{dt};
-    vulten_pipeline =
-        create_pipeline(basic_pipe_string, NUM_BUFFERS,
-                        generate_basic_shader(generate_basic_shader_info),
-                        &spec_info, push_const_ranges);
+    basic_shader::Generate_basic_shader_info generate_basic_shader_info{dt};
+    vulten_pipeline = inst->create_pipeline(
+        basic_pipe_string, NUM_BUFFERS,
+        basic_shader::generate_basic_shader(generate_basic_shader_info),
+        &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Basic_op<" +
                      Data_type_to_str(dt) + ", " + op_as_str(op) + "> " +
                      basic_pipe_string)
-    vulten_pipeline = pipelines[basic_pipe_string];
   }
 
   vk::DescriptorPool descriptor_pool;
@@ -168,11 +154,11 @@ void Basic_op::run_op(Data_type dt, uint32_t op, Vulten_tensor x,
       {descriptor_set},                  // List of descriptor sets
       {});                               // Dynamic offsets
 
-  uint32_t pushes[3] = {uint32_t(x.num_dims), uint32_t(y.num_dims),
-                        uint32_t(output.num_dims)};
+  basic_shader::Push_const pushes = {uint32_t(x.num_dims), uint32_t(y.num_dims),
+                                     uint32_t(output.num_dims)};
   cmd_buffs.pushConstants(vulten_pipeline->pipeline_layout,
                           vk::ShaderStageFlagBits::eCompute, 0,
-                          sizeof(uint32_t) * 3, pushes);
+                          sizeof(basic_shader::Push_const), &pushes);
   uint32_t threads = std::ceil(
       float(output.get_total_elements()) /
       inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
@@ -200,6 +186,5 @@ void Basic_op::run_op(Data_type dt, uint32_t op, Vulten_tensor x,
   inst->main_queue_mutex.unlock();
 }
 
-Basic_op::~Basic_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Basic_op") }
-
+}  // namespace basic
 }  // namespace vulten_ops

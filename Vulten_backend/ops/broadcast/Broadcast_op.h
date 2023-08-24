@@ -3,18 +3,13 @@
 #include "../Vulten_backend_ops.h"
 
 namespace vulten_ops {
-class Broadcast_op : Vulten_op {
- private:
-  //
- public:
-  static const std::string op_name;
+namespace broadcast {
+static const int NUM_BUFFERS = 4;
+static const int NUM_SETS = 1;
 
-  Vulten_pipeline* get_broadcast_pipeline(std::string pipe_string,
-                                          Data_type dt);
-
-  void run_op(Data_type dt, Vulten_tensor input, Vulten_tensor output);
-
-  Broadcast_op(vulten_backend::Instance* inst);
-  ~Broadcast_op();
-};
+vulten_backend::Vulten_pipeline* get_broadcast_pipeline(
+    vulten_backend::Instance* inst, Data_type dt);
+void run_op(vulten_backend::Instance* inst, Data_type dt, Vulten_tensor input,
+            Vulten_tensor output);
+}  // namespace broadcast
 }  // namespace vulten_ops

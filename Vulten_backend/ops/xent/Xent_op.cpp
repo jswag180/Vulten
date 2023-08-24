@@ -4,50 +4,44 @@
 
 #include "Xent_shader.h"
 
-#define NUM_BUFFERS 4
-#define NUM_SETS 1
-
 namespace vulten_ops {
-Xent_op::Xent_op(vulten_backend::Instance *inst) : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Xent_op")
-}
+namespace xent {
 
-void Xent_op::run_op(Data_type dt, Data_type dt_labels, Vulten_tensor scratch,
-                     Vulten_tensor backprop, Vulten_tensor labels,
-                     Vulten_tensor output, uint32_t op) {
+void run_op(vulten_backend::Instance *inst, Data_type dt, Data_type dt_labels,
+            Vulten_tensor scratch, Vulten_tensor backprop, Vulten_tensor labels,
+            Vulten_tensor output, uint32_t op) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Xent_op<" + Data_type_to_str(dt) + ">")
   inst->main_queue_mutex.lock();
 
   std::string pipe_string = "Xent_" + Data_type_to_str(dt);
-  Vulten_pipeline *vulten_pipeline = nullptr;
-
-  if (!is_pipeline_cached(pipe_string)) {
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Xent_op pipeline " + pipe_string)
 
-    struct Spec {
-      uint32_t localX;
-    } spec;
-
+    xent_shader::Spec_cons spec;
     spec.localX =
         inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
 
     const std::vector<vk::SpecializationMapEntry> specs = {
-        {0, offsetof(Spec, localX), sizeof(Spec)},
+        {0, offsetof(xent_shader::Spec_cons, localX),
+         sizeof(xent_shader::Spec_cons)},
     };
-    vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(Spec),
-                                     &spec);
+    vk::SpecializationInfo spec_info(specs.size(), specs.data(),
+                                     sizeof(xent_shader::Spec_cons), &spec);
 
     const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(xent::Push_const)}};
+        {vk::ShaderStageFlagBits::eCompute, 0,
+         sizeof(xent_shader::Push_const)}};
 
-    Generate_xent_shader_info generate_xent_shader_info{dt, dt_labels};
-    vulten_pipeline =
-        create_pipeline(pipe_string, NUM_BUFFERS,
-                        generate_xent_shader(generate_xent_shader_info),
-                        &spec_info, push_const_ranges);
+    xent_shader::Generate_xent_shader_info generate_xent_shader_info{dt,
+                                                                     dt_labels};
+    vulten_pipeline = inst->create_pipeline(
+        pipe_string, NUM_BUFFERS,
+        xent_shader::generate_xent_shader(generate_xent_shader_info),
+        &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Xent_op pipeline " + pipe_string)
-    vulten_pipeline = pipelines[pipe_string];
   }
 
   vk::DescriptorPool descriptor_pool;
@@ -107,10 +101,10 @@ void Xent_op::run_op(Data_type dt, Data_type dt_labels, Vulten_tensor scratch,
       float(backprop.get_total_elements()) /
       inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
-  xent::Push_const push_const{uint32_t(backprop.dims[1]), op};
+  xent_shader::Push_const push_const{uint32_t(backprop.dims[1]), op};
   cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
                          vk::ShaderStageFlagBits::eCompute, 0,
-                         sizeof(xent::Push_const), &push_const);
+                         sizeof(xent_shader::Push_const), &push_const);
   cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
@@ -133,6 +127,5 @@ void Xent_op::run_op(Data_type dt, Data_type dt_labels, Vulten_tensor scratch,
   inst->main_queue_mutex.unlock();
 }
 
-Xent_op::~Xent_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Xent_op") }
-
+}  // namespace xent
 }  // namespace vulten_ops

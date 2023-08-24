@@ -6,21 +6,15 @@
 #include "Vulten_backend/Vulten_backend.h"
 #include "Vulten_backend/Vulten_utills.h"
 
-#define NUM_BUFFERS 4
-#define NUM_SETS 1
-
 namespace vulten_ops {
+namespace broadcast {
 
-const std::string Broadcast_op::op_name = "Broadcast";
-
-Broadcast_op::Broadcast_op(vulten_backend::Instance *inst)
-    : Vulten_op(inst){VULTEN_LOG_DEBUG("Creating vulten_ops::Broadcast_op")}
-
-      Vulten_pipeline
-      *
-      Broadcast_op::get_broadcast_pipeline(std::string pipe_string,
-                                           Data_type dt) {
-  if (!is_pipeline_cached(pipe_string)) {
+vulten_backend::Vulten_pipeline *get_broadcast_pipeline(
+    vulten_backend::Instance *inst, Data_type dt) {
+  std::string pipe_string = "Broadcast_" + Data_type_to_str(dt);
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Broadcast_op<" +
                      Data_type_to_str(dt) + "> " + pipe_string)
 
@@ -41,26 +35,25 @@ Broadcast_op::Broadcast_op(vulten_backend::Instance *inst)
 
     broadcast_shader::Generate_broadcast_shader_info
         generate_broadcast_shader_info{dt};
-    return create_pipeline(pipe_string, NUM_BUFFERS,
-                           broadcast_shader::generate_broadcast_shader(
-                               generate_broadcast_shader_info),
-                           &spec_info, push_const_ranges);
+    return inst->create_pipeline(pipe_string, NUM_BUFFERS,
+                                 broadcast_shader::generate_broadcast_shader(
+                                     generate_broadcast_shader_info),
+                                 &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Broadcast_op<" +
                      Data_type_to_str(dt) + "> " + pipe_string)
-    return pipelines[pipe_string];
+    return vulten_pipeline;
   }
 }
 
-void Broadcast_op::run_op(Data_type dt, Vulten_tensor input,
-                          Vulten_tensor output) {
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
+            Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Broadcast_op<" + Data_type_to_str(dt) +
                    ">")
   inst->main_queue_mutex.lock();
 
-  std::string broadcast_pipe_string = op_name + "_" + Data_type_to_str(dt);
-  Vulten_pipeline *vulten_pipeline =
-      get_broadcast_pipeline(broadcast_pipe_string, dt);
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      get_broadcast_pipeline(inst, dt);
 
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
@@ -172,8 +165,5 @@ void Broadcast_op::run_op(Data_type dt, Vulten_tensor input,
   inst->main_queue_mutex.unlock();
 }
 
-Broadcast_op::~Broadcast_op() {
-  VULTEN_LOG_DEBUG("Freeing vulten_ops::Broadcast_op")
-}
-
+}  // namespace broadcast
 }  // namespace vulten_ops

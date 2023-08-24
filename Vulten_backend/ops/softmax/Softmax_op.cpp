@@ -4,73 +4,33 @@
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
 
+#include "../multiFunc/MultiFunc_op.h"
 #include "../multiFunc/MultiFunc_shader.h"
 #include "BatchAdd_shader.h"
 #include "Softmax_shader.h"
 #include "Vulten_backend/ops/Vulten_backend_ops.h"
-#include "Vulten_backend/ops/multiFunc/MultiFunc_op.h"
 
 #define NUM_BUFFERS_BATCHADD 2
-#define NUM_BUFFERS_MULTIFUNC 2
 #define NUM_BUFFERS_SOFTMAX 3
 #define NUM_SETS 3
 
 namespace vulten_ops {
+namespace softmax {
 
-Softmax_op::Softmax_op(vulten_backend::Instance* inst)
-    : Vulten_op(inst){VULTEN_LOG_DEBUG("Creating vulten_ops::Softmax_op")}
-
-      vulten_ops::Vulten_pipeline
-      *
-      Softmax_op::get_multiFunc_pipeline(Data_type dt) {
-  std::string pipe_string = "MultiFunc_" + Data_type_to_str(dt);
-
-  if (!is_pipeline_cached(pipe_string)) {
-    VULTEN_LOG_DEBUG("Creating vulten_ops::Softmax_op pipeline " + pipe_string)
-
-    struct Spec {
-      uint32_t localX;
-    } spec;
-
-    spec.localX =
-        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
-
-    const std::vector<vk::SpecializationMapEntry> specs = {
-        {0, offsetof(Spec, localX), sizeof(uint32_t)},
-    };
-    vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
-                                     &spec);
-
-    const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(multiFunc::Push_const)}};
-
-    Generate_multiFunc_shader_info generate_multiFunc_shader_info{dt};
-    return create_pipeline(
-        pipe_string, NUM_BUFFERS_MULTIFUNC,
-        generate_multiFunc_shader(generate_multiFunc_shader_info), &spec_info,
-        push_const_ranges);
-  } else {
-    VULTEN_LOG_DEBUG("Using cached vulten_ops::Softmax_op pipeline " +
-                     pipe_string)
-    return pipelines[pipe_string];
-  }
-}
-
-vulten_ops::Vulten_pipeline* Softmax_op::get_batchAdd_pipeline(Data_type dt) {
+vulten_backend::Vulten_pipeline* get_batchAdd_pipeline(
+    vulten_backend::Instance* inst, Data_type dt) {
   std::string pipe_string = "BatchAdd_" + Data_type_to_str(dt);
-
-  if (!is_pipeline_cached(pipe_string)) {
+  vulten_backend::Vulten_pipeline* vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Softmax_op pipeline " + pipe_string)
 
-    struct Spec {
-      uint32_t localX;
-    } spec;
-
+    batchAdd_shader::Spec_cons spec;
     spec.localX =
         inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
 
     const std::vector<vk::SpecializationMapEntry> specs = {
-        {0, offsetof(Spec, localX), sizeof(uint32_t)},
+        {0, offsetof(batchAdd_shader::Spec_cons, localX), sizeof(uint32_t)},
     };
     vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
                                      &spec);
@@ -78,66 +38,70 @@ vulten_ops::Vulten_pipeline* Softmax_op::get_batchAdd_pipeline(Data_type dt) {
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t)}};
 
-    Generate_batchAdd_shader_info generate_batchAdd_shader_info{dt};
-    return create_pipeline(
-        pipe_string, NUM_BUFFERS_BATCHADD,
-        generate_batchAdd_shader(generate_batchAdd_shader_info), &spec_info,
-        push_const_ranges);
+    batchAdd_shader::Generate_batchAdd_shader_info
+        generate_batchAdd_shader_info{dt};
+    return inst->create_pipeline(pipe_string, NUM_BUFFERS_BATCHADD,
+                                 batchAdd_shader::generate_batchAdd_shader(
+                                     generate_batchAdd_shader_info),
+                                 &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Softmax_op pipeline " +
                      pipe_string)
-    return pipelines[pipe_string];
+    return vulten_pipeline;
   }
 }
 
-vulten_ops::Vulten_pipeline* Softmax_op::get_softmax_pipeline(Data_type dt) {
+vulten_backend::Vulten_pipeline* get_softmax_pipeline(
+    vulten_backend::Instance* inst, Data_type dt) {
   std::string pipe_string = "Softmax_" + Data_type_to_str(dt);
-
-  if (!is_pipeline_cached(pipe_string)) {
+  vulten_backend::Vulten_pipeline* vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Softmax_op pipeline " + pipe_string)
 
-    struct Spec {
-      uint32_t localX;
-    } spec;
-
+    softmax_shader::Spec_cons spec;
     spec.localX =
         inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
 
     const std::vector<vk::SpecializationMapEntry> specs = {
-        {0, offsetof(Spec, localX), sizeof(uint32_t)},
+        {0, offsetof(softmax_shader::Spec_cons, localX), sizeof(uint32_t)},
     };
-    vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
-                                     &spec);
+    vk::SpecializationInfo spec_info(specs.size(), specs.data(),
+                                     sizeof(softmax_shader::Spec_cons), &spec);
 
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t)}};
 
-    Generate_softmax_shader_info generate_softmax_shader_info{dt};
-    return create_pipeline(
+    softmax_shader::Generate_softmax_shader_info generate_softmax_shader_info{
+        dt};
+    return inst->create_pipeline(
         pipe_string, NUM_BUFFERS_SOFTMAX,
-        generate_softmax_shader(generate_softmax_shader_info), &spec_info,
-        push_const_ranges);
+        softmax_shader::generate_softmax_shader(generate_softmax_shader_info),
+        &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Softmax_op pipeline " +
                      pipe_string)
-    return pipelines[pipe_string];
+    return vulten_pipeline;
   }
 }
 
-void Softmax_op::run_op(Data_type dt, Vulten_tensor input,
-                        Vulten_tensor output) {
+void run_op(vulten_backend::Instance* inst, Data_type dt, Vulten_tensor input,
+            Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Softmax_op<" + Data_type_to_str(dt) +
                    ">")
   inst->main_queue_mutex.lock();
 
-  vulten_ops::Vulten_pipeline* exp_pipeline = get_multiFunc_pipeline(dt);
-  vulten_ops::Vulten_pipeline* batchAdd_pipeline = get_batchAdd_pipeline(dt);
-  vulten_ops::Vulten_pipeline* softmax_pipeline = get_softmax_pipeline(dt);
+  vulten_backend::Vulten_pipeline* exp_pipeline =
+      multiFunc::get_multiFunc_pipeline(inst, dt);
+  vulten_backend::Vulten_pipeline* batchAdd_pipeline =
+      get_batchAdd_pipeline(inst, dt);
+  vulten_backend::Vulten_pipeline* softmax_pipeline =
+      get_softmax_pipeline(inst, dt);
 
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
       vk::DescriptorType::eStorageBuffer,
-      NUM_BUFFERS_BATCHADD * NUM_BUFFERS_MULTIFUNC * NUM_BUFFERS_SOFTMAX);
+      NUM_BUFFERS_BATCHADD * multiFunc::NUM_BUFFERS * NUM_BUFFERS_SOFTMAX);
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
       vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, NUM_SETS,
       descriptor_pool_size);
@@ -217,10 +181,10 @@ void Softmax_op::run_op(Data_type dt, Vulten_tensor input,
       float(input.get_total_elements()) /
       inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
-  multiFunc::Push_const push_const{OP_EXP};
+  multiFunc_shader::Push_const push_const{OP_EXP};
   cmd_buff.pushConstants(exp_pipeline->pipeline_layout,
                          vk::ShaderStageFlagBits::eCompute, 0,
-                         sizeof(multiFunc::Push_const), &push_const);
+                         sizeof(multiFunc_shader::Push_const), &push_const);
   cmd_buff.dispatch(threads, 1, 1);
 
   cmd_buff.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
@@ -294,6 +258,5 @@ void Softmax_op::run_op(Data_type dt, Vulten_tensor input,
   inst->main_queue_mutex.unlock();
 }
 
-Softmax_op::~Softmax_op() { VULTEN_LOG_DEBUG("Freeing vulten_ops::Softmax_op") }
-
+}  // namespace softmax
 }  // namespace vulten_ops

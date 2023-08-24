@@ -35,18 +35,9 @@ void ReluGradOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
   SP_Stream stream = TF_GetStream(ctx, status.get());
   vulten_backend::Instance* inst = stream->instance;
 
-  vulten_ops::ReluGrad_op* reluGrad_op = nullptr;
-  std::string op_cache_name = "ReluGrad";
-  inst->main_queue_mutex.lock();
-  if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
-    inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::ReluGrad_op(inst);
-  }
-  reluGrad_op = (vulten_ops::ReluGrad_op*)inst->op_chache[op_cache_name];
-  inst->main_queue_mutex.unlock();
-
-  reluGrad_op->run_op((vulten_ops::Data_type)T, gradients.vulten_tensor,
-                      features.vulten_tensor, output.vulten_tensor);
+  vulten_ops::reluGrad::run_op(inst, (vulten_ops::Data_type)T,
+                               gradients.vulten_tensor, features.vulten_tensor,
+                               output.vulten_tensor);
 }
 
 template <TF_DataType T>

@@ -44,17 +44,8 @@ void AddnOp_Compute(void* kernel, TF_OpKernelContext* ctx) {
     return;
   }
 
-  vulten_ops::Addn_op* addn_op = nullptr;
-  std::string op_cache_name = "Addn";
-  inst->main_queue_mutex.lock();
-  if (inst->op_chache.find(op_cache_name) == inst->op_chache.end()) {
-    inst->op_chache[op_cache_name] =
-        (vulten_ops::Vulten_op*)new vulten_ops::Addn_op(inst);
-  }
-  addn_op = (vulten_ops::Addn_op*)inst->op_chache[op_cache_name];
-  inst->main_queue_mutex.unlock();
-
-  addn_op->run_op((vulten_ops::Data_type)T, tensors, output.vulten_tensor);
+  vulten_ops::addn::run_op(inst, (vulten_ops::Data_type)T, tensors,
+                           output.vulten_tensor);
 }
 
 template <TF_DataType T>

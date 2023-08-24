@@ -9,19 +9,12 @@
 #define OP_DIV_NO_NAN 4
 
 namespace vulten_ops {
+namespace basic {
+static const int NUM_BUFFERS = 5;
+static const int NUM_SETS = 1;
 
 std::string op_as_str(uint32_t op);
-
-class Basic_op : Vulten_op {
- private:
-  //
- public:
-  //
-
-  void run_op(Data_type dt, uint32_t op, Vulten_tensor x, Vulten_tensor y,
-              Vulten_tensor output);
-
-  Basic_op(vulten_backend::Instance *inst);
-  ~Basic_op();
-};
+void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t op,
+            Vulten_tensor x, Vulten_tensor y, Vulten_tensor output);
+}  // namespace basic
 }  // namespace vulten_ops

@@ -3,16 +3,11 @@
 #include "../Vulten_backend_ops.h"
 
 namespace vulten_ops {
-class BiasAdd_op : Vulten_op {
- private:
-  //
- public:
-  //
+namespace bias_add {
+static const int NUM_BUFFERS = 3;
+static const int NUM_SETS = 1;
 
-  void run_op(Data_type dt, Vulten_tensor input, Vulten_tensor bias,
-              uint32_t bias_dim, Vulten_tensor output);
-
-  BiasAdd_op(vulten_backend::Instance *inst);
-  ~BiasAdd_op();
-};
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
+            Vulten_tensor bias, uint32_t bias_dim, Vulten_tensor output);
+}  // namespace bias_add
 }  // namespace vulten_ops

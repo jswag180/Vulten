@@ -3,14 +3,35 @@
 #include "Assign_add_sub_shader.h"
 
 namespace vulten_ops {
+namespace assign_add_sub {
 
-Assign_add_sub_op::Assign_add_sub_op(vulten_backend::Instance *inst)
-    : Vulten_op(inst) {
-  VULTEN_LOG_DEBUG("Creating vulten_ops::Assign_add_sub_op")
+vulten_backend::Vulten_pipeline *get_assign_add_sub_pipeline(
+    vulten_backend::Instance *inst, Data_type dt) {
+  std::string pipe_string = "Assign_add_sub_" + Data_type_to_str(dt);
+
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      inst->get_cached_pipeline(pipe_string);
+  if (vulten_pipeline == nullptr) {
+    VULTEN_LOG_DEBUG("Creating vulten_ops::Assign_add_sub_op pipeline " +
+                     pipe_string)
+
+    const std::vector<vk::PushConstantRange> push_const_ranges = {
+        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(int32_t)}};
+
+    Generate_assign_add_sub_shader_info generate_assign_add_sub_shader_info{dt};
+    return inst->create_pipeline(
+        pipe_string, NUM_BUFFERS,
+        generate_assign_add_sub_shader(generate_assign_add_sub_shader_info),
+        nullptr, push_const_ranges);
+  } else {
+    VULTEN_LOG_DEBUG("Using cached vulten_ops::Assign_add_sub_op pipeline " +
+                     pipe_string)
+    return vulten_pipeline;
+  }
 }
 
-void Assign_add_sub_op::run_op(Data_type dt, Vulten_tensor input,
-                               Vulten_tensor value, int op) {
+void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
+            Vulten_tensor value, int op) {
   if (op == ADD) {
     VULTEN_LOG_DEBUG("Running vulten_ops::Assign_add_op<" +
                      Data_type_to_str(dt) + ">")
@@ -20,32 +41,14 @@ void Assign_add_sub_op::run_op(Data_type dt, Vulten_tensor input,
   }
   inst->main_queue_mutex.lock();
 
-  std::string pipe_string = "Assign_add_sub_" + Data_type_to_str(dt);
-  Vulten_pipeline *vulten_pipeline = nullptr;
-
-  if (!is_pipeline_cached(pipe_string)) {
-    VULTEN_LOG_DEBUG("Creating vulten_ops::Assign_add_sub_op pipeline " +
-                     pipe_string)
-
-    const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(int32_t)}};
-
-    Generate_assign_add_sub_shader_info generate_assign_add_sub_shader_info{dt};
-    vulten_pipeline = create_pipeline(
-        pipe_string, 2,
-        generate_assign_add_sub_shader(generate_assign_add_sub_shader_info),
-        nullptr, push_const_ranges);
-  } else {
-    VULTEN_LOG_DEBUG("Using cached vulten_ops::Assign_add_sub_op pipeline " +
-                     pipe_string)
-    vulten_pipeline = pipelines[pipe_string];
-  }
+  vulten_backend::Vulten_pipeline *vulten_pipeline =
+      get_assign_add_sub_pipeline(inst, dt);
 
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer, 2);
+      vk::DescriptorType::eStorageBuffer, NUM_BUFFERS);
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
-      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 1,
+      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, NUM_SETS,
       descriptor_pool_size);
   descriptor_pool =
       inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
@@ -111,8 +114,5 @@ void Assign_add_sub_op::run_op(Data_type dt, Vulten_tensor input,
   inst->main_queue_mutex.unlock();
 }
 
-Assign_add_sub_op::~Assign_add_sub_op() {
-  VULTEN_LOG_DEBUG("Freeing vulten_ops::Assign_add_sub_op")
-}
-
+}  // namespace assign_add_sub
 }  // namespace vulten_ops
