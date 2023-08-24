@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include <cmath>
 #include <cstdint>
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_structs.hpp>
@@ -118,7 +119,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
   cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
                          vk::ShaderStageFlagBits::eCompute, 0, sizeof(int32_t),
                          &op);
-  cmd_buff.dispatch(uint32_t(inputs[0].get_total_elements()), 1, 1);
+  uint32_t threads = std::ceil(
+      float(inputs[0].get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
+  cmd_buff.dispatch(threads, 1, 1);
 
   for (uint32_t i = 2; i < inputs.size(); i++) {
     cmd_buff.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
@@ -132,7 +136,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
         {descriptor_sets[i - 1]},          // List of descriptor sets
         {});                               // Dynamic offsets
 
-    cmd_buff.dispatch(uint32_t(inputs[0].get_total_elements()), 1, 1);
+    uint32_t threads = std::ceil(
+        float(inputs[0].get_total_elements()) /
+        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
+    cmd_buff.dispatch(threads, 1, 1);
   }
 
   cmd_buff.end();

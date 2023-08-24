@@ -1,5 +1,7 @@
 #include "Assign_add_sub_op.h"
 
+#include <cmath>
+
 #include "Assign_add_sub_shader.h"
 
 namespace vulten_ops {
@@ -15,14 +17,27 @@ vulten_backend::Vulten_pipeline *get_assign_add_sub_pipeline(
     VULTEN_LOG_DEBUG("Creating vulten_ops::Assign_add_sub_op pipeline " +
                      pipe_string)
 
+    assign_add_sub_shader::Spec_cons spec;
+    spec.localX =
+        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
+
+    const std::vector<vk::SpecializationMapEntry> specs = {
+        {0, offsetof(assign_add_sub_shader::Spec_cons, localX),
+         sizeof(uint32_t)},
+    };
+    vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
+                                     &spec);
+
     const std::vector<vk::PushConstantRange> push_const_ranges = {
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(int32_t)}};
 
-    Generate_assign_add_sub_shader_info generate_assign_add_sub_shader_info{dt};
+    assign_add_sub_shader::Generate_assign_add_sub_shader_info
+        generate_assign_add_sub_shader_info{dt};
     return inst->create_pipeline(
         pipe_string, NUM_BUFFERS,
-        generate_assign_add_sub_shader(generate_assign_add_sub_shader_info),
-        nullptr, push_const_ranges);
+        assign_add_sub_shader::generate_assign_add_sub_shader(
+            generate_assign_add_sub_shader_info),
+        &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Assign_add_sub_op pipeline " +
                      pipe_string)
@@ -92,7 +107,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
   cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
                          vk::ShaderStageFlagBits::eCompute, 0, sizeof(int32_t),
                          &op);
-  cmd_buff.dispatch(uint32_t(input.get_total_elements()), 1, 1);
+  uint32_t threads = std::ceil(
+      float(input.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
+  cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
 

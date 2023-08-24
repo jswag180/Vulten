@@ -8,7 +8,7 @@ const char* assign_add_sub_source = R"(
 
 #include "prelude.h"
 
-//layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) buffer a { TYPE_0 tensor[]; };
 layout(set = 0, binding = 1) buffer b { readonly TYPE_0 value[]; };
