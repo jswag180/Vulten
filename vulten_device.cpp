@@ -218,9 +218,10 @@ void plugin_memcpy_dtoh(const SP_Device* device, SP_Stream stream,
       VOID_TO_INSTANCE(device->device_handle)
           ->create_host_mappable_buffer(nullptr, size, false, false, true));
   VOID_TO_INSTANCE(device->device_handle)
-      ->copy_buffer(VOID_TO_DEVICE_BUFFER(device_src->opaque), host_buff.get());
-  auto host_maped = host_buff->map_to_host();
-  memcpy(host_dst, host_maped.data, size);
+      ->copy_buffer(VOID_TO_DEVICE_BUFFER(device_src->opaque), host_buff.get(),
+                    true, size);
+
+  memcpy(host_dst, host_buff->allocInfo.pMappedData, size);
 }
 
 // Enqueues a memcpy operation onto stream, with a device destination
@@ -238,9 +239,10 @@ void plugin_memcpy_htod(const SP_Device* device, SP_Stream stream,
   auto host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
       VOID_TO_INSTANCE(device->device_handle)
           ->create_host_mappable_buffer((uint8_t*)host_src, size, true, true,
-                                        false));
+                                        false, true));
   VOID_TO_INSTANCE(device->device_handle)
-      ->copy_buffer(host_buff.get(), VOID_TO_DEVICE_BUFFER(device_dst->opaque));
+      ->copy_buffer(host_buff.get(), VOID_TO_DEVICE_BUFFER(device_dst->opaque),
+                    true, size);
 }
 
 // Enqueues a memcpy operation onto stream, with a device destination
@@ -264,11 +266,11 @@ void plugin_memcpy_dtod(const SP_Device* device, SP_Stream stream,
   VOID_TO_INSTANCE(device->device_handle)
       ->copy_buffer(VOID_TO_DEVICE_BUFFER(device_src->opaque),
                     src_host_buff.get());
-  auto host_maped = src_host_buff->map_to_host();
 
   auto dst_host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
       VOID_TO_DEVICE_BUFFER(device_dst->opaque)
-          ->inst->create_host_mappable_buffer(host_maped.data, size));
+          ->inst->create_host_mappable_buffer(
+              src_host_buff->allocInfo.pMappedData, size));
   VOID_TO_DEVICE_BUFFER(device_dst->opaque)
       ->inst->copy_buffer(dst_host_buff.get(),
                           VOID_TO_DEVICE_BUFFER(device_dst->opaque), true,

@@ -1,6 +1,8 @@
 #include "Vulten_backend.h"
 
 #include <vulkan/vulkan_structs.hpp>
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
 
 namespace instance_utill {
 static vk::Instance instance;
@@ -141,6 +143,16 @@ Device_propertys::~Device_propertys() {
   device_property_utill::devices_mutex.unlock();
 }
 
+bool enable_if_avaliable(const char *exten_name,
+                         std::vector<std::string> &extents) {
+  if (std::find(extents.begin(), extents.end(), exten_name) != extents.end()) {
+    extents.push_back(exten_name);
+    return true;
+  } else {
+    return false;
+  }
+}
+
 Instance::Instance(uint32_t dev_num) {
   VULTEN_LOG_INFO("Creating vulten_backend::Instance")
 
@@ -170,10 +182,9 @@ Instance::Instance(uint32_t dev_num) {
 
   std::vector<const char *> extens = {};
 
-  if (std::find(device_propertys.extens.begin(), device_propertys.extens.end(),
-                "VK_KHR_portability_subset") != device_propertys.extens.end()) {
-    extens.push_back("VK_KHR_portability_subset");
-  }
+  enable_if_avaliable("VK_KHR_portability_subset", device_propertys.extens);
+  bool has_mem_budget =
+      enable_if_avaliable("VK_EXT_memory_budget", device_propertys.extens);
 
   vk::PhysicalDeviceShaderFloat16Int8Features half_char_feat =
       vk::PhysicalDeviceShaderFloat16Int8Features();
@@ -216,15 +227,29 @@ Instance::Instance(uint32_t dev_num) {
           vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
       0);
   cmd_pool = logical_dev.createCommandPool(cmd_pool_create_info);
+
+  {
+    Vk_instance inst = Vk_instance();
+
+    VmaAllocatorCreateInfo vmaAllocatorCreateInfo = VmaAllocatorCreateInfo();
+    vmaAllocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+    vmaAllocatorCreateInfo.physicalDevice = physical_dev;
+    vmaAllocatorCreateInfo.device = logical_dev;
+    vmaAllocatorCreateInfo.instance = *inst.instance;
+    if (has_mem_budget) {
+      vmaAllocatorCreateInfo.flags |=
+          VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    }
+
+    vmaCreateAllocator(&vmaAllocatorCreateInfo, &allocator);
+  }
 }
 
-Host_mappable_buffer *Instance::create_host_mappable_buffer(uint8_t *data,
-                                                            uint32_t size,
-                                                            bool sync_to_device,
-                                                            bool trans_src,
-                                                            bool trans_dst) {
+Host_mappable_buffer *Instance::create_host_mappable_buffer(
+    void *data, uint32_t size, bool sync_to_device, bool trans_src,
+    bool trans_dst, bool staging) {
   return new Host_mappable_buffer(this, data, size, sync_to_device, trans_src,
-                                  trans_dst);
+                                  trans_dst, staging);
 }
 
 Device_buffer *Instance::create_device_buffer(uint32_t size, bool trans_src,
@@ -287,7 +312,10 @@ void Instance::fill_buffer(Buffer *dstBuffer, uint64_t offset, uint64_t size,
   if (lock) main_queue_mutex.unlock();
 }
 
-Instance::~Instance() { logical_dev.destroyCommandPool(cmd_pool); }
+Instance::~Instance() {
+  logical_dev.destroyCommandPool(cmd_pool);
+  vmaDestroyAllocator(allocator);
+}
 
 Vulten_pipeline *Instance::get_cached_pipeline(std::string pipe_string) {
   std::shared_lock lock(pipe_mutex);

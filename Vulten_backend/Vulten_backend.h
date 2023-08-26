@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vma/vk_mem_alloc.h>
+
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -66,28 +68,15 @@ struct Vk_instance {
   ~Vk_instance();
 };
 
-struct Mapped_memory {
- private:
-  vk::Device *m_device;
-  vk::DeviceMemory *m_memory;
-
- public:
-  uint8_t *data;
-  uint32_t size;
-
-  Mapped_memory(vk::Device &device, vk::DeviceMemory &memory,
-                uint32_t buffer_size);
-  ~Mapped_memory();
-};
-
 class Instance;
 struct alignas(64) Buffer {
  private:
  public:
   Instance *inst;
   vk::Buffer vk_buffer;
-  vk::MemoryRequirements memory_req;
-  vk::DeviceMemory device_memory;
+  VmaAllocationInfo allocInfo;
+  VmaAllocation allocation;
+
   uint32_t buffer_size;
 
   uint32_t findMemoryType(uint32_t typeFilter,
@@ -102,10 +91,11 @@ struct alignas(64) Host_mappable_buffer : Buffer {
  private:
   //
  public:
-  Mapped_memory map_to_host();
+  //
 
-  Host_mappable_buffer(Instance *instance, uint8_t *data, uint32_t size,
-                       bool sync_to_device, bool trans_src, bool trans_dst);
+  Host_mappable_buffer(Instance *instance, void *data, uint32_t size,
+                       bool sync_to_device, bool trans_src, bool trans_dst,
+                       bool staging);
   ~Host_mappable_buffer();
 };
 
@@ -155,16 +145,15 @@ class alignas(64) Instance {
   std::mutex main_queue_mutex;
   vk::Queue main_queue;
   vk::CommandPool cmd_pool;
-  // opName_Data_type
-  // std::unordered_map<std::string, vulten_ops::Vulten_op *> op_chache;
+  VmaAllocator allocator;
   mutable std::shared_timed_mutex pipe_mutex;
   std::unordered_map<std::string, Vulten_pipeline *> pipelines;
 
-  Host_mappable_buffer *create_host_mappable_buffer(uint8_t *data,
-                                                    uint32_t size,
+  Host_mappable_buffer *create_host_mappable_buffer(void *data, uint32_t size,
                                                     bool sync_to_device = true,
                                                     bool trans_src = true,
-                                                    bool trans_dst = true);
+                                                    bool trans_dst = true,
+                                                    bool staging = false);
   Device_buffer *create_device_buffer(uint32_t size, bool trans_src = true,
                                       bool trans_dst = true);
   void copy_buffer(Buffer *src, Buffer *dest, bool lock = true,
