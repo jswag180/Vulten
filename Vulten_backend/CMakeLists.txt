@@ -13,6 +13,7 @@ file(GLOB_RECURSE OPS ${PROJECT_SOURCE_DIR}/ops/*.cpp)
 
 add_library(Vulten_backend STATIC ${SOURCES} ${OPS})
 
+add_compile_definitions(VMA_VULKAN_VERSION=1002000)
 
 if(VULTEN_LOG_LEVEL EQUAL "0")
     message("-- Vulten log level: 0")
