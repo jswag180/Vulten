@@ -26,7 +26,8 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
             std::vector<int32_t> &axis, Vulten_tensor output, uint32_t op) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Reduce_op<" + Data_type_to_str(dt) +
                    ">")
-  inst->main_queue_mutex.lock();
+  vulten_backend::Queue_alloc queue_alloc =
+      inst->get_queue(false, true, false, false);
 
   std::string pipe_string =
       "Reduce_" + Data_type_to_str(dt) + "_" +
@@ -141,7 +142,8 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
   inst->logical_dev.updateDescriptorSets(writeDescriptorSets, {});
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
-      inst->cmd_pool, vk::CommandBufferLevel::ePrimary, axis.size());
+      queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary,
+      axis.size());
   std::vector<vk::CommandBuffer> cmd_buffs =
       inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
@@ -192,7 +194,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
         1,                                          // Num Command Buffers
         &cmd_buffs[i],                              // List of command buffers
         1, &axis_semaphores[i]);
-    inst->main_queue.submit({SubmitInfo});
+    queue_alloc.queue->vk_queue.submit({SubmitInfo});
   }
 
   uint32_t final_cmd_buffer_ind = cmd_buffs.size() - 1;
@@ -233,7 +235,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
       wait_stages.data(),                            // Pipeline Stage Flags
       1,                                             // Num Command Buffers
       &cmd_buffs[final_cmd_buffer_ind]);             // List of command buffers
-  inst->main_queue.submit({SubmitInfo}, fence);
+  queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence);
   vk::Result fenceRes =
       inst->logical_dev.waitForFences({fence},        // List of fences
                                       true,           // Wait All
@@ -243,11 +245,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
     inst->logical_dev.destroySemaphore(seamphore);
   }
   inst->logical_dev.destroyFence(fence);
-  inst->logical_dev.freeCommandBuffers(inst->cmd_pool, cmd_buffs);
+  inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buffs);
   inst->logical_dev.freeDescriptorSets(descriptor_pool, num_sets,
                                        descriptor_sets.data());
   inst->logical_dev.destroyDescriptorPool(descriptor_pool);
-  inst->main_queue_mutex.unlock();
 }
 
 }  // namespace reduce

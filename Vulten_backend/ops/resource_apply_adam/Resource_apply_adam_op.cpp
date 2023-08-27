@@ -12,7 +12,8 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor var,
             bool use_nesterov) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Resource_apply_adam_op<" +
                    Data_type_to_str(dt) + ">")
-  inst->main_queue_mutex.lock();
+  vulten_backend::Queue_alloc queue_alloc =
+      inst->get_queue(false, true, false, false);
 
   std::string pipe_string = "Resource_apply_adam_" + Data_type_to_str(dt) +
                             "_" + std::to_string(use_nesterov);
@@ -105,7 +106,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor var,
   inst->logical_dev.updateDescriptorSets(WriteDescriptorSets, {});
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
-      inst->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
+      queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
   vk::CommandBuffer cmd_buff =
       inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
 
@@ -130,17 +131,16 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor var,
                             nullptr,     // Pipeline Stage Flags
                             1,           // Num Command Buffers
                             &cmd_buff);  // List of command buffers
-  inst->main_queue.submit({SubmitInfo}, fence);
+  queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence);
   vk::Result fenceRes =
       inst->logical_dev.waitForFences({fence},        // List of fences
                                       true,           // Wait All
                                       uint64_t(-1));  // Timeout
 
   inst->logical_dev.destroyFence(fence);
-  inst->logical_dev.freeCommandBuffers(inst->cmd_pool, cmd_buff);
+  inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buff);
   inst->logical_dev.freeDescriptorSets(descriptor_pool, 1, &descriptor_set);
   inst->logical_dev.destroyDescriptorPool(descriptor_pool);
-  inst->main_queue_mutex.unlock();
 }
 
 }  // namespace resource_apply_adam

@@ -50,7 +50,8 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
             Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::Broadcast_op<" + Data_type_to_str(dt) +
                    ">")
-  inst->main_queue_mutex.lock();
+  vulten_backend::Queue_alloc queue_alloc =
+      inst->get_queue(false, true, false, false);
 
   vulten_backend::Vulten_pipeline *vulten_pipeline =
       get_broadcast_pipeline(inst, dt);
@@ -84,7 +85,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
                                         sizeof(uint32_t) * adj_strides.size()));
   auto strides = std::unique_ptr<vulten_backend::Device_buffer>(
       inst->create_device_buffer(strides_stageing->buffer_size, false, true));
-  inst->copy_buffer(strides_stageing.get(), strides.get(), false);
+  inst->copy_buffer(&queue_alloc, strides_stageing.get(), strides.get());
   vk::DescriptorBufferInfo strides_buffer_info(strides->vk_buffer, 0,
                                                strides->buffer_size);
 
@@ -97,7 +98,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
                                         sizeof(uint32_t) * dims_vec.size()));
   auto dims = std::unique_ptr<vulten_backend::Device_buffer>(
       inst->create_device_buffer(dims_stageing->buffer_size, false, true));
-  inst->copy_buffer(dims_stageing.get(), dims.get(), false);
+  inst->copy_buffer(&queue_alloc, dims_stageing.get(), dims.get());
   vk::DescriptorBufferInfo dims_buffer_info(dims->vk_buffer, 0,
                                             dims->buffer_size);
 
@@ -116,7 +117,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
   inst->logical_dev.updateDescriptorSets(WriteDescriptorSets, {});
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
-      inst->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
+      queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
   vk::CommandBuffer cmd_buffs =
       inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info).front();
 
@@ -152,17 +153,16 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
                             nullptr,      // Pipeline Stage Flags
                             1,            // Num Command Buffers
                             &cmd_buffs);  // List of command buffers
-  inst->main_queue.submit({SubmitInfo}, fence);
+  queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence);
   vk::Result fenceRes =
       inst->logical_dev.waitForFences({fence},        // List of fences
                                       true,           // Wait All
                                       uint64_t(-1));  // Timeout
 
   inst->logical_dev.destroyFence(fence);
-  inst->logical_dev.freeCommandBuffers(inst->cmd_pool, cmd_buffs);
+  inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buffs);
   inst->logical_dev.freeDescriptorSets(descriptor_pool, 1, &descriptor_set);
   inst->logical_dev.destroyDescriptorPool(descriptor_pool);
-  inst->main_queue_mutex.unlock();
 }
 
 }  // namespace broadcast

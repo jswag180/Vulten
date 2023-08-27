@@ -13,7 +13,8 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
             Mat_size mat_size_b, Vulten_tensor output) {
   VULTEN_LOG_DEBUG("Running vulten_ops::MatMul_op<" + Data_type_to_str(dt) +
                    ">")
-  inst->main_queue_mutex.lock();
+  vulten_backend::Queue_alloc queue_alloc =
+      inst->get_queue(false, true, false, false);
 
   vulten_backend::Vulten_pipeline *transpose_pipeline = nullptr;
   if (trans_a || trans_b) {
@@ -101,7 +102,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
       std::vector<vk::PipelineStageFlags>();
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
-      inst->cmd_pool, vk::CommandBufferLevel::ePrimary,
+      queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary,
       1 + (trans_a ? 1 : 0) + (trans_b ? 1 : 0));
   std::vector<vk::CommandBuffer> cmd_buffs =
       inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
@@ -166,7 +167,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
         &cmd_buffs[cmd_buff_indx],              // List of command buffers
         1,                                      // Num Signal Semaphores
         &transpose_semaphores[cmd_buff_indx]);  // Signal Semaphores
-    inst->main_queue.submit({SubmitInfo});
+    queue_alloc.queue->vk_queue.submit({SubmitInfo});
   }
 
   std::unique_ptr<vulten_backend::Device_buffer> trans_b_buffer;
@@ -227,7 +228,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
         &cmd_buffs[cmd_buff_indx],              // List of command buffers
         1,                                      // Num Signal Semaphores
         &transpose_semaphores[cmd_buff_indx]);  // Signal Semaphores
-    inst->main_queue.submit({SubmitInfo});
+    queue_alloc.queue->vk_queue.submit({SubmitInfo});
   }
 
   vk::DescriptorBufferInfo a_buffer_info(
@@ -275,7 +276,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
       wait_stages.data(),           // Pipeline Stage Flags
       1,                            // Num Command Buffers
       &cmd_buffs[cmd_buff_indx]);   // List of command buffers
-  inst->main_queue.submit({SubmitInfo}, fence);
+  queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence);
   vk::Result fenceRes =
       inst->logical_dev.waitForFences({fence},        // List of fences
                                       true,           // Wait All
@@ -285,12 +286,11 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
     inst->logical_dev.destroySemaphore(seamphore);
   }
   inst->logical_dev.destroyFence(fence);
-  inst->logical_dev.freeCommandBuffers(inst->cmd_pool, cmd_buffs);
+  inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buffs);
   for (vk::DescriptorSet descriptor_set : descriptor_sets) {
     inst->logical_dev.freeDescriptorSets(descriptor_pool, 1, &descriptor_set);
   }
   inst->logical_dev.destroyDescriptorPool(descriptor_pool);
-  inst->main_queue_mutex.unlock();
 }
 
 }  // namespace mat_mul

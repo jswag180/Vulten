@@ -188,7 +188,7 @@ void plugin_memcpy_dtoh(const SP_Device* device, SP_Stream stream,
           ->create_host_mappable_buffer(nullptr, size, false, false, true));
   VOID_TO_INSTANCE(device->device_handle)
       ->copy_buffer(VOID_TO_DEVICE_BUFFER(device_src->opaque), host_buff.get(),
-                    true, size);
+                    size);
 
   memcpy(host_dst, host_buff->allocInfo.pMappedData, size);
 }
@@ -207,7 +207,7 @@ void plugin_memcpy_htod(const SP_Device* device, SP_Stream stream,
                                         false, true));
   VOID_TO_INSTANCE(device->device_handle)
       ->copy_buffer(host_buff.get(), VOID_TO_DEVICE_BUFFER(device_dst->opaque),
-                    true, size);
+                    size);
 }
 
 // Enqueues a memcpy operation onto stream, with a device destination
@@ -235,8 +235,7 @@ void plugin_memcpy_dtod(const SP_Device* device, SP_Stream stream,
               src_host_buff->allocInfo.pMappedData, size));
   VOID_TO_DEVICE_BUFFER(device_dst->opaque)
       ->inst->copy_buffer(dst_host_buff.get(),
-                          VOID_TO_DEVICE_BUFFER(device_dst->opaque), true,
-                          size);
+                          VOID_TO_DEVICE_BUFFER(device_dst->opaque), size);
 }
 
 // Blocks the caller while a data segment of the given size is

@@ -119,6 +119,10 @@ Device_propertys::Device_propertys() {
             queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eTransfer
                 ? true
                 : false;
+        dev_queue_props[i].hasSparse = queueFamilyProperties[i].queueFlags &
+                                               vk::QueueFlagBits::eSparseBinding
+                                           ? true
+                                           : false;
       }
       dev_prop.queue_props = dev_queue_props;
 
@@ -162,23 +166,23 @@ Instance::Instance(uint32_t dev_num) {
     physical_dev = inst.instance->enumeratePhysicalDevices()[device_num];
   }
 
-  std::vector<vk::DeviceQueueCreateInfo> queues_info;
-
   vulten_backend::Device_propertys dev_props =
       vulten_backend::Device_propertys();
   device_propertys = (*dev_props.devices)[device_num];
+  std::vector<vk::DeviceQueueCreateInfo> queues_info =
+      std::vector<vk::DeviceQueueCreateInfo>(
+          device_propertys.queue_props.size());
 
   float prio = 1.0f;
+  total_queues = 0;
   for (uint32_t i = 0; i < device_propertys.queue_props.size(); i++) {
-    if (device_propertys.queue_props[i].hasCompute &&
-        device_propertys.queue_props[i].hasTransfer) {
-      auto queue_info =
-          vk::DeviceQueueCreateInfo(vk::DeviceQueueCreateFlags(), i, 1);
-      queue_info.setQueuePriorities(prio);
-      queues_info.push_back(queue_info);
-      break;
-    }
+    auto queue_info = vk::DeviceQueueCreateInfo(
+        vk::DeviceQueueCreateFlags(), i,
+        device_propertys.queue_props[i].max_queues, &prio);
+    total_queues += device_propertys.queue_props[i].max_queues;
+    queues_info[i] = queue_info;
   }
+  queues = new Queue[total_queues];
 
   std::vector<const char *> extens = {};
 
@@ -220,13 +224,23 @@ Instance::Instance(uint32_t dev_num) {
 
   logical_dev = physical_dev.createDevice(dev_create_info);
 
-  main_queue = logical_dev.getQueue(queues_info[0].queueFamilyIndex, 0);
+  for (int i = 0; i < queues_info.size(); i++) {
+    for (int j = 0; j < queues_info[i].queueCount; j++) {
+      queues[i + j].vk_queue =
+          logical_dev.getQueue(queues_info[i].queueFamilyIndex, j);
 
-  vk::CommandPoolCreateInfo cmd_pool_create_info(
-      vk::CommandPoolCreateFlagBits::eTransient |
-          vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-      0);
-  cmd_pool = logical_dev.createCommandPool(cmd_pool_create_info);
+      vk::CommandPoolCreateInfo cmd_pool_create_info(
+          vk::CommandPoolCreateFlagBits::eTransient |
+              vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+          queues_info[i].queueFamilyIndex);
+      queues[i + j].cmd_pool =
+          logical_dev.createCommandPool(cmd_pool_create_info);
+      queues[i + j].graphics = device_propertys.queue_props[i].hasGraphics;
+      queues[i + j].compute = device_propertys.queue_props[i].hasCompute;
+      queues[i + j].transfer = device_propertys.queue_props[i].hasTransfer;
+      queues[i + j].sparse = device_propertys.queue_props[i].hasSparse;
+    }
+  }
 
   {
     Vk_instance inst = Vk_instance();
@@ -257,12 +271,11 @@ Device_buffer *Instance::create_device_buffer(uint32_t size, bool trans_src,
   return new Device_buffer(this, size, trans_src, trans_dst);
 }
 
-void Instance::copy_buffer(Buffer *src, Buffer *dest, bool lock,
-                           uint32_t size) {
-  if (lock) main_queue_mutex.lock();
+void Instance::copy_buffer(Buffer *src, Buffer *dest, uint32_t size) {
+  Queue_alloc queue_alloc = get_queue(false, false, true, false);
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
-      cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
+      queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
   vk::CommandBuffer cmd_buff =
       logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
 
@@ -282,18 +295,45 @@ void Instance::copy_buffer(Buffer *src, Buffer *dest, bool lock,
   cmd_buff.end();
 
   vk::SubmitInfo submit_info({}, {}, {}, 1, &cmd_buff);
-  main_queue.submit(submit_info, {});
-  main_queue.waitIdle();
-  logical_dev.freeCommandBuffers(cmd_pool, cmd_buff);
-  if (lock) main_queue_mutex.unlock();
+  queue_alloc.queue->vk_queue.submit(submit_info, {});
+  queue_alloc.queue->vk_queue.waitIdle();
+  logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buff);
+}
+
+void Instance::copy_buffer(Queue_alloc *queue_alloc, Buffer *src, Buffer *dest,
+                           uint32_t size) {
+  vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
+      queue_alloc->queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
+  vk::CommandBuffer cmd_buff =
+      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
+
+  vk::CommandBufferBeginInfo cmd_buff_begin_info(
+      vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+  cmd_buff.begin(cmd_buff_begin_info);
+
+  vk::BufferCopy buff_copy;
+  if (size > 0) {
+    buff_copy = vk::BufferCopy(0, 0, size);
+  } else {
+    buff_copy =
+        vk::BufferCopy(0, 0, std::min(src->buffer_size, dest->buffer_size));
+  }
+  cmd_buff.copyBuffer(src->vk_buffer, dest->vk_buffer, buff_copy);
+
+  cmd_buff.end();
+
+  vk::SubmitInfo submit_info({}, {}, {}, 1, &cmd_buff);
+  queue_alloc->queue->vk_queue.submit(submit_info, {});
+  queue_alloc->queue->vk_queue.waitIdle();
+  logical_dev.freeCommandBuffers(queue_alloc->queue->cmd_pool, cmd_buff);
 }
 
 void Instance::fill_buffer(Buffer *dstBuffer, uint64_t offset, uint64_t size,
-                           uint32_t data, bool lock) {
-  if (lock) main_queue_mutex.lock();
+                           uint32_t data) {
+  Queue_alloc queue_alloc = get_queue(false, false, true, false);
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
-      cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
+      queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
   vk::CommandBuffer cmd_buff =
       logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
 
@@ -306,14 +346,37 @@ void Instance::fill_buffer(Buffer *dstBuffer, uint64_t offset, uint64_t size,
   cmd_buff.end();
 
   vk::SubmitInfo submit_info({}, {}, {}, 1, &cmd_buff);
-  main_queue.submit(submit_info, {});
-  main_queue.waitIdle();
-  logical_dev.freeCommandBuffers(cmd_pool, cmd_buff);
-  if (lock) main_queue_mutex.unlock();
+  queue_alloc.queue->vk_queue.submit(submit_info, {});
+  queue_alloc.queue->vk_queue.waitIdle();
+  logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buff);
+}
+
+void Instance::fill_buffer(Queue_alloc *queue_alloc, Buffer *dstBuffer,
+                           uint64_t offset, uint64_t size, uint32_t data) {
+  vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
+      queue_alloc->queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
+  vk::CommandBuffer cmd_buff =
+      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
+
+  vk::CommandBufferBeginInfo cmd_buff_begin_info(
+      vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+  cmd_buff.begin(cmd_buff_begin_info);
+
+  cmd_buff.fillBuffer(dstBuffer->vk_buffer, offset, size, data);
+
+  cmd_buff.end();
+
+  vk::SubmitInfo submit_info({}, {}, {}, 1, &cmd_buff);
+  queue_alloc->queue->vk_queue.submit(submit_info, {});
+  queue_alloc->queue->vk_queue.waitIdle();
+  logical_dev.freeCommandBuffers(queue_alloc->queue->cmd_pool, cmd_buff);
 }
 
 Instance::~Instance() {
-  logical_dev.destroyCommandPool(cmd_pool);
+  for (int i = 0; i < total_queues; i++) {
+    logical_dev.destroyCommandPool(queues[i].cmd_pool);
+  }
+  delete[] queues;
   vmaDestroyAllocator(allocator);
 }
 
@@ -322,6 +385,38 @@ Vulten_pipeline *Instance::get_cached_pipeline(std::string pipe_string) {
   auto pipeline = pipelines.find(pipe_string);
   if (pipeline == pipelines.end()) return nullptr;
   return (*pipeline).second;
+}
+
+Queue_alloc Instance::get_queue(bool graphics, bool compute, bool transfer,
+                                bool sparse) {
+  while (true) {
+    for (int i = 0; i < total_queues; i++) {
+      if (graphics == true) {
+        if (queues[i].graphics == false) {
+          continue;
+        }
+      }
+      if (compute == true) {
+        if (queues[i].compute == false) {
+          continue;
+        }
+      }
+      if (transfer == true) {
+        if (queues[i].transfer == false) {
+          continue;
+        }
+      }
+      if (sparse == true) {
+        if (queues[i].sparse == false) {
+          continue;
+        }
+      }
+      auto hasLock = queues[i].queue_mutex.try_lock();
+      if (hasLock) {
+        return Queue_alloc(&queues[i]);
+      }
+    }
+  }
 }
 
 Vulten_pipeline *Instance::create_pipeline(

@@ -27,7 +27,7 @@ namespace vulten_backend {
 
 struct Device_queue_prop {
   uint32_t max_queues;
-  bool hasCompute, hasTransfer, hasGraphics;
+  bool hasCompute, hasTransfer, hasGraphics, hasSparse;
 };
 
 struct Device_property {
@@ -123,6 +123,24 @@ struct Vulten_pipeline {
   ~Vulten_pipeline();
 };
 
+struct Queue {
+  std::mutex queue_mutex;
+  vk::Queue vk_queue;
+  vk::CommandPool cmd_pool;
+  bool graphics, compute, transfer, sparse;
+
+  Queue(){};
+};
+
+struct Queue_alloc {
+  Queue *queue;
+
+  Queue_alloc(const Queue_alloc &) = delete;
+  Queue_alloc(Queue_alloc &&out) noexcept : queue(std::move(out.queue)) {}
+  Queue_alloc(Queue *queue) : queue(queue){};
+  ~Queue_alloc() { queue->queue_mutex.unlock(); };
+};
+
 class alignas(64) Instance {
  private:
   //
@@ -131,9 +149,8 @@ class alignas(64) Instance {
   Device_property device_propertys;
   vk::PhysicalDevice physical_dev;
   vk::Device logical_dev;
-  std::mutex main_queue_mutex;
-  vk::Queue main_queue;
-  vk::CommandPool cmd_pool;
+  int total_queues;
+  Queue *queues;
   VmaAllocator allocator;
   mutable std::shared_timed_mutex pipe_mutex;
   std::unordered_map<std::string, Vulten_pipeline *> pipelines;
@@ -145,15 +162,20 @@ class alignas(64) Instance {
                                                     bool staging = false);
   Device_buffer *create_device_buffer(uint32_t size, bool trans_src = true,
                                       bool trans_dst = true);
-  void copy_buffer(Buffer *src, Buffer *dest, bool lock = true,
+  void copy_buffer(Buffer *src, Buffer *dest, uint32_t size = 0);
+  void copy_buffer(Queue_alloc *queue_alloc, Buffer *src, Buffer *dest,
                    uint32_t size = 0);
   void fill_buffer(Buffer *dstBuffer, uint64_t offset, uint64_t size,
-                   uint32_t data, bool lock = true);
+                   uint32_t data);
+  void fill_buffer(Queue_alloc *queue_alloc, Buffer *dstBuffer, uint64_t offset,
+                   uint64_t size, uint32_t data);
   Vulten_pipeline *get_cached_pipeline(std::string pipe_string);
   Vulten_pipeline *create_pipeline(
       std::string pipe_string, uint32_t num_buffers,
       std::vector<uint32_t> shader_spv, vk::SpecializationInfo *spec_info = {},
       std::vector<vk::PushConstantRange> push_ranges = {});
+  Queue_alloc get_queue(bool graphics, bool compute, bool transfer,
+                        bool sparse);
 
   // Instance(const Instance&) = delete;
   Instance(uint32_t dev_num);
