@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vma/vk_mem_alloc.h>
-
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -10,6 +8,8 @@
 #include <unordered_map>
 #include <vector>
 #include <vulkan/vulkan.hpp>
+
+#include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
 
 #if VULTEN_LOG_LEVEL == 0
 #define VULTEN_LOG_INFO(M)

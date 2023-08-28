@@ -1,6 +1,6 @@
-#include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan_core.h>
 
+#include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
 #include "Vulten_backend.h"
 
 namespace vulten_backend {

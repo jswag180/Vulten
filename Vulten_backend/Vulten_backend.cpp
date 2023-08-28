@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan_structs.hpp>
 #define VMA_IMPLEMENTATION
-#include <vma/vk_mem_alloc.h>
+#include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
 
 namespace instance_utill {
 static vk::Instance instance;
