@@ -10,18 +10,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
-
-#if VULTEN_LOG_LEVEL == 0
-#define VULTEN_LOG_INFO(M)
-#define VULTEN_LOG_DEBUG(M)
-#elif VULTEN_LOG_LEVEL == 1
-#define VULTEN_LOG_INFO(M) std::cout << "Vulten [INFO]: " << M << "\n";
-#define VULTEN_LOG_DEBUG(M)
-#elif VULTEN_LOG_LEVEL == 2
-#define VULTEN_LOG_INFO(M) std::cout << "Vulten [INFO]: " << M << "\n";
-#define VULTEN_LOG_DEBUG(M) std::cout << "Vulten [DEBUG]: " << M << "\n";
-#endif
-#define VULTEN_LOG_ERROR(M) std::cout << "Vulten [ERROR]: " << M << "\n";
+#include "vulten_logger.h"
 
 #define VOID_TO_INSTANCE(X) static_cast<vulten_backend::Instance *>(X)
 #define VOID_TO_DEVICE_BUFFER(X) static_cast<vulten_backend::Device_buffer *>(X)
