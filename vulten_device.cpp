@@ -110,7 +110,7 @@ void plugin_create_stream(const SP_Device* device, SP_Stream* stream,
                              VOID_TO_INSTANCE(device->device_handle));
 
   VULTEN_LOG_DEBUG("Stream created on device: " << device->ordinal
-                   << " Addr: " << *stream)
+                                                << " Addr: " << *stream)
 }
 
 // Destroys SP_Stream and deallocates any underlying resources.
@@ -154,28 +154,24 @@ void plugin_wait_for_event(const SP_Device* const device, SP_Stream stream,
 // values in `timer_fns` struct.
 void plugin_create_timer(const SP_Device* device, SP_Timer* timer,
                          TF_Status* status) {
-  VULTEN_LOG_DEBUG("Timer created: "
-                   << timer)
+  VULTEN_LOG_DEBUG("Timer created: " << timer)
 }
 
 // Destroy timer and deallocates timer resources on the underlying platform.
 void plugin_destroy_timer(const SP_Device* device, SP_Timer timer) {
-  VULTEN_LOG_DEBUG("Timer destroyed: "
-                   << timer)
+  VULTEN_LOG_DEBUG("Timer destroyed: " << timer)
 }
 
 // Records a start event for an interval timer.
 void plugin_start_timer(const SP_Device* device, SP_Stream stream,
                         SP_Timer timer, TF_Status* status) {
-  VULTEN_LOG_DEBUG("Timer started: "
-                   << timer)
+  VULTEN_LOG_DEBUG("Timer started: " << timer)
 }
 
 // Records a stop event for an interval timer.
 void plugin_stop_timer(const SP_Device* device, SP_Stream stream,
                        SP_Timer timer, TF_Status* status) {
-  VULTEN_LOG_DEBUG("Timer stoped: "
-                   << timer)
+  VULTEN_LOG_DEBUG("Timer stoped: " << timer)
 }
 
 /*** MEMCPY CALLBACKS ***/
