@@ -121,32 +121,45 @@ void plugin_destroy_stream(const SP_Device* device, SP_Stream stream) {
 
 void plugin_create_stream_dependency(const SP_Device* device,
                                      SP_Stream dependent, SP_Stream other,
-                                     TF_Status* status) {}
+                                     TF_Status* status) {
+                                         VULTEN_LOG_DEBUG("create_stream_dep")
+                                     }
 
 // Without blocking the device, retrieve the current stream status.
 void plugin_get_stream_status(const SP_Device* device, SP_Stream stream,
-                              TF_Status* status) {}
+                              TF_Status* status) {
+                                  VULTEN_LOG_DEBUG("get_stream_status")
+                              }
 
 void plugin_create_event(const SP_Device* device, SP_Event* event,
-                         TF_Status* status) {}
+                         TF_Status* status) {
+                             VULTEN_LOG_DEBUG("create_event")
+                         }
 
 // Destroy SE_Event and perform any platform-specific deallocation and
 // cleanup of an event.
-void plugin_destroy_event(const SP_Device* device, SP_Event event) {}
+void plugin_destroy_event(const SP_Device* device, SP_Event event) {
+    VULTEN_LOG_DEBUG("destroy_event")
+}
 
 // Requests the current status of the event from the underlying platform.
 SE_EventStatus plugin_get_event_status(const SP_Device* device,
                                        SP_Event event) {
+  VULTEN_LOG_DEBUG("event_status")
   return SE_EVENT_COMPLETE;
 }
 
 // Inserts the specified event at the end of the specified stream.
 void plugin_record_event(const SP_Device* device, SP_Stream stream,
-                         SP_Event event, TF_Status* status) {}
+                         SP_Event event, TF_Status* status) {
+                             VULTEN_LOG_DEBUG("record_event")
+                         }
 
 // Wait for the specified event at the end of the specified stream.
 void plugin_wait_for_event(const SP_Device* const device, SP_Stream stream,
-                           SP_Event event, TF_Status* const status) {}
+                           SP_Event event, TF_Status* const status) {
+                               VULTEN_LOG_DEBUG("wait_for_event")
+                           }
 
 /*** TIMER CALLBACKS ***/
 // Creates SP_Timer. Allocates timer resources on the underlying platform
@@ -280,15 +293,20 @@ void plugin_sync_memcpy_dtod(const SP_Device* device,
 
 // Causes the host code to synchronously wait for the event to complete.
 void plugin_block_host_for_event(const SP_Device* device, SP_Event event,
-                                 TF_Status* status) {}
+                                 TF_Status* status) {
+                                     VULTEN_LOG_DEBUG("block_host_for_event")
+                                 }
 
 void plugin_block_host_until_done(const SP_Device* device, SP_Stream stream,
-                                  TF_Status* status) {}
+                                  TF_Status* status) {
+                                      VULTEN_LOG_DEBUG("block_host_until_done")
+                                  }
 
 // Synchronizes all activity occurring in the StreamExecutor's context (most
 // likely a whole device).
 void plugin_synchronize_all_activity(const SP_Device* device,
                                      TF_Status* status) {
+  VULTEN_LOG_DEBUG("SYNC ALL")
   TF_SetStatus(status, TF_OK, "");
 }
 
@@ -297,6 +315,7 @@ void plugin_synchronize_all_activity(const SP_Device* device,
 TF_Bool plugin_host_callback(const SP_Device* device, SP_Stream stream,
                              SE_StatusCallbackFn callback_fn,
                              void* callback_arg) {
+  VULTEN_LOG_DEBUG("PLUGIN CALLBACK")
   return TF_OK;
 }
 
