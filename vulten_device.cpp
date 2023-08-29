@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "Vulten_backend/Vulten_backend.h"
+#include "Vulten_backend/vulten_logger.h"
 #include "scope_timer.h"
 
 void plugin_get_device_count(const SP_Platform* platform, int* device_count,
@@ -27,23 +28,19 @@ void plugin_create_device(const SP_Platform* platform,
       (*vulten_backend::Device_propertys().devices)[params->ordinal]
           .props.deviceName;
 
-#ifndef NDEBUG
-  std::cout << "Vulten [INFO]: "
-            << "Detected device " << params->ordinal << " "
-            << (*vulten_backend::Device_propertys().devices)[params->ordinal]
-                   .props.deviceName
-            << "\n";
-#endif
+  VULTEN_LOG_INFO("Detected device " << params->ordinal << " "
+                                     << (*vulten_backend::Device_propertys()
+                                              .devices)[params->ordinal]
+                                            .props.deviceName
+                                     << "\n")
 }
 
 void plugin_destroy_device(const SP_Platform* platform, SP_Device* device) {
-#ifndef NDEBUG
-  std::cout << "Vulten [INFO]: "
-            << "Detroying device " << device->ordinal << " "
-            << (*vulten_backend::Device_propertys().devices)[device->ordinal]
-                   .props.deviceName
-            << "\n";
-#endif
+  VULTEN_LOG_INFO("Detroying device " << device->ordinal << " "
+                                      << (*vulten_backend::Device_propertys()
+                                               .devices)[device->ordinal]
+                                             .props.deviceName
+                                      << "\n")
 
   delete VOID_TO_INSTANCE(device->device_handle);
   device->device_handle = nullptr;
@@ -69,20 +66,14 @@ void plugin_allocate(const SP_Device* device, uint64_t size,
       VOID_TO_INSTANCE(device->device_handle)->create_device_buffer(size);
   mem->size = size;
 
-#ifndef NDEBUG
-  std::cout << "Vulten [INFO]: "
-            << "ALLOC: " << device->ordinal << " addr: " << mem->opaque
-            << " Size: " << size << "\n";
-#endif
+  VULTEN_LOG_DEBUG("ALLOC: " << device->ordinal << " addr: " << mem->opaque
+                             << " Size: " << size << "\n")
 }
 
 void plugin_deallocate(const SP_Device* device, SP_DeviceMemoryBase* mem) {
   SCOPE_TIMER("DEALLOC")
-#ifndef NDEBUG
-  std::cout << "Vulten [INFO]: "
-            << "DEALLOC: " << device->ordinal << " addr: " << mem->opaque
-            << "\n";
-#endif
+  VULTEN_LOG_DEBUG("DEALLOC: " << device->ordinal << " addr: " << mem->opaque
+                               << "\n")
 
   delete VOID_TO_DEVICE_BUFFER(mem->opaque);
   mem->opaque = nullptr;
@@ -120,19 +111,15 @@ void plugin_create_stream(const SP_Device* device, SP_Stream* stream,
                           TF_Status* status) {
   *stream = new SP_Stream_st(device->ordinal,
                              VOID_TO_INSTANCE(device->device_handle));
-#ifndef NDEBUG
-  std::cout << "Vulten [INFO]: "
-            << "Stream created on device: " << device->ordinal
-            << " Addr: " << *stream << "\n";
-#endif
+
+  VULTEN_LOG_DEBUG(<< "Stream created on device: " << device->ordinal
+                   << " Addr: " << *stream << "\n")
 }
 
 // Destroys SP_Stream and deallocates any underlying resources.
 void plugin_destroy_stream(const SP_Device* device, SP_Stream stream) {
-#ifndef NDEBUG
-  std::cout << "Vulten [INFO]: "
-            << "Stream deleted on device: " << device->ordinal << "\n";
-#endif
+  VULTEN_LOG_DEBUG("Vulten [INFO]: "
+                   << "Stream deleted on device: " << device->ordinal << "\n")
 }
 
 void plugin_create_stream_dependency(const SP_Device* device,
@@ -170,36 +157,32 @@ void plugin_wait_for_event(const SP_Device* const device, SP_Stream stream,
 // values in `timer_fns` struct.
 void plugin_create_timer(const SP_Device* device, SP_Timer* timer,
                          TF_Status* status) {
-  std::cout << "Vulten [INFO]: "
-            << "Timer created: "
-            << ""
-            << "\n";
+  VULTEN_LOG_DEBUG("Timer created: "
+                   << ""
+                   << "\n")
 }
 
 // Destroy timer and deallocates timer resources on the underlying platform.
 void plugin_destroy_timer(const SP_Device* device, SP_Timer timer) {
-  std::cout << "Vulten [INFO]: "
-            << "Timer destroyed: "
-            << ""
-            << "\n";
+  VULTEN_LOG_DEBUG("Timer destroyed: "
+                   << ""
+                   << "\n")
 }
 
 // Records a start event for an interval timer.
 void plugin_start_timer(const SP_Device* device, SP_Stream stream,
                         SP_Timer timer, TF_Status* status) {
-  std::cout << "Vulten [INFO]: "
-            << "Timer started: "
-            << ""
-            << "\n";
+  VULTEN_LOG_DEBUG("Timer started: "
+                   << ""
+                   << "\n")
 }
 
 // Records a stop event for an interval timer.
 void plugin_stop_timer(const SP_Device* device, SP_Stream stream,
                        SP_Timer timer, TF_Status* status) {
-  std::cout << "Vulten [INFO]: "
-            << "Timer stoped: "
-            << ""
-            << "\n";
+  VULTEN_LOG_DEBUG("Timer stoped: "
+                   << ""
+                   << "\n")
 }
 
 /*** MEMCPY CALLBACKS ***/
@@ -209,10 +192,7 @@ void plugin_memcpy_dtoh(const SP_Device* device, SP_Stream stream,
                         void* host_dst, const SP_DeviceMemoryBase* device_src,
                         uint64_t size, TF_Status* status) {
   SCOPE_TIMER("DTH Transfer")
-#ifndef NDEBUG
-  std::cout << "Vulten [INFO]: "
-            << "Device to host transfer Size: " << size << "\n";
-#endif
+  VULTEN_LOG_DEBUG("Device to host transfer Size: " << size << "\n")
 
   auto host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
       VOID_TO_INSTANCE(device->device_handle)
@@ -230,11 +210,7 @@ void plugin_memcpy_htod(const SP_Device* device, SP_Stream stream,
                         SP_DeviceMemoryBase* device_dst, const void* host_src,
                         uint64_t size, TF_Status* status) {
   SCOPE_TIMER("HTD Transfer")
-
-#ifndef NDEBUG
-  std::cout << "Vulten [INFO]: "
-            << "Host to device transfer Size: " << size << "\n";
-#endif
+  VULTEN_LOG_DEBUG("Host to device transfer Size: " << size << "\n")
 
   auto host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
       VOID_TO_INSTANCE(device->device_handle)
@@ -252,13 +228,10 @@ void plugin_memcpy_dtod(const SP_Device* device, SP_Stream stream,
                         const SP_DeviceMemoryBase* device_src, uint64_t size,
                         TF_Status* status) {
   SCOPE_TIMER("DTD Transfer")
-#ifndef NDEBUG
-  std::cout << "Vulten [INFO]: "
-            << VOID_TO_DEVICE_BUFFER(device_src->opaque)->inst->device_num
-            << ":"
-            << VOID_TO_DEVICE_BUFFER(device_dst->opaque)->inst->device_num
-            << " Device to device transfer Size: " << size << "\n";
-#endif
+  VULTEN_LOG_DEBUG(
+      VOID_TO_DEVICE_BUFFER(device_src->opaque)->inst->device_num
+      << ":" << VOID_TO_DEVICE_BUFFER(device_dst->opaque)->inst->device_num
+      << " Device to device transfer Size: " << size << "\n")
 
   auto src_host_buff = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
       VOID_TO_INSTANCE(device->device_handle)

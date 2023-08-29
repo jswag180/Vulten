@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 
+#include "Vulten_backend/vulten_logger.h"
+
 #ifdef OP_TIMERS
 #define SCOPE_TIMER(n) utills::ScopeTimer scopeTimer(n);
 #else
@@ -28,9 +30,9 @@ class ScopeTimer {
     auto newStamp = std::chrono::high_resolution_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(newStamp - stamp);
-    std::cout << "Timmer segment: " << name_ << " At line: " << line
-              << " Took: " << duration.count()
-              << " microseconds from last segment/start\n";
+    VULTEN_LOG << "Timmer segment: " << name_ << " At line: " << line
+               << " Took: " << duration.count()
+               << " microseconds from last segment/start\n";
     stamp = newStamp;
   };
 
@@ -38,8 +40,8 @@ class ScopeTimer {
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration =
         std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    std::cout << "Timmer: " << name_ << " Took: " << duration.count()
-              << " microseconds\n";
+    VULTEN_LOG << "Timmer: " << name_ << " Took: " << duration.count()
+               << " microseconds\n";
   };
 };
 }  // namespace utills
