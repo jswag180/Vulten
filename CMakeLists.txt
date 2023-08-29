@@ -25,6 +25,17 @@ if(${ENABLE_SCOPE_TIMERS})
     add_compile_definitions(OP_TIMERS)
 endif()
 
+if(VULTEN_LOG_LEVEL EQUAL "0")
+    message("-- Vulten log level: 0")
+    add_compile_definitions(VULTEN_LOG_LEVEL=0)
+elseif(VULTEN_LOG_LEVEL EQUAL "1")
+    message("-- Vulten log level: 1")
+    add_compile_definitions(VULTEN_LOG_LEVEL=1)
+elseif(VULTEN_LOG_LEVEL EQUAL "2")
+    message("-- Vulten log level: 2")
+    add_compile_definitions(VULTEN_LOG_LEVEL=2)
+endif()
+
 find_package(Vulkan REQUIRED)
 
 #Tensorflow
