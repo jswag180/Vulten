@@ -10,18 +10,30 @@ namespace vulten_ops {
 namespace basic {
 
 std::string op_as_str(uint32_t op) {
-  if (op == OP_MUL) {
-    return "Mul";
-  } else if (op == OP_ADD) {
-    return "Add";
-  } else if (op == OP_SUB) {
-    return "Sub";
-  } else if (op == OP_DIV) {
-    return "Div";
-  } else if (op == OP_DIV_NO_NAN) {
-    return "DivNoNan";
-  } else {
-    return "INVALID";
+  switch (op) {
+    case OP_MUL:
+      return "Mul";
+      break;
+    case OP_ADD:
+      return "Add";
+      break;
+    case OP_SUB:
+      return "Sub";
+      break;
+    case OP_DIV:
+      return "Div";
+      break;
+    case OP_DIV_NO_NAN:
+      return "DivNoNan";
+      break;
+    case OP_MAXIMUM:
+      return "Maximum";
+      break;
+    case OP_MINIMUM:
+      return "Minimum";
+      break;
+    default:
+      return "INVALID";
   }
 }
 

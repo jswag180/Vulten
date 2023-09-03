@@ -21,6 +21,8 @@ layout(set = 0, binding = 4) buffer e { writeonly TYPE_0 outData[]; };
 #define OP_SUB        2
 #define OP_DIV        3
 #define OP_DIV_NO_NAN 4
+#define OP_MAXIMUM    5
+#define OP_MINIMUM    6
 layout(constant_id = 1) const uint op = 0;
 
 layout(push_constant) uniform PushConstants {
@@ -99,7 +101,10 @@ void main(){
         }else{
             outData[id] = X / Y;
         }
+    }else if(op == OP_MAXIMUM){
+        outData[id] = max(X, Y);
+    }else if(op == OP_MINIMUM){
+        outData[id] = min(X, Y);
     }
-
 }
 )";

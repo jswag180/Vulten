@@ -96,12 +96,14 @@ void RegisterBasicOpKernels(const char* device_type) {
 }
 
 void RegisterDeviceBasicOps(const char* device_type) {
-#define REGISTER_KERNEL(T)                        \
-  RegisterBasicOpKernels<T, OP_MUL>(device_type); \
-  RegisterBasicOpKernels<T, OP_ADD>(device_type); \
-  RegisterBasicOpKernels<T, OP_SUB>(device_type); \
-  RegisterBasicOpKernels<T, OP_DIV>(device_type); \
-  RegisterBasicOpKernels<T, OP_DIV_NO_NAN>(device_type);
+#define REGISTER_KERNEL(T)                               \
+  RegisterBasicOpKernels<T, OP_MUL>(device_type);        \
+  RegisterBasicOpKernels<T, OP_ADD>(device_type);        \
+  RegisterBasicOpKernels<T, OP_SUB>(device_type);        \
+  RegisterBasicOpKernels<T, OP_DIV>(device_type);        \
+  RegisterBasicOpKernels<T, OP_DIV_NO_NAN>(device_type); \
+  RegisterBasicOpKernels<T, OP_MAXIMUM>(device_type);    \
+  RegisterBasicOpKernels<T, OP_MINIMUM>(device_type);
 
   CALL_ALL_BASIC_TYPES(REGISTER_KERNEL)
 

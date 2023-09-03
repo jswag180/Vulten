@@ -7,6 +7,8 @@
 #define OP_SUB 2
 #define OP_DIV 3
 #define OP_DIV_NO_NAN 4
+#define OP_MAXIMUM 5
+#define OP_MINIMUM 6
 
 namespace vulten_ops {
 namespace basic {
