@@ -32,6 +32,9 @@ std::string op_as_str(uint32_t op) {
     case OP_MINIMUM:
       return "Minimum";
       break;
+    case OP_DIV_REAL:
+      return "RealDiv";
+      break;
     default:
       return "INVALID";
   }
