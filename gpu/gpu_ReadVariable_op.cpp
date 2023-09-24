@@ -21,6 +21,7 @@ void ReadVariableOp_Compte(void* kernel, TF_OpKernelContext* ctx) {
 
   TF_SetOutput(ctx, 0, *ref, status.get());
 
+  TF_DeleteTensor(*ref);
   delete ref;
 }
 
