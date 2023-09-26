@@ -173,7 +173,7 @@ Instance::Instance(uint32_t dev_num) {
       std::vector<vk::DeviceQueueCreateInfo>(
           device_propertys.queue_props.size());
 
-  float prio = 1.0f;
+  static float prio = 1.0f;
   total_queues = 0;
   for (uint32_t i = 0; i < device_propertys.queue_props.size(); i++) {
     auto queue_info = vk::DeviceQueueCreateInfo(
