@@ -53,8 +53,11 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
          sizeof(reduce_shader::Push_const)}};
 
     reduce_shader::Generate_reduce_shader_info generate_reduce_shader_info{dt};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
     vulten_pipeline = inst->create_pipeline(
-        pipe_string, NUM_BUFFERS,
+        pipe_string, buffer_types,
         reduce_shader::generate_reduce_shader(generate_reduce_shader_info),
         &spec_info, push_const_ranges);
   } else {

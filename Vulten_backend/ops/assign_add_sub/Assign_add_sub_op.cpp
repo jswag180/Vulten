@@ -33,8 +33,11 @@ vulten_backend::Vulten_pipeline *get_assign_add_sub_pipeline(
 
     assign_add_sub_shader::Generate_assign_add_sub_shader_info
         generate_assign_add_sub_shader_info{dt};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
     return inst->create_pipeline(
-        pipe_string, NUM_BUFFERS,
+        pipe_string, buffer_types,
         assign_add_sub_shader::generate_assign_add_sub_shader(
             generate_assign_add_sub_shader_info),
         &spec_info, push_const_ranges);

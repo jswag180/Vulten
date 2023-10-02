@@ -19,7 +19,7 @@ Buffer::~Buffer() {
 Host_mappable_buffer::Host_mappable_buffer(Instance *instance, void *data,
                                            uint32_t size, bool sync_to_device,
                                            bool trans_src, bool trans_dst,
-                                           bool staging)
+                                           bool staging, bool uniform)
     : Buffer(instance, size, trans_src, trans_dst) {
   VULTEN_LOG_DEBUG("Creating vulten_backend::Host_mappable_buffer of size " +
                        std::to_string(buffer_size) + " at "
@@ -27,7 +27,11 @@ Host_mappable_buffer::Host_mappable_buffer(Instance *instance, void *data,
 
   VkBufferCreateInfo bufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
   bufferInfo.size = size;
-  bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+  if (uniform) {
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+  } else {
+    bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+  }
   if (trans_src) {
     bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
   }

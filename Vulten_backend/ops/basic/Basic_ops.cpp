@@ -72,8 +72,13 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t op,
     };
 
     basic_shader::Generate_basic_shader_info generate_basic_shader_info{dt};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
+    buffer_types[2] = vk::DescriptorType::eUniformBuffer;
+    buffer_types[3] = vk::DescriptorType::eUniformBuffer;
     vulten_pipeline = inst->create_pipeline(
-        basic_pipe_string, NUM_BUFFERS,
+        basic_pipe_string, buffer_types,
         basic_shader::generate_basic_shader(generate_basic_shader_info),
         &spec_info, push_const_ranges);
   } else {
@@ -111,12 +116,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t op,
       vulten_utills::calculate_adj_strides(output.dims, output.num_dims);
   adj_strides.insert(adj_strides.end(), output_strides.begin(),
                      output_strides.end());
-  auto strides_stageing = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
+  auto strides = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
       inst->create_host_mappable_buffer((uint8_t *)adj_strides.data(),
-                                        sizeof(uint32_t) * adj_strides.size()));
-  auto strides = std::unique_ptr<vulten_backend::Device_buffer>(
-      inst->create_device_buffer(strides_stageing->buffer_size, false, true));
-  inst->copy_buffer(&queue_alloc, strides_stageing.get(), strides.get());
+                                        sizeof(uint32_t) * adj_strides.size(),
+                                        true, false, false, true, true));
   vk::DescriptorBufferInfo strides_buffer_info(strides->vk_buffer, 0,
                                                strides->buffer_size);
 
@@ -127,12 +130,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t op,
   for (uint32_t i = 0; i < y.num_dims; i++) {
     dims_vec.push_back(y.dims[i]);
   }
-  auto dims_stageing = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
+  auto dims = std::unique_ptr<vulten_backend::Host_mappable_buffer>(
       inst->create_host_mappable_buffer((uint8_t *)dims_vec.data(),
-                                        sizeof(uint32_t) * dims_vec.size()));
-  auto dims = std::unique_ptr<vulten_backend::Device_buffer>(
-      inst->create_device_buffer(dims_stageing->buffer_size, false, true));
-  inst->copy_buffer(&queue_alloc, dims_stageing.get(), dims.get());
+                                        sizeof(uint32_t) * dims_vec.size(),
+                                        true, false, false, true, true));
   vk::DescriptorBufferInfo dims_buffer_info(dims->vk_buffer, 0,
                                             dims->buffer_size);
 
@@ -143,9 +144,9 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t op,
        &x_buffer_info},
       {descriptor_set, 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
        &y_buffer_info},
-      {descriptor_set, 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+      {descriptor_set, 2, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr,
        &strides_buffer_info},
-      {descriptor_set, 3, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
+      {descriptor_set, 3, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr,
        &dims_buffer_info},
       {descriptor_set, 4, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
        &output_buffer_info},

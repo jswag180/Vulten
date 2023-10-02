@@ -35,7 +35,10 @@ vulten_backend::Vulten_pipeline *get_broadcast_pipeline(
 
     broadcast_shader::Generate_broadcast_shader_info
         generate_broadcast_shader_info{dt};
-    return inst->create_pipeline(pipe_string, NUM_BUFFERS,
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
+    return inst->create_pipeline(pipe_string, buffer_types,
                                  broadcast_shader::generate_broadcast_shader(
                                      generate_broadcast_shader_info),
                                  &spec_info, push_const_ranges);

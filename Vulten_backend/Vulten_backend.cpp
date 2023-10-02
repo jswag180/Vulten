@@ -212,11 +212,16 @@ Instance::Instance(uint32_t dev_num) {
   extend_sub.setShaderSubgroupExtendedTypes(true);
   extend_sub.setPNext(&half_buffer_feat);
 
+  vk::PhysicalDeviceScalarBlockLayoutFeaturesEXT scalar_block_feat =
+      vk::PhysicalDeviceScalarBlockLayoutFeaturesEXT();
+  scalar_block_feat.setScalarBlockLayout(true);
+  scalar_block_feat.setPNext(&extend_sub);
+
   vk::PhysicalDeviceFeatures2 dev_features2 = vk::PhysicalDeviceFeatures2();
   dev_features2.features.setShaderInt16(true);
   dev_features2.features.setShaderInt64(true);
   dev_features2.features.setShaderFloat64(true);
-  dev_features2.setPNext(&extend_sub);
+  dev_features2.setPNext(&scalar_block_feat);
 
   auto dev_create_info = vk::DeviceCreateInfo(
       vk::DeviceCreateFlags(), queues_info.size(), queues_info.data(), 0, {},
@@ -261,9 +266,9 @@ Instance::Instance(uint32_t dev_num) {
 
 Host_mappable_buffer *Instance::create_host_mappable_buffer(
     void *data, uint32_t size, bool sync_to_device, bool trans_src,
-    bool trans_dst, bool staging) {
+    bool trans_dst, bool staging, bool uniform) {
   return new Host_mappable_buffer(this, data, size, sync_to_device, trans_src,
-                                  trans_dst, staging);
+                                  trans_dst, staging, uniform);
 }
 
 Device_buffer *Instance::create_device_buffer(uint32_t size, bool trans_src,
@@ -420,12 +425,12 @@ Queue_alloc Instance::get_queue(bool graphics, bool compute, bool transfer,
 }
 
 Vulten_pipeline *Instance::create_pipeline(
-    std::string pipe_string, uint32_t num_buffers,
+    std::string pipe_string, std::vector<vk::DescriptorType> buffer_types,
     std::vector<uint32_t> shader_spv, vk::SpecializationInfo *spec_info,
     std::vector<vk::PushConstantRange> push_ranges) {
   std::unique_lock lock(pipe_mutex);
 
-  pipelines[pipe_string] = new Vulten_pipeline(this, num_buffers, shader_spv,
+  pipelines[pipe_string] = new Vulten_pipeline(this, buffer_types, shader_spv,
                                                spec_info, push_ranges);
   return pipelines[pipe_string];
 }

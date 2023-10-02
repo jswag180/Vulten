@@ -40,7 +40,10 @@ vulten_backend::Vulten_pipeline* get_batchAdd_pipeline(
 
     batchAdd_shader::Generate_batchAdd_shader_info
         generate_batchAdd_shader_info{dt};
-    return inst->create_pipeline(pipe_string, NUM_BUFFERS_BATCHADD,
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS_BATCHADD,
+                                        vk::DescriptorType::eStorageBuffer);
+    return inst->create_pipeline(pipe_string, buffer_types,
                                  batchAdd_shader::generate_batchAdd_shader(
                                      generate_batchAdd_shader_info),
                                  &spec_info, push_const_ranges);
@@ -74,8 +77,11 @@ vulten_backend::Vulten_pipeline* get_softmax_pipeline(
 
     softmax_shader::Generate_softmax_shader_info generate_softmax_shader_info{
         dt};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS_SOFTMAX,
+                                        vk::DescriptorType::eStorageBuffer);
     return inst->create_pipeline(
-        pipe_string, NUM_BUFFERS_SOFTMAX,
+        pipe_string, buffer_types,
         softmax_shader::generate_softmax_shader(generate_softmax_shader_info),
         &spec_info, push_const_ranges);
   } else {

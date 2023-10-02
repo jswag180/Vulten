@@ -17,8 +17,11 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
   if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::Relu_op pipeline " + pipe_string)
     Generate_relu_shader_info generate_relu_shader_info{dt};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
     vulten_pipeline =
-        inst->create_pipeline(pipe_string, NUM_BUFFERS,
+        inst->create_pipeline(pipe_string, buffer_types,
                               generate_relu_shader(generate_relu_shader_info));
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Relu_op pipeline " + pipe_string)

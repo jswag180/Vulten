@@ -20,8 +20,11 @@ void run_op(vulten_backend::Instance *inst, Data_type src, Data_type dst,
     VULTEN_LOG_DEBUG("Creating vulten_ops::Cast_op pipeline " + pipe_string)
 
     cast_shader::Generate_cast_shader_info generate_cast_shader_info{src, dst};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
     vulten_pipeline = inst->create_pipeline(
-        pipe_string, NUM_BUFFERS,
+        pipe_string, buffer_types,
         cast_shader::generate_cast_shader(generate_cast_shader_info));
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Cast_op pipeline " + pipe_string)

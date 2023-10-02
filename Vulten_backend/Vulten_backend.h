@@ -84,7 +84,7 @@ struct alignas(64) Host_mappable_buffer : Buffer {
 
   Host_mappable_buffer(Instance *instance, void *data, uint32_t size,
                        bool sync_to_device, bool trans_src, bool trans_dst,
-                       bool staging);
+                       bool staging, bool uniform);
   ~Host_mappable_buffer();
 };
 
@@ -115,7 +115,8 @@ struct Vulten_pipeline {
    * @param shader_source Source spv for shader.
    * @param specs Vector of spec contrantes.
    */
-  Vulten_pipeline(vulten_backend::Instance *instance, uint32_t num_buffers,
+  Vulten_pipeline(vulten_backend::Instance *instance,
+                  std::vector<vk::DescriptorType> &buffer_types,
                   const std::vector<uint32_t> &shader_source,
                   vk::SpecializationInfo *spec_info = {},
                   std::vector<vk::PushConstantRange> push_ranges = {});
@@ -159,7 +160,8 @@ class alignas(64) Instance {
                                                     bool sync_to_device = true,
                                                     bool trans_src = true,
                                                     bool trans_dst = true,
-                                                    bool staging = false);
+                                                    bool staging = false,
+                                                    bool uniform = false);
   Device_buffer *create_device_buffer(uint32_t size, bool trans_src = true,
                                       bool trans_dst = true);
   void copy_buffer(Buffer *src, Buffer *dest, uint32_t size = 0);
@@ -171,7 +173,7 @@ class alignas(64) Instance {
                    uint64_t size, uint32_t data);
   Vulten_pipeline *get_cached_pipeline(std::string pipe_string);
   Vulten_pipeline *create_pipeline(
-      std::string pipe_string, uint32_t num_buffers,
+      std::string pipe_string, std::vector<vk::DescriptorType> buffer_types,
       std::vector<uint32_t> shader_spv, vk::SpecializationInfo *spec_info = {},
       std::vector<vk::PushConstantRange> push_ranges = {});
   Queue_alloc get_queue(bool graphics, bool compute, bool transfer,

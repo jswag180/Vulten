@@ -36,8 +36,11 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
 
     bias_add_shader::Generate_biasAdd_shader_info generate_biasAdd_shader_info{
         dt};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
     vulten_pipeline = inst->create_pipeline(
-        pipe_string, NUM_BUFFERS,
+        pipe_string, buffer_types,
         generate_biasAdd_shader(generate_biasAdd_shader_info), &spec_info,
         push_const_ranges);
   } else {

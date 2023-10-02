@@ -51,7 +51,10 @@ vulten_backend::Vulten_pipeline *get_multiFunc_pipeline(
 
     multiFunc_shader::Generate_multiFunc_shader_info
         generate_multiFunc_shader_info{dt};
-    return inst->create_pipeline(pipe_string, NUM_BUFFERS,
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
+    return inst->create_pipeline(pipe_string, buffer_types,
                                  multiFunc_shader::generate_multiFunc_shader(
                                      generate_multiFunc_shader_info),
                                  &spec_info, push_const_ranges);

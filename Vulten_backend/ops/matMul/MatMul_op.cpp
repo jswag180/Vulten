@@ -32,7 +32,9 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
       transpose_shader::Generate_transpose_shader_info
           generate_transpose_shader_info{dt};
       transpose_pipeline =
-          inst->create_pipeline(transpose_pipe_string, 2,
+          inst->create_pipeline(transpose_pipe_string,
+                                std::vector<vk::DescriptorType>(
+                                    2, vk::DescriptorType::eStorageBuffer),
                                 transpose_shader::generate_transpose_shader(
                                     generate_transpose_shader_info),
                                 nullptr, push_const_ranges);
@@ -53,8 +55,11 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
         {vk::ShaderStageFlagBits::eCompute, 0, sizeof(Mat_size)}};
 
     mat_mul_shader::Generate_matMul_shader_info generate_matMul_shader_info{dt};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
     matmul_pipeline = inst->create_pipeline(
-        matmul_pipe_string, NUM_BUFFERS,
+        matmul_pipe_string, buffer_types,
         mat_mul_shader::generate_matMul_shader(generate_matMul_shader_info),
         nullptr, push_const_ranges);
   } else {

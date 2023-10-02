@@ -37,8 +37,11 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Data_type dt_labels,
 
     xent_shader::Generate_xent_shader_info generate_xent_shader_info{dt,
                                                                      dt_labels};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
     vulten_pipeline = inst->create_pipeline(
-        pipe_string, NUM_BUFFERS,
+        pipe_string, buffer_types,
         xent_shader::generate_xent_shader(generate_xent_shader_info),
         &spec_info, push_const_ranges);
   } else {

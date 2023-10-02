@@ -20,8 +20,11 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
     VULTEN_LOG_DEBUG("Creating vulten_ops::ReluGrad_op pipeline " + pipe_string)
     reluGrad_shader::Generate_reluGrad_shader_info
         generate_reluGrad_shader_info{dt};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
     vulten_pipeline =
-        inst->create_pipeline(pipe_string, NUM_BUFFERS,
+        inst->create_pipeline(pipe_string, buffer_types,
                               reluGrad_shader::generate_reluGrad_shader(
                                   generate_reluGrad_shader_info));
   } else {

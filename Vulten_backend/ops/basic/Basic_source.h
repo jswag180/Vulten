@@ -5,6 +5,7 @@ const char* basic_source = R"(
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_scalar_block_layout : enable
 
 #include "prelude.h"
 
@@ -12,8 +13,8 @@ layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) buffer a { readonly  TYPE_0 x[]; };
 layout(set = 0, binding = 1) buffer b { readonly  TYPE_0 y[]; };
-layout(set = 0, binding = 2) buffer c { readonly  uint   strides[]; };
-layout(set = 0, binding = 3) buffer d { readonly  uint   dims[]; };
+layout(std430, set = 0, binding = 2) uniform c { readonly uint   strides[1000]; };
+layout(std430, set = 0, binding = 3) uniform d { readonly uint   dims[500]; };
 layout(set = 0, binding = 4) buffer e { writeonly TYPE_0 outData[]; };
 
 #define OP_MUL        0

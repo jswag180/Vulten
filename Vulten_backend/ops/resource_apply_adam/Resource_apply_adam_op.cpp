@@ -34,8 +34,11 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor var,
 
     resource_apply_adam_shader::Generate_resource_apply_adam_shader_info
         generate_resource_apply_adam_shader_info{dt};
+    std::vector<vk::DescriptorType> buffer_types =
+        std::vector<vk::DescriptorType>(NUM_BUFFERS,
+                                        vk::DescriptorType::eStorageBuffer);
     vulten_pipeline = inst->create_pipeline(
-        pipe_string, NUM_BUFFERS,
+        pipe_string, buffer_types,
         resource_apply_adam_shader::generate_resource_apply_adam_shader(
             generate_resource_apply_adam_shader_info),
         &spec_info);
