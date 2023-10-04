@@ -16,7 +16,7 @@ add_subdirectory(Vulten_backend Vulten_backend/)
 
 #Set the location of tensorflow site-packages wether it is is installed system/user or in a venv
 #This will be used for linking, include
-set(TF_LOCAL venv/lib/python3.10/site-packages)
+set(TF_LOCAL venv/lib/python3.11/site-packages)
 
 add_library(Vulten SHARED ${SOURCES})
 
