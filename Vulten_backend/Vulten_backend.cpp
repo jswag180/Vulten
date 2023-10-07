@@ -189,6 +189,12 @@ Instance::Instance(uint32_t dev_num) {
   enable_if_avaliable("VK_KHR_portability_subset", device_propertys.extens);
   bool has_mem_budget =
       enable_if_avaliable("VK_EXT_memory_budget", device_propertys.extens);
+  bool has_mem_req2 = enable_if_avaliable("VK_KHR_get_memory_requirements2",
+                                          device_propertys.extens);
+  bool has_ded_alloc = enable_if_avaliable("VK_KHR_dedicated_allocation",
+                                           device_propertys.extens);
+  bool has_amd_mem = enable_if_avaliable("VK_AMD_device_coherent_memory",
+                                         device_propertys.extens);
 
   vk::PhysicalDeviceShaderFloat16Int8Features half_char_feat =
       vk::PhysicalDeviceShaderFloat16Int8Features();
@@ -217,11 +223,16 @@ Instance::Instance(uint32_t dev_num) {
   scalar_block_feat.setScalarBlockLayout(true);
   scalar_block_feat.setPNext(&extend_sub);
 
+  vk::PhysicalDeviceCoherentMemoryFeaturesAMD amd_mem_feat =
+      vk::PhysicalDeviceCoherentMemoryFeaturesAMD();
+  amd_mem_feat.setDeviceCoherentMemory(has_amd_mem);
+  amd_mem_feat.setPNext(&scalar_block_feat);
+
   vk::PhysicalDeviceFeatures2 dev_features2 = vk::PhysicalDeviceFeatures2();
   dev_features2.features.setShaderInt16(true);
   dev_features2.features.setShaderInt64(true);
   dev_features2.features.setShaderFloat64(true);
-  dev_features2.setPNext(&scalar_block_feat);
+  dev_features2.setPNext(&amd_mem_feat);
 
   auto dev_create_info = vk::DeviceCreateInfo(
       vk::DeviceCreateFlags(), queues_info.size(), queues_info.data(), 0, {},
@@ -258,6 +269,14 @@ Instance::Instance(uint32_t dev_num) {
     if (has_mem_budget) {
       vmaAllocatorCreateInfo.flags |=
           VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+    }
+    if (has_mem_req2 && has_ded_alloc) {
+      vmaAllocatorCreateInfo.flags |=
+          VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
+    }
+    if (has_amd_mem) {
+      vmaAllocatorCreateInfo.flags |=
+          VMA_ALLOCATOR_CREATE_AMD_DEVICE_COHERENT_MEMORY_BIT;
     }
 
     vmaCreateAllocator(&vmaAllocatorCreateInfo, &allocator);
