@@ -10,6 +10,9 @@ std::vector<uint32_t> generate_matMul_shader(
   shaderc::CompileOptions options = shader_wizard::get_compile_options();
 
   shader_wizard::add_type_define(options, 0, generate_matMul_shader_info.dt);
+  if (generate_matMul_shader_info.unroll_bk) {
+    options.AddMacroDefinition("UNROLL_BK");
+  }
 
   return shader_wizard::compile_shader("MatMul", matMul_source, options);
 }
