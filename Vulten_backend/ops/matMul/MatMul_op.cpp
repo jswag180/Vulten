@@ -1,5 +1,6 @@
 #include "MatMul_op.h"
 
+#include <cmath>
 #include <memory>
 
 #include "../transpose/Transpose_shader.h"
@@ -16,8 +17,13 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
   vulten_backend::Queue_alloc queue_alloc =
       inst->get_queue(false, true, false, false);
 
+  bool inline_transpose = false;
+  if (output.get_total_elements() <= 32 * 32) {
+    inline_transpose = true;
+  }
+
   vulten_backend::Vulten_pipeline *transpose_pipeline = nullptr;
-  if (trans_a || trans_b) {
+  if ((trans_a || trans_b) && !inline_transpose) {
     std::string transpose_pipe_string = "Transpose_" + Data_type_to_str(dt);
     transpose_pipeline = inst->get_cached_pipeline(transpose_pipe_string);
     if (transpose_pipeline == nullptr) {
@@ -44,24 +50,112 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
     }
   }
 
-  std::string matmul_pipe_string = "MatMul_" + Data_type_to_str(dt);
+  Mat_size mat_size_a_post_trans = {trans_a ? mat_size_a.y : mat_size_a.x,
+                                    trans_a ? mat_size_a.x : mat_size_a.y};
+  Mat_size mat_size_b_post_trans = {trans_b ? mat_size_b.y : mat_size_b.x,
+                                    trans_b ? mat_size_b.x : mat_size_b.y};
+
+  // Block size is a highly dependant on the input matrix and gpu
+  // 4x4 is good on smaller gpus
+  uint32_t max_block_size = 16;
+  if (output.get_total_elements() <= 64 * 64) {
+    max_block_size = 4;
+  }
+  uint32_t block_size_x = 0;
+  for (int i = max_block_size; i > 0; i--) {
+    if (mat_size_b_post_trans.x % i == 0 && mat_size_a_post_trans.x % i == 0) {
+      block_size_x = i;
+      break;
+    }
+  }
+  uint32_t block_size_y = 0;
+  for (int i = max_block_size; i > 0; i--) {
+    if (mat_size_b_post_trans.y % i == 0 && mat_size_a_post_trans.y % i == 0) {
+      block_size_y = i;
+      break;
+    }
+  }
+
+  uint32_t max_local_size =
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
+  uint32_t local_x = 1;
+  for (int i = max_local_size; i > 0; i--) {
+    if (uint32_t(std::ceil(mat_size_a_post_trans.x / float(block_size_x))) %
+            i ==
+        0) {
+      local_x = i;
+      break;
+    }
+  }
+  // This degraded perfromance idk...
+  uint32_t local_y = 1;
+  // for(int i = std::floor(max_local_size / local_x); i > 0; i--){
+  //     if(uint32_t(std::ceil((trans_b ? mat_size_b.x : mat_size_b.y) /
+  //     float(block_size_y))) % i == 0){
+  //         local_y = i;
+  //         break;
+  //     }
+  // }
+
+  uint32_t bkNum = uint32_t(mat_size_a_post_trans.y / block_size_x);
+  bool unroll_bk = false;
+  // On some GPUs it helps others it hurts...
+  // dissable for now
+  // if(bkNum <= 4096)
+  // unroll_bk = true;
+  std::string matmul_pipe_string =
+      "MatMul_" + Data_type_to_str(dt) + "_" + std::to_string(local_x) + "_" +
+      std::to_string(local_y) + "_" + std::to_string(block_size_x) + "_" +
+      std::to_string(block_size_y) + "_" + std::to_string(bkNum);
+  if (inline_transpose) {
+    matmul_pipe_string +=
+        "_" + std::to_string(trans_a) + "_" + std::to_string(trans_b);
+  }
   vulten_backend::Vulten_pipeline *matmul_pipeline =
       inst->get_cached_pipeline(matmul_pipe_string);
   if (matmul_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::MatMul_op pipeline " +
                      matmul_pipe_string)
 
-    const std::vector<vk::PushConstantRange> push_const_ranges = {
-        {vk::ShaderStageFlagBits::eCompute, 0, sizeof(Mat_size)}};
+    mat_mul_shader::Spec_cons spec;
+    spec.local_x = local_x;
+    spec.local_y = local_y;
+    spec.blockSizeX = block_size_x;
+    spec.blockSizeY = block_size_y;
+    spec.bkNum = bkNum;
+    if (inline_transpose) {
+      spec.transA = trans_a;
+      spec.transB = trans_b;
+    } else {
+      spec.transA = false;
+      spec.transB = false;
+    }
 
-    mat_mul_shader::Generate_matMul_shader_info generate_matMul_shader_info{dt};
+    const std::vector<vk::SpecializationMapEntry> specs = {
+        {0, 0, sizeof(uint32_t)},
+        {1, offsetof(mat_mul_shader::Spec_cons, local_y), sizeof(uint32_t)},
+        {2, offsetof(mat_mul_shader::Spec_cons, blockSizeX), sizeof(uint32_t)},
+        {3, offsetof(mat_mul_shader::Spec_cons, blockSizeY), sizeof(uint32_t)},
+        {4, offsetof(mat_mul_shader::Spec_cons, bkNum), sizeof(uint32_t)},
+        {5, offsetof(mat_mul_shader::Spec_cons, transA), sizeof(VkBool32)},
+        {6, offsetof(mat_mul_shader::Spec_cons, transB), sizeof(VkBool32)},
+    };
+    vk::SpecializationInfo spec_info(specs.size(), specs.data(),
+                                     sizeof(mat_mul_shader::Spec_cons), &spec);
+
+    const std::vector<vk::PushConstantRange> push_const_ranges = {
+        {vk::ShaderStageFlagBits::eCompute, 0,
+         sizeof(mat_mul_shader::Push_const)}};
+
+    mat_mul_shader::Generate_matMul_shader_info generate_matMul_shader_info{
+        dt, unroll_bk};
     std::vector<vk::DescriptorType> buffer_types =
         std::vector<vk::DescriptorType>(NUM_BUFFERS,
                                         vk::DescriptorType::eStorageBuffer);
     matmul_pipeline = inst->create_pipeline(
         matmul_pipe_string, buffer_types,
         mat_mul_shader::generate_matMul_shader(generate_matMul_shader_info),
-        nullptr, push_const_ranges);
+        &spec_info, push_const_ranges);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::MatMul_op pipeline " +
                      matmul_pipe_string)
@@ -70,19 +164,23 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
   vk::DescriptorPool descriptor_pool;
   vk::DescriptorPoolSize descriptor_pool_size(
       vk::DescriptorType::eStorageBuffer,
-      NUM_BUFFERS + (trans_a ? 2 : 0) + (trans_b ? 2 : 0));
+      NUM_BUFFERS + (trans_a && !inline_transpose ? 2 : 0) +
+          (trans_b && !inline_transpose ? 2 : 0));
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
       vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      NUM_SETS + (trans_a ? 1 : 0) + (trans_b ? 1 : 0), descriptor_pool_size);
+      NUM_SETS + (trans_a && !inline_transpose ? 1 : 0) +
+          (trans_b && !inline_transpose ? 1 : 0),
+      descriptor_pool_size);
   descriptor_pool =
       inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
 
   std::vector<vk::DescriptorSetLayout> descriptor_set_layouts =
-      std::vector<vk::DescriptorSetLayout>(NUM_SETS + (trans_a ? 1 : 0) +
-                                           (trans_b ? 1 : 0));
-  if (trans_a)
+      std::vector<vk::DescriptorSetLayout>(
+          NUM_SETS + (trans_a && !inline_transpose ? 1 : 0) +
+          (trans_b && !inline_transpose ? 1 : 0));
+  if (trans_a && !inline_transpose)
     descriptor_set_layouts[0] = transpose_pipeline->descriptor_set_layout;
-  if (trans_b)
+  if (trans_b && !inline_transpose)
     descriptor_set_layouts[trans_a ? 1 : 0] =
         transpose_pipeline->descriptor_set_layout;
   descriptor_set_layouts[descriptor_set_layouts.size() - 1] =
@@ -95,9 +193,12 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
       inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info);
 
   vk::DescriptorSet transpose_a_descriptor_set;
-  if (trans_a) transpose_a_descriptor_set = descriptor_sets[0];
+  if (trans_a && !inline_transpose)
+    transpose_a_descriptor_set = descriptor_sets[0];
   vk::DescriptorSet transpose_b_descriptor_set;
-  if (trans_b) transpose_b_descriptor_set = descriptor_sets[trans_a ? 1 : 0];
+  if (trans_b && !inline_transpose)
+    transpose_b_descriptor_set =
+        descriptor_sets[trans_a && !inline_transpose ? 1 : 0];
   vk::DescriptorSet matMul_descriptor_set =
       descriptor_sets[descriptor_set_layouts.size() - 1];
 
@@ -108,14 +209,15 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary,
-      1 + (trans_a ? 1 : 0) + (trans_b ? 1 : 0));
+      1 + (trans_a && !inline_transpose ? 1 : 0) +
+          (trans_b && !inline_transpose ? 1 : 0));
   std::vector<vk::CommandBuffer> cmd_buffs =
       inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 
   std::unique_ptr<vulten_backend::Device_buffer> trans_a_buffer;
-  if (trans_a) {
+  if (trans_a && !inline_transpose) {
     transpose_semaphores.push_back(
         inst->logical_dev.createSemaphore(vk::SemaphoreCreateInfo()));
     wait_stages.push_back(vk::PipelineStageFlagBits::eComputeShader);
@@ -176,7 +278,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
   }
 
   std::unique_ptr<vulten_backend::Device_buffer> trans_b_buffer;
-  if (trans_b) {
+  if (trans_b && !inline_transpose) {
     transpose_semaphores.push_back(
         inst->logical_dev.createSemaphore(vk::SemaphoreCreateInfo()));
     wait_stages.push_back(vk::PipelineStageFlagBits::eComputeShader);
@@ -236,12 +338,14 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
     queue_alloc.queue->vk_queue.submit({SubmitInfo});
   }
 
-  vk::DescriptorBufferInfo a_buffer_info(
-      trans_a ? trans_a_buffer.get()->vk_buffer : a.buffer->vk_buffer, 0,
-      a.buffer->buffer_size);
-  vk::DescriptorBufferInfo b_buffer_info(
-      trans_b ? trans_b_buffer.get()->vk_buffer : b.buffer->vk_buffer, 0,
-      b.buffer->buffer_size);
+  vk::DescriptorBufferInfo a_buffer_info(trans_a && !inline_transpose
+                                             ? trans_a_buffer.get()->vk_buffer
+                                             : a.buffer->vk_buffer,
+                                         0, a.buffer->buffer_size);
+  vk::DescriptorBufferInfo b_buffer_info(trans_b && !inline_transpose
+                                             ? trans_b_buffer.get()->vk_buffer
+                                             : b.buffer->vk_buffer,
+                                         0, b.buffer->buffer_size);
   vk::DescriptorBufferInfo output_buffer_info(output.buffer->vk_buffer, 0,
                                               output.buffer->buffer_size);
   std::vector<vk::WriteDescriptorSet> WriteDescriptorSets = {
@@ -266,12 +370,27 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
       {matMul_descriptor_set},           // List of descriptor sets
       {});
 
-  Mat_size pushes = {trans_a ? mat_size_a.x : mat_size_a.y,
-                     trans_b ? mat_size_b.x : mat_size_b.y};
-  cmd_buffs[cmd_buff_indx].pushConstants(matmul_pipeline->pipeline_layout,
-                                         vk::ShaderStageFlagBits::eCompute, 0,
-                                         sizeof(Mat_size), &pushes);
-  cmd_buffs[cmd_buff_indx].dispatch(output.dims[0], output.dims[1], 1);
+  cmd_buffs[cmd_buff_indx].fillBuffer(output.buffer->vk_buffer, 0,
+                                      VK_WHOLE_SIZE, 0);
+  vk::MemoryBarrier mem_bar = vk::MemoryBarrier(
+      vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead,
+      vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead);
+  cmd_buffs[cmd_buff_indx].pipelineBarrier(
+      vk::PipelineStageFlagBits::eComputeShader,
+      vk::PipelineStageFlagBits::eComputeShader, vk::DependencyFlags(), mem_bar,
+      nullptr, nullptr);
+
+  mat_mul_shader::Push_const pushes = {
+      mat_size_a_post_trans.x, mat_size_a_post_trans.y, mat_size_b_post_trans.x,
+      mat_size_b_post_trans.y};
+  cmd_buffs[cmd_buff_indx].pushConstants(
+      matmul_pipeline->pipeline_layout, vk::ShaderStageFlagBits::eCompute, 0,
+      sizeof(mat_mul_shader::Push_const), &pushes);
+  uint32_t bkNumX = std::ceil(
+      std::ceil(mat_size_a_post_trans.x / float(block_size_x)) / local_x);
+  uint32_t bkNumY = std::ceil(
+      std::ceil(mat_size_b_post_trans.y / float(block_size_y)) / local_y);
+  cmd_buffs[cmd_buff_indx].dispatch(bkNumX, bkNumY, 1);
   cmd_buffs[cmd_buff_indx].end();
 
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
