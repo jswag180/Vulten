@@ -107,7 +107,6 @@ struct Vulten_pipeline {
   vk::PipelineLayout pipeline_layout;
   vk::ShaderModule shader;
   vk::DescriptorSetLayout descriptor_set_layout;
-  vk::PipelineCache pipeline_cache;
 
   /**
    * @param instance reference to vulten_backend::Instance
@@ -150,6 +149,7 @@ class alignas(64) Instance {
   Device_property device_propertys;
   vk::PhysicalDevice physical_dev;
   vk::Device logical_dev;
+  vk::PipelineCache pipeline_cache;
   int total_queues;
   Queue *queues;
   VmaAllocator allocator;

@@ -30,8 +30,6 @@ Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance* instance,
 
   pipeline_layout =
       inst->logical_dev.createPipelineLayout(pipeline_layout_create_info);
-  pipeline_cache =
-      inst->logical_dev.createPipelineCache(vk::PipelineCacheCreateInfo());
 
   vk::PipelineShaderStageCreateInfo pipeline_shader_create_info(
       vk::PipelineShaderStageCreateFlags(),  // Flags
@@ -46,10 +44,10 @@ Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance* instance,
       vk::PipelineCreateFlags(),    // Flags
       pipeline_shader_create_info,  // Shader Create Info struct
       pipeline_layout);             // Pipeline Layout
-  pipeline =
-      inst->logical_dev
-          .createComputePipeline(pipeline_cache, compute_pipeline_create_info)
-          .value;
+  pipeline = inst->logical_dev
+                 .createComputePipeline(inst->pipeline_cache,
+                                        compute_pipeline_create_info)
+                 .value;
 }
 
 Vulten_pipeline::Vulten_pipeline() { auto_clean = false; }
@@ -59,7 +57,6 @@ Vulten_pipeline::~Vulten_pipeline() {
   inst->logical_dev.destroyShaderModule(shader);
   inst->logical_dev.destroyDescriptorSetLayout(descriptor_set_layout);
   inst->logical_dev.destroyPipelineLayout(pipeline_layout);
-  inst->logical_dev.destroyPipelineCache(pipeline_cache);
   inst->logical_dev.destroyPipeline(pipeline);
 }
 
