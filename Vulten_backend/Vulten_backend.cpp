@@ -240,6 +240,9 @@ Instance::Instance(uint32_t dev_num) {
 
   logical_dev = physical_dev.createDevice(dev_create_info);
 
+  pipeline_cache =
+      logical_dev.createPipelineCache(vk::PipelineCacheCreateInfo());
+
   for (int i = 0; i < queues_info.size(); i++) {
     for (int j = 0; j < queues_info[i].queueCount; j++) {
       queues[i + j].vk_queue =
@@ -402,6 +405,7 @@ Instance::~Instance() {
   }
   delete[] queues;
   vmaDestroyAllocator(allocator);
+  logical_dev.destroyPipelineCache(pipeline_cache);
 }
 
 Vulten_pipeline *Instance::get_cached_pipeline(std::string pipe_string) {
