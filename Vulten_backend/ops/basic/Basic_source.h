@@ -17,14 +17,16 @@ layout(std430, set = 0, binding = 2) uniform c { readonly uint   strides[1000]; 
 layout(std430, set = 0, binding = 3) uniform d { readonly uint   dims[500]; };
 layout(set = 0, binding = 4) buffer e { writeonly TYPE_0 outData[]; };
 
-#define OP_MUL        0
-#define OP_ADD        1
-#define OP_SUB        2
-#define OP_DIV        3
-#define OP_DIV_NO_NAN 4
-#define OP_MAXIMUM    5
-#define OP_MINIMUM    6
-#define OP_DIV_REAL   7
+#define OP_MUL         0
+#define OP_ADD         1
+#define OP_SUB         2
+#define OP_DIV         3
+#define OP_DIV_NO_NAN  4
+#define OP_MAXIMUM     5
+#define OP_MINIMUM     6
+#define OP_DIV_REAL    7
+#define OP_LOGICAL_AND 8
+#define OP_LOGICAL_OR  9
 layout(constant_id = 1) const uint op = 0;
 
 layout(push_constant) uniform PushConstants {
@@ -110,5 +112,12 @@ void main(){
     }else if(op == OP_DIV_REAL){
         outData[id] = X / Y;
     }
+    #if TYPE_NUM_0 == BOOL
+    else if(op == OP_LOGICAL_AND){
+        outData[id] = X & Y;
+    }else if(op == OP_LOGICAL_OR){
+        outData[id] = X | Y;
+    }
+    #endif
 }
 )";

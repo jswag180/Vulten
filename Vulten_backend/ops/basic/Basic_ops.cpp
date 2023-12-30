@@ -35,6 +35,12 @@ std::string op_as_str(uint32_t op) {
     case OP_DIV_REAL:
       return "RealDiv";
       break;
+    case OP_LOGICAL_AND:
+      return "LogicalAnd";
+      break;
+    case OP_LOGICAL_OR:
+      return "LogicalOr";
+      break;
     default:
       return "INVALID";
   }

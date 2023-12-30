@@ -10,6 +10,8 @@
 #define OP_MAXIMUM 5
 #define OP_MINIMUM 6
 #define OP_DIV_REAL 7
+#define OP_LOGICAL_AND 8
+#define OP_LOGICAL_OR 9
 
 namespace vulten_ops {
 namespace basic {

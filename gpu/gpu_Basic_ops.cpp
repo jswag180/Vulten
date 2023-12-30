@@ -73,7 +73,8 @@ void RegisterBasicOpKernels(const char* device_type) {
   StatusSafePtr status(TF_NewStatus());
   auto* builder = TF_NewKernelBuilder(op.c_str(), device_type, nullptr,
                                       &BasicOps_Compute<T, OP>, nullptr);
-  TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
+  if (T != TF_BOOL)
+    TF_KernelBuilder_TypeConstraint(builder, "T", T, status.get());
   if (TF_OK != TF_GetCode(status.get()))
     std::cout << " Error while registering Basic kernel with attribute T";
   TF_RegisterKernelBuilder(op.c_str(), builder, status.get());
@@ -115,4 +116,7 @@ void RegisterDeviceBasicOps(const char* device_type) {
   RegisterBasicOpKernels<T, OP_DIV>(device_type);
 
   CALL_COMPLEX(REGISTER_COMPLEX_KERNEL)
+
+  RegisterBasicOpKernels<TF_BOOL, OP_LOGICAL_AND>(device_type);
+  RegisterBasicOpKernels<TF_BOOL, OP_LOGICAL_OR>(device_type);
 }
