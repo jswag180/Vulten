@@ -105,7 +105,11 @@ void RegisterDeviceBasicOps(const char* device_type) {
   RegisterBasicOpKernels<T, OP_DIV_NO_NAN>(device_type); \
   RegisterBasicOpKernels<T, OP_MAXIMUM>(device_type);    \
   RegisterBasicOpKernels<T, OP_MINIMUM>(device_type);    \
-  RegisterBasicOpKernels<T, OP_DIV_REAL>(device_type);
+  RegisterBasicOpKernels<T, OP_DIV_REAL>(device_type);   \
+  RegisterBasicOpKernels<T, OP_LESS>(device_type);       \
+  RegisterBasicOpKernels<T, OP_LESS_EQUAL>(device_type); \
+  RegisterBasicOpKernels<T, OP_GREATER>(device_type);    \
+  RegisterBasicOpKernels<T, OP_GREATER_EQUAL>(device_type);
 
   CALL_ALL_BASIC_TYPES(REGISTER_KERNEL)
 

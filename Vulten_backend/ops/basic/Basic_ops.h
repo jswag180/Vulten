@@ -12,6 +12,10 @@
 #define OP_DIV_REAL 7
 #define OP_LOGICAL_AND 8
 #define OP_LOGICAL_OR 9
+#define OP_LESS 10
+#define OP_LESS_EQUAL 11
+#define OP_GREATER 12
+#define OP_GREATER_EQUAL 13
 
 namespace vulten_ops {
 namespace basic {

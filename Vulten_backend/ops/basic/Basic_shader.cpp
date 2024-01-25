@@ -11,6 +11,13 @@ std::vector<uint32_t> generate_basic_shader(
 
   shader_wizard::add_type_define(options, 0, generate_basic_shader_info.dt);
 
+  if (generate_basic_shader_info.equality) {
+    shader_wizard::add_type_define(options, 1,
+                                   vulten_ops::Data_type::VULTEN_BOOL);
+  } else {
+    shader_wizard::add_type_define(options, 1, generate_basic_shader_info.dt);
+  }
+
   return shader_wizard::compile_shader("Basic", basic_source, options);
 }
 

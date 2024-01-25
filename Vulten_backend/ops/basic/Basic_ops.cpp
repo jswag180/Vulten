@@ -41,6 +41,18 @@ std::string op_as_str(uint32_t op) {
     case OP_LOGICAL_OR:
       return "LogicalOr";
       break;
+    case OP_LESS:
+      return "Less";
+      break;
+    case OP_LESS_EQUAL:
+      return "LessEqual";
+      break;
+    case OP_GREATER:
+      return "Greater";
+      break;
+    case OP_GREATER_EQUAL:
+      return "GreaterEqual";
+      break;
     default:
       return "INVALID";
   }
@@ -77,7 +89,12 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t op,
          sizeof(basic_shader::Push_const)},
     };
 
-    basic_shader::Generate_basic_shader_info generate_basic_shader_info{dt};
+    bool is_equality = false;
+    if (op >= OP_LESS && op <= OP_GREATER_EQUAL) {
+      is_equality = true;
+    }
+    basic_shader::Generate_basic_shader_info generate_basic_shader_info{
+        dt, is_equality};
     std::vector<vk::DescriptorType> buffer_types =
         std::vector<vk::DescriptorType>(NUM_BUFFERS,
                                         vk::DescriptorType::eStorageBuffer);

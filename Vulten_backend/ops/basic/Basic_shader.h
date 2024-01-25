@@ -17,6 +17,7 @@ struct Push_const {
 
 struct Generate_basic_shader_info {
   vulten_ops::Data_type dt;
+  bool equality;
 };
 
 std::vector<uint32_t> generate_basic_shader(
