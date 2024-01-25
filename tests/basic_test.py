@@ -41,7 +41,7 @@ def test_basic(data_type, op):
                                             y = np.arange(0, (batchY*heightY*widthY*channelY), dtype=data_type).reshape(batchY, heightY, widthY, channelY)
                                         else:
                                             x = np.arange(0, (batchX*heightX*widthX*channelX), dtype=data_type).reshape(batchX, heightX, widthX, channelX)
-                                            y = y = np.arange(0, (batchY*heightY*widthY*channelY), dtype=data_type).reshape(batchY, heightY, widthY, channelY)
+                                            y = np.arange(0, (batchY*heightY*widthY*channelY), dtype=data_type).reshape(batchY, heightY, widthY, channelY)
 
                                         with tf.device('CPU:0'):
                                             res1 = op(x=x, y=y)
