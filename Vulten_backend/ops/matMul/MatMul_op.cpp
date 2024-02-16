@@ -161,46 +161,32 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
                      matmul_pipe_string)
   }
 
-  vk::DescriptorPool descriptor_pool;
-  vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer,
-      NUM_BUFFERS + (trans_a && !inline_transpose ? 2 : 0) +
-          (trans_b && !inline_transpose ? 2 : 0));
-  vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
-      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-      NUM_SETS + (trans_a && !inline_transpose ? 1 : 0) +
-          (trans_b && !inline_transpose ? 1 : 0),
-      descriptor_pool_size);
-  descriptor_pool =
-      inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
-
-  std::vector<vk::DescriptorSetLayout> descriptor_set_layouts =
-      std::vector<vk::DescriptorSetLayout>(
-          NUM_SETS + (trans_a && !inline_transpose ? 1 : 0) +
-          (trans_b && !inline_transpose ? 1 : 0));
-  if (trans_a && !inline_transpose)
-    descriptor_set_layouts[0] = transpose_pipeline->descriptor_set_layout;
-  if (trans_b && !inline_transpose)
-    descriptor_set_layouts[trans_a ? 1 : 0] =
-        transpose_pipeline->descriptor_set_layout;
-  descriptor_set_layouts[descriptor_set_layouts.size() - 1] =
-      matmul_pipeline->descriptor_set_layout;
-
-  vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(
-      descriptor_pool, descriptor_set_layouts.size(),
-      descriptor_set_layouts.data());
-  std::vector<vk::DescriptorSet> descriptor_sets =
-      inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info);
+  vulten_backend::Descriptor_set_alloc matmul_descriptor_set_alloc =
+      inst->get_descriptor_sets(NUM_BUFFERS,
+                                matmul_pipeline->descriptor_set_layout);
+  vulten_backend::Descriptor_set_alloc transpose_a_descriptor_set_alloc =
+      trans_a && !inline_transpose
+          ? inst->get_descriptor_sets(2,
+                                      transpose_pipeline->descriptor_set_layout)
+          : vulten_backend::Descriptor_set_alloc();
+  vulten_backend::Descriptor_set_alloc transpose_b_descriptor_set_alloc =
+      trans_b && !inline_transpose
+          ? inst->get_descriptor_sets(2,
+                                      transpose_pipeline->descriptor_set_layout)
+          : vulten_backend::Descriptor_set_alloc();
 
   vk::DescriptorSet transpose_a_descriptor_set;
-  if (trans_a && !inline_transpose)
-    transpose_a_descriptor_set = descriptor_sets[0];
+  if (trans_a && !inline_transpose) {
+    transpose_a_descriptor_set =
+        transpose_a_descriptor_set_alloc.descriptor_set->vk_descriptor_set;
+  }
   vk::DescriptorSet transpose_b_descriptor_set;
-  if (trans_b && !inline_transpose)
+  if (trans_b && !inline_transpose) {
     transpose_b_descriptor_set =
-        descriptor_sets[trans_a && !inline_transpose ? 1 : 0];
+        transpose_b_descriptor_set_alloc.descriptor_set->vk_descriptor_set;
+  }
   vk::DescriptorSet matMul_descriptor_set =
-      descriptor_sets[descriptor_set_layouts.size() - 1];
+      matmul_descriptor_set_alloc.descriptor_set->vk_descriptor_set;
 
   std::vector<vk::Semaphore> transpose_semaphores =
       std::vector<vk::Semaphore>();
@@ -411,10 +397,6 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
   }
   inst->logical_dev.destroyFence(fence);
   inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buffs);
-  for (vk::DescriptorSet descriptor_set : descriptor_sets) {
-    inst->logical_dev.freeDescriptorSets(descriptor_pool, 1, &descriptor_set);
-  }
-  inst->logical_dev.destroyDescriptorPool(descriptor_pool);
 }
 
 }  // namespace mat_mul
