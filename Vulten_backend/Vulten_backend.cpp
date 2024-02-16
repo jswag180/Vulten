@@ -284,6 +284,13 @@ Instance::Instance(uint32_t dev_num) {
 
     vmaCreateAllocator(&vmaAllocatorCreateInfo, &allocator);
   }
+
+  vk::DescriptorPoolSize descriptor_pool_size(
+      vk::DescriptorType::eStorageBuffer, 32);
+  vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
+      vk::DescriptorPoolCreateFlags(), 32, descriptor_pool_size);
+  descriptor_pool =
+      logical_dev.createDescriptorPool(descriptor_pool_create_info);
 }
 
 Host_mappable_buffer *Instance::create_host_mappable_buffer(
