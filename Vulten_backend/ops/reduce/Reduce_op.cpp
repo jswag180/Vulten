@@ -67,21 +67,14 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
 
   uint32_t num_sets = axis.size();
 
-  vk::DescriptorPool descriptor_pool;
-  vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer, NUM_BUFFERS * num_sets);
-  vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
-      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, num_sets,
-      descriptor_pool_size);
-  descriptor_pool =
-      inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
-
-  std::vector<vk::DescriptorSetLayout> descriptor_set_layouts(
-      num_sets, vulten_pipeline->descriptor_set_layout);
-  vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(
-      descriptor_pool, num_sets, descriptor_set_layouts.data());
-  std::vector<vk::DescriptorSet> descriptor_sets =
-      inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info);
+  auto descriptor_sets =
+      std::vector<std::unique_ptr<vulten_backend::Descriptor_set_alloc>>(
+          num_sets);
+  for (uint32_t i = 0; i < descriptor_sets.size(); i++) {
+    descriptor_sets[i] = std::make_unique<vulten_backend::Descriptor_set_alloc>(
+        inst->get_descriptor_sets(NUM_BUFFERS,
+                                  vulten_pipeline->descriptor_set_layout));
+  }
 
   std::vector<vk::Semaphore> axis_semaphores =
       std::vector<vk::Semaphore>(axis.size() - 1);
@@ -124,7 +117,8 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
       std::vector<vk::WriteDescriptorSet>(num_sets * NUM_BUFFERS);
 
   for (uint32_t i = 0; i < num_sets; i++) {
-    writeDescriptorSets[i * NUM_BUFFERS].setDstSet(descriptor_sets[i]);
+    writeDescriptorSets[i * NUM_BUFFERS].setDstSet(
+        descriptor_sets[i]->descriptor_set->vk_descriptor_set);
     writeDescriptorSets[i * NUM_BUFFERS].setDstBinding(0);
     writeDescriptorSets[i * NUM_BUFFERS].setDstArrayElement(0);
     writeDescriptorSets[i * NUM_BUFFERS].setDescriptorCount(1);
@@ -132,7 +126,8 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
         vk::DescriptorType::eStorageBuffer);
     writeDescriptorSets[i * NUM_BUFFERS].setBufferInfo(buffer_info[i]);
 
-    writeDescriptorSets[(i * NUM_BUFFERS) + 1].setDstSet(descriptor_sets[i]);
+    writeDescriptorSets[(i * NUM_BUFFERS) + 1].setDstSet(
+        descriptor_sets[i]->descriptor_set->vk_descriptor_set);
     writeDescriptorSets[(i * NUM_BUFFERS) + 1].setDstBinding(1);
     writeDescriptorSets[(i * NUM_BUFFERS) + 1].setDstArrayElement(0);
     writeDescriptorSets[(i * NUM_BUFFERS) + 1].setDescriptorCount(1);
@@ -169,8 +164,9 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
         vk::PipelineBindPoint::eCompute,   // Bind point
         vulten_pipeline->pipeline_layout,  // Pipeline Layout
         0,                                 // First descriptor set
-        {descriptor_sets[i]},              // List of descriptor sets
-        {});                               // Dynamic offsets
+        {descriptor_sets[i]
+             ->descriptor_set->vk_descriptor_set},  // List of descriptor sets
+        {});                                        // Dynamic offsets
 
     adj_strides = vulten_utills::calculate_adj_strides(dims);
     reduce_shader::Push_const push_const{
@@ -206,11 +202,12 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
   cmd_buffs[final_cmd_buffer_ind].bindPipeline(vk::PipelineBindPoint::eCompute,
                                                vulten_pipeline->pipeline);
   cmd_buffs[final_cmd_buffer_ind].bindDescriptorSets(
-      vk::PipelineBindPoint::eCompute,          // Bind point
-      vulten_pipeline->pipeline_layout,         // Pipeline Layout
-      0,                                        // First descriptor set
-      {descriptor_sets[final_cmd_buffer_ind]},  // List of descriptor sets
-      {});                                      // Dynamic offsets
+      vk::PipelineBindPoint::eCompute,   // Bind point
+      vulten_pipeline->pipeline_layout,  // Pipeline Layout
+      0,                                 // First descriptor set
+      {descriptor_sets[final_cmd_buffer_ind]
+           ->descriptor_set->vk_descriptor_set},  // List of descriptor sets
+      {});                                        // Dynamic offsets
 
   adj_strides = vulten_utills::calculate_adj_strides(dims);
   reduce_shader::Push_const push_const = {
@@ -249,9 +246,9 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
   }
   inst->logical_dev.destroyFence(fence);
   inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buffs);
-  inst->logical_dev.freeDescriptorSets(descriptor_pool, num_sets,
-                                       descriptor_sets.data());
-  inst->logical_dev.destroyDescriptorPool(descriptor_pool);
+  // inst->logical_dev.freeDescriptorSets(descriptor_pool, num_sets,
+  //                                      descriptor_sets.data());
+  // inst->logical_dev.destroyDescriptorPool(descriptor_pool);
 }
 
 }  // namespace reduce

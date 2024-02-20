@@ -141,6 +141,34 @@ struct Queue_alloc {
   ~Queue_alloc() { queue->queue_mutex.unlock(); };
 };
 
+struct Descriptor_set {
+  std::shared_ptr<std::mutex> mutex;
+  int descriptors;
+  vk::DescriptorSet vk_descriptor_set;
+
+  Descriptor_set() { mutex = std::shared_ptr<std::mutex>(new std::mutex); };
+};
+
+struct Descriptor_set_alloc {
+  std::shared_ptr<Descriptor_set> descriptor_set;
+
+  // Descriptor_set_alloc& operator=(Descriptor_set_alloc other){
+  //     //std::swap(descriptor_set, other.descriptor_set);
+  //     descriptor_set = other.descriptor_set;
+  //     other.descriptor_set = nullptr;
+  //     return *this;
+  // }
+  Descriptor_set_alloc(const Descriptor_set_alloc &) = delete;
+  Descriptor_set_alloc(Descriptor_set_alloc &&out) noexcept
+      : descriptor_set(std::move(out.descriptor_set)) {}
+  Descriptor_set_alloc(std::shared_ptr<Descriptor_set> descriptor_set)
+      : descriptor_set(descriptor_set){};
+  Descriptor_set_alloc(){};
+  ~Descriptor_set_alloc() {
+    if (descriptor_set.get() != nullptr) descriptor_set->mutex->unlock();
+  };
+};
+
 class alignas(64) Instance {
  private:
   //
@@ -155,6 +183,10 @@ class alignas(64) Instance {
   VmaAllocator allocator;
   mutable std::shared_timed_mutex pipe_mutex;
   std::unordered_map<std::string, Vulten_pipeline *> pipelines;
+
+  vk::DescriptorPool descriptor_pool;
+  mutable std::shared_timed_mutex descriptor_mutex;
+  std::vector<std::shared_ptr<Descriptor_set>> descriptors;
 
   Host_mappable_buffer *create_host_mappable_buffer(void *data, uint32_t size,
                                                     bool sync_to_device = true,
@@ -178,6 +210,8 @@ class alignas(64) Instance {
       std::vector<vk::PushConstantRange> push_ranges = {});
   Queue_alloc get_queue(bool graphics, bool compute, bool transfer,
                         bool sparse);
+  Descriptor_set_alloc get_descriptor_sets(int num_descriptors,
+                                           vk::DescriptorSetLayout layouts);
 
   // Instance(const Instance&) = delete;
   Instance(uint32_t dev_num);

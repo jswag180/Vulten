@@ -105,24 +105,15 @@ void run_op(vulten_backend::Instance* inst, Data_type dt, Vulten_tensor input,
   vulten_backend::Vulten_pipeline* softmax_pipeline =
       get_softmax_pipeline(inst, dt);
 
-  vk::DescriptorPool descriptor_pool;
-  vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer,
-      NUM_BUFFERS_BATCHADD * multiFunc::NUM_BUFFERS * NUM_BUFFERS_SOFTMAX);
-  vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
-      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, NUM_SETS,
-      descriptor_pool_size);
-  descriptor_pool =
-      inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
-
-  std::array<vk::DescriptorSetLayout, NUM_SETS> descriptor_set_layouts = {
-      exp_pipeline->descriptor_set_layout,
-      batchAdd_pipeline->descriptor_set_layout,
-      softmax_pipeline->descriptor_set_layout};
-  vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(
-      descriptor_pool, NUM_SETS, descriptor_set_layouts.data());
-  std::vector<vk::DescriptorSet> descriptor_sets =
-      inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info);
+  vulten_backend::Descriptor_set_alloc exp_descriptor_set_alloc =
+      inst->get_descriptor_sets(multiFunc::NUM_BUFFERS,
+                                exp_pipeline->descriptor_set_layout);
+  vulten_backend::Descriptor_set_alloc batchAdd_descriptor_set_alloc =
+      inst->get_descriptor_sets(NUM_BUFFERS_BATCHADD,
+                                batchAdd_pipeline->descriptor_set_layout);
+  vulten_backend::Descriptor_set_alloc softmax_descriptor_set_alloc =
+      inst->get_descriptor_sets(NUM_BUFFERS_SOFTMAX,
+                                softmax_pipeline->descriptor_set_layout);
 
   vk::DescriptorBufferInfo input_buffer_info(input.buffer->vk_buffer, 0,
                                              input.buffer->buffer_size);
@@ -143,22 +134,22 @@ void run_op(vulten_backend::Instance* inst, Data_type dt, Vulten_tensor input,
                                               output.buffer->buffer_size);
 
   const std::vector<vk::WriteDescriptorSet> WriteDescriptorSets = {
-      {descriptor_sets[0], 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-       &input_buffer_info},
-      {descriptor_sets[0], 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-       &exp_buffer_info},
+      {exp_descriptor_set_alloc.descriptor_set->vk_descriptor_set, 0, 0, 1,
+       vk::DescriptorType::eStorageBuffer, nullptr, &input_buffer_info},
+      {exp_descriptor_set_alloc.descriptor_set->vk_descriptor_set, 1, 0, 1,
+       vk::DescriptorType::eStorageBuffer, nullptr, &exp_buffer_info},
 
-      {descriptor_sets[1], 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-       &exp_buffer_info},
-      {descriptor_sets[1], 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-       &exp_sum_buffer_info},
+      {batchAdd_descriptor_set_alloc.descriptor_set->vk_descriptor_set, 0, 0, 1,
+       vk::DescriptorType::eStorageBuffer, nullptr, &exp_buffer_info},
+      {batchAdd_descriptor_set_alloc.descriptor_set->vk_descriptor_set, 1, 0, 1,
+       vk::DescriptorType::eStorageBuffer, nullptr, &exp_sum_buffer_info},
 
-      {descriptor_sets[2], 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-       &exp_buffer_info},
-      {descriptor_sets[2], 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-       &exp_sum_buffer_info},
-      {descriptor_sets[2], 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-       &output_buffer_info},
+      {softmax_descriptor_set_alloc.descriptor_set->vk_descriptor_set, 0, 0, 1,
+       vk::DescriptorType::eStorageBuffer, nullptr, &exp_buffer_info},
+      {softmax_descriptor_set_alloc.descriptor_set->vk_descriptor_set, 1, 0, 1,
+       vk::DescriptorType::eStorageBuffer, nullptr, &exp_sum_buffer_info},
+      {softmax_descriptor_set_alloc.descriptor_set->vk_descriptor_set, 2, 0, 1,
+       vk::DescriptorType::eStorageBuffer, nullptr, &output_buffer_info},
   };
   inst->logical_dev.updateDescriptorSets(WriteDescriptorSets, {});
 
@@ -179,11 +170,13 @@ void run_op(vulten_backend::Instance* inst, Data_type dt, Vulten_tensor input,
   // Exp
   cmd_buff.bindPipeline(vk::PipelineBindPoint::eCompute,
                         exp_pipeline->pipeline);
-  cmd_buff.bindDescriptorSets(vk::PipelineBindPoint::eCompute,  // Bind point
-                              exp_pipeline->pipeline_layout,  // Pipeline Layout
-                              0,                     // First descriptor set
-                              {descriptor_sets[0]},  // List of descriptor sets
-                              {});                   // Dynamic offsets
+  cmd_buff.bindDescriptorSets(
+      vk::PipelineBindPoint::eCompute,  // Bind point
+      exp_pipeline->pipeline_layout,    // Pipeline Layout
+      0,                                // First descriptor set
+      {exp_descriptor_set_alloc.descriptor_set
+           ->vk_descriptor_set},  // List of descriptor sets
+      {});                        // Dynamic offsets
   uint32_t threads = std::ceil(
       float(input.get_total_elements()) /
       inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
@@ -205,8 +198,9 @@ void run_op(vulten_backend::Instance* inst, Data_type dt, Vulten_tensor input,
       vk::PipelineBindPoint::eCompute,     // Bind point
       batchAdd_pipeline->pipeline_layout,  // Pipeline Layout
       0,                                   // First descriptor set
-      {descriptor_sets[1]},                // List of descriptor sets
-      {});                                 // Dynamic offsets
+      {batchAdd_descriptor_set_alloc.descriptor_set
+           ->vk_descriptor_set},  // List of descriptor sets
+      {});                        // Dynamic offsets
 
   uint32_t num_logits = uint32_t(input.dims[input.num_dims - 1]);
   cmd_buff.pushConstants(batchAdd_pipeline->pipeline_layout,
@@ -230,8 +224,9 @@ void run_op(vulten_backend::Instance* inst, Data_type dt, Vulten_tensor input,
       vk::PipelineBindPoint::eCompute,    // Bind point
       softmax_pipeline->pipeline_layout,  // Pipeline Layout
       0,                                  // First descriptor set
-      {descriptor_sets[2]},               // List of descriptor sets
-      {});                                // Dynamic offsets
+      {softmax_descriptor_set_alloc.descriptor_set
+           ->vk_descriptor_set},  // List of descriptor sets
+      {});                        // Dynamic offsets
 
   cmd_buff.pushConstants(softmax_pipeline->pipeline_layout,
                          vk::ShaderStageFlagBits::eCompute, 0, sizeof(uint32_t),
@@ -259,9 +254,6 @@ void run_op(vulten_backend::Instance* inst, Data_type dt, Vulten_tensor input,
 
   inst->logical_dev.destroyFence(fence);
   inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buff);
-  inst->logical_dev.freeDescriptorSets(descriptor_pool, NUM_SETS,
-                                       descriptor_sets.data());
-  inst->logical_dev.destroyDescriptorPool(descriptor_pool);
 }
 
 }  // namespace softmax

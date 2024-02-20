@@ -45,20 +45,9 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t scalar,
     VULTEN_LOG_DEBUG("Using cached vulten_ops::Pow_op pipeline " + pipe_string)
   }
 
-  vk::DescriptorPool descriptor_pool;
-  vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer, NUM_BUFFERS);
-  vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
-      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, NUM_SETS,
-      descriptor_pool_size);
-  descriptor_pool =
-      inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
-
-  vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(
-      descriptor_pool, 1, &vulten_pipeline->descriptor_set_layout);
-  vk::DescriptorSet descriptor_set =
-      inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info)
-          .front();
+  vulten_backend::Descriptor_set_alloc descriptor_set_alloc =
+      inst->get_descriptor_sets(NUM_BUFFERS,
+                                vulten_pipeline->descriptor_set_layout);
 
   vk::DescriptorBufferInfo x_buffer_info(x.buffer->vk_buffer, 0,
                                          x.buffer->buffer_size);
@@ -68,12 +57,12 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t scalar,
                                               output.buffer->buffer_size);
 
   const std::vector<vk::WriteDescriptorSet> WriteDescriptorSets = {
-      {descriptor_set, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-       &x_buffer_info},
-      {descriptor_set, 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-       &y_buffer_info},
-      {descriptor_set, 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr,
-       &output_buffer_info},
+      {descriptor_set_alloc.descriptor_set->vk_descriptor_set, 0, 0, 1,
+       vk::DescriptorType::eStorageBuffer, nullptr, &x_buffer_info},
+      {descriptor_set_alloc.descriptor_set->vk_descriptor_set, 1, 0, 1,
+       vk::DescriptorType::eStorageBuffer, nullptr, &y_buffer_info},
+      {descriptor_set_alloc.descriptor_set->vk_descriptor_set, 2, 0, 1,
+       vk::DescriptorType::eStorageBuffer, nullptr, &output_buffer_info},
   };
   inst->logical_dev.updateDescriptorSets(WriteDescriptorSets, {});
 
@@ -92,8 +81,9 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t scalar,
       vk::PipelineBindPoint::eCompute,   // Bind point
       vulten_pipeline->pipeline_layout,  // Pipeline Layout
       0,                                 // First descriptor set
-      {descriptor_set},                  // List of descriptor sets
-      {});                               // Dynamic offsets
+      {descriptor_set_alloc.descriptor_set
+           ->vk_descriptor_set},  // List of descriptor sets
+      {});                        // Dynamic offsets
 
   pow_shader::Push_const pushes = {scalar};
   cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
@@ -127,8 +117,6 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t scalar,
 
   inst->logical_dev.destroyFence(fence);
   inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buff);
-  inst->logical_dev.freeDescriptorSets(descriptor_pool, 1, &descriptor_set);
-  inst->logical_dev.destroyDescriptorPool(descriptor_pool);
 }
 
 }  // namespace pow

@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <memory>
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_structs.hpp>
 
@@ -24,22 +25,14 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
 
   uint32_t num_sets = inputs.size() - 1;
 
-  vk::DescriptorPool descriptor_pool;
-  vk::DescriptorPoolSize descriptor_pool_size(
-      vk::DescriptorType::eStorageBuffer,
-      assign_add_sub::NUM_BUFFERS * num_sets);
-  vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
-      vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, num_sets,
-      descriptor_pool_size);
-  descriptor_pool =
-      inst->logical_dev.createDescriptorPool(descriptor_pool_create_info);
-
-  std::vector<vk::DescriptorSetLayout> descriptor_set_layouts(
-      num_sets, vulten_pipeline->descriptor_set_layout);
-  vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(
-      descriptor_pool, num_sets, descriptor_set_layouts.data());
-  std::vector<vk::DescriptorSet> descriptor_sets =
-      inst->logical_dev.allocateDescriptorSets(descriptor_set_alloc_info);
+  auto descriptor_sets =
+      std::vector<std::unique_ptr<vulten_backend::Descriptor_set_alloc>>(
+          num_sets);
+  for (uint32_t i = 0; i < descriptor_sets.size(); i++) {
+    descriptor_sets[i] = std::make_unique<vulten_backend::Descriptor_set_alloc>(
+        inst->get_descriptor_sets(assign_add_sub::NUM_BUFFERS,
+                                  vulten_pipeline->descriptor_set_layout));
+  }
 
   std::vector<vk::DescriptorBufferInfo> buffer_info =
       std::vector<vk::DescriptorBufferInfo>(
@@ -62,7 +55,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
                                           assign_add_sub::NUM_BUFFERS);
   for (uint32_t i = 0; i < num_sets; i++) {
     writeDescriptorSets[i * assign_add_sub::NUM_BUFFERS].setDstSet(
-        descriptor_sets[i]);
+        descriptor_sets[i]->descriptor_set->vk_descriptor_set);
     writeDescriptorSets[i * assign_add_sub::NUM_BUFFERS].setDstBinding(0);
     writeDescriptorSets[i * assign_add_sub::NUM_BUFFERS].setDstArrayElement(0);
     writeDescriptorSets[i * assign_add_sub::NUM_BUFFERS].setDescriptorCount(1);
@@ -72,7 +65,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
         buffer_info[i * assign_add_sub::NUM_BUFFERS]);
 
     writeDescriptorSets[(i * assign_add_sub::NUM_BUFFERS) + 1].setDstSet(
-        descriptor_sets[i]);
+        descriptor_sets[i]->descriptor_set->vk_descriptor_set);
     writeDescriptorSets[(i * assign_add_sub::NUM_BUFFERS) + 1].setDstBinding(1);
     writeDescriptorSets[(i * assign_add_sub::NUM_BUFFERS) + 1]
         .setDstArrayElement(0);
@@ -106,8 +99,9 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
       vk::PipelineBindPoint::eCompute,   // Bind point
       vulten_pipeline->pipeline_layout,  // Pipeline Layout
       0,                                 // First descriptor set
-      {descriptor_sets[0]},              // List of descriptor sets
-      {});                               // Dynamic offsets
+      {descriptor_sets[0]
+           ->descriptor_set->vk_descriptor_set},  // List of descriptor sets
+      {});                                        // Dynamic offsets
 
   vk::BufferCopy buff_copy(0, 0, inputs[0].buffer->buffer_size);
   cmd_buff.copyBuffer(inputs[0].buffer->vk_buffer, output.buffer->vk_buffer,
@@ -134,8 +128,9 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
         vk::PipelineBindPoint::eCompute,   // Bind point
         vulten_pipeline->pipeline_layout,  // Pipeline Layout
         0,                                 // First descriptor set
-        {descriptor_sets[i - 1]},          // List of descriptor sets
-        {});                               // Dynamic offsets
+        {descriptor_sets[i - 1]
+             ->descriptor_set->vk_descriptor_set},  // List of descriptor sets
+        {});                                        // Dynamic offsets
 
     uint32_t threads = std::ceil(
         float(inputs[0].get_total_elements()) /
@@ -160,9 +155,6 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
 
   inst->logical_dev.destroyFence(fence);
   inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buff);
-  inst->logical_dev.freeDescriptorSets(descriptor_pool, num_sets,
-                                       descriptor_sets.data());
-  inst->logical_dev.destroyDescriptorPool(descriptor_pool);
 }
 
 }  // namespace addn
