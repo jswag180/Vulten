@@ -1,6 +1,7 @@
 #include <exception>
 
 #include "Vulten_backend.h"
+#include "vulten_logger.h"
 
 namespace vulten_backend {
 
@@ -26,8 +27,13 @@ Descriptor_set_alloc Instance::get_descriptor_sets(
   descriptor_set->descriptors = num_descriptors;
   vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(descriptor_pool, 1,
                                                           &layout);
-  descriptor_set->vk_descriptor_set =
-      logical_dev.allocateDescriptorSets(descriptor_set_alloc_info).front();
+  try {
+    descriptor_set->vk_descriptor_set =
+        logical_dev.allocateDescriptorSets(descriptor_set_alloc_info).front();
+  } catch (std::exception e) {
+    VULTEN_LOG_ERROR("Failed to allocate descriptor sets!")
+    exit(-1);
+  }
   descriptor_set->mutex->lock();
   descriptors.push_back(descriptor_set);
 
