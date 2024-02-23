@@ -5,6 +5,7 @@
 namespace resource_apply_adam_shader {
 
 struct Spec_cons {
+  uint32_t localX;
   bool nesterov;
 };
 

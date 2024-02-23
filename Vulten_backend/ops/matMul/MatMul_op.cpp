@@ -30,6 +30,16 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
       VULTEN_LOG_DEBUG("Creating vulten_ops::MatMul_op pipeline " +
                        transpose_pipe_string)
 
+      transpose_shader::Spec_cons spec;
+      spec.localX =
+          inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
+
+      const std::vector<vk::SpecializationMapEntry> specs = {
+          {0, offsetof(transpose_shader::Spec_cons, localX), sizeof(uint32_t)},
+      };
+      vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
+                                       &spec);
+
       const std::vector<vk::PushConstantRange> push_const_ranges = {
           {vk::ShaderStageFlagBits::eCompute, 0,
            sizeof(transpose_shader::Push_const)},
@@ -43,7 +53,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
                                     2, vk::DescriptorType::eStorageBuffer),
                                 transpose_shader::generate_transpose_shader(
                                     generate_transpose_shader_info),
-                                nullptr, push_const_ranges);
+                                &spec_info, push_const_ranges);
     } else {
       VULTEN_LOG_DEBUG("Using cached vulten_ops::MatMul_op pipeline " +
                        transpose_pipe_string)
@@ -248,8 +258,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
     cmd_buffs[cmd_buff_indx].pushConstants(transpose_pipeline->pipeline_layout,
                                            vk::ShaderStageFlagBits::eCompute, 0,
                                            sizeof(mat_size_a), &mat_size_a);
-
-    cmd_buffs[cmd_buff_indx].dispatch(a.get_total_elements(), 1, 1);
+    uint32_t threads = std::ceil(
+        float(a.get_total_elements()) /
+        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
+    cmd_buffs[cmd_buff_indx].dispatch(threads, 1, 1);
     cmd_buffs[cmd_buff_indx].end();
 
     vk::SubmitInfo SubmitInfo(
@@ -309,8 +321,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
     cmd_buffs[cmd_buff_indx].pushConstants(transpose_pipeline->pipeline_layout,
                                            vk::ShaderStageFlagBits::eCompute, 0,
                                            sizeof(mat_size_b), &mat_size_b);
-
-    cmd_buffs[cmd_buff_indx].dispatch(b.get_total_elements(), 1, 1);
+    uint32_t threads = std::ceil(
+        float(b.get_total_elements()) /
+        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
+    cmd_buffs[cmd_buff_indx].dispatch(threads, 1, 1);
     cmd_buffs[cmd_buff_indx].end();
 
     vk::SubmitInfo SubmitInfo(

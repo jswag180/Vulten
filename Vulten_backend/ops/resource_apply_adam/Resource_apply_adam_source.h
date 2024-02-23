@@ -7,7 +7,7 @@ const char* resource_apply_adam_source = R"(
 
 #include "prelude.h"
 
-//layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0)  buffer a {          TYPE_0 var[]; };
 layout(set = 0, binding = 1)  buffer b { readonly TYPE_0 m[]; };
@@ -20,7 +20,7 @@ layout(set = 0, binding = 7)  buffer i { readonly TYPE_0 beta2; };
 layout(set = 0, binding = 8)  buffer j { readonly TYPE_0 epsilon; };
 layout(set = 0, binding = 9)  buffer k { readonly TYPE_0 grad[]; };
 
-layout(constant_id = 0) const bool use_nesterov = false;
+layout(constant_id = 1) const bool use_nesterov = false;
 
 void main(){
     

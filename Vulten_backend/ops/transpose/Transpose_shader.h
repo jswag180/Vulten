@@ -4,6 +4,10 @@
 
 namespace transpose_shader {
 
+struct Spec_cons {
+  uint32_t localX;
+};
+
 struct Push_const {
   uint32_t hight;
   uint32_t width;

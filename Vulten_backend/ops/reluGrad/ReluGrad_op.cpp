@@ -1,5 +1,7 @@
 #include "ReluGrad_op.h"
 
+#include <cmath>
+
 #include "ReluGrad_shader.h"
 
 namespace vulten_ops {
@@ -18,6 +20,17 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
       inst->get_cached_pipeline(pipe_string);
   if (vulten_pipeline == nullptr) {
     VULTEN_LOG_DEBUG("Creating vulten_ops::ReluGrad_op pipeline " + pipe_string)
+
+    reluGrad_shader::Spec_cons spec;
+    spec.localX =
+        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
+
+    const std::vector<vk::SpecializationMapEntry> specs = {
+        {0, offsetof(reluGrad_shader::Spec_cons, localX), sizeof(uint32_t)},
+    };
+    vk::SpecializationInfo spec_info(specs.size(), specs.data(), sizeof(spec),
+                                     &spec);
+
     reluGrad_shader::Generate_reluGrad_shader_info
         generate_reluGrad_shader_info{dt};
     std::vector<vk::DescriptorType> buffer_types =
@@ -26,7 +39,8 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
     vulten_pipeline =
         inst->create_pipeline(pipe_string, buffer_types,
                               reluGrad_shader::generate_reluGrad_shader(
-                                  generate_reluGrad_shader_info));
+                                  generate_reluGrad_shader_info),
+                              &spec_info);
   } else {
     VULTEN_LOG_DEBUG("Using cached vulten_ops::ReluGrad_op pipeline " +
                      pipe_string)
@@ -71,7 +85,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
       {descriptor_set_alloc.descriptor_set
            ->vk_descriptor_set},  // List of descriptor sets
       {});                        // Dynamic offsets
-  cmd_buff.dispatch(uint32_t(gradients.get_total_elements()), 1, 1);
+  uint32_t threads = std::ceil(
+      float(gradients.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
+  cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
 

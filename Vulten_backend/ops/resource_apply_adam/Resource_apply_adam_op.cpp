@@ -1,5 +1,7 @@
 #include "Resource_apply_adam_op.h"
 
+#include <cmath>
+
 #include "Resource_apply_adam_shader.h"
 
 namespace vulten_ops {
@@ -24,10 +26,15 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor var,
                      pipe_string)
 
     resource_apply_adam_shader::Spec_cons spec_data;
+    spec_data.localX =
+        inst->device_propertys.props.limits.maxComputeWorkGroupInvocations;
     spec_data.nesterov = use_nesterov;
 
     std::vector<vk::SpecializationMapEntry> specs = {
-        {0, 0, sizeof(spec_data.nesterov)}};
+        {0, 0, sizeof(spec_data.localX)},
+        {1, offsetof(resource_apply_adam_shader::Spec_cons, nesterov),
+         sizeof(spec_data.nesterov)},
+    };
     vk::SpecializationInfo spec_info(
         1, specs.data(), sizeof(resource_apply_adam_shader::Spec_cons),
         &spec_data);
@@ -115,7 +122,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor var,
       {descriptor_set_alloc.descriptor_set
            ->vk_descriptor_set},  // List of descriptor sets
       {});                        // Dynamic offsets
-  cmd_buff.dispatch(uint32_t(var.get_total_elements()), 1, 1);
+  uint32_t threads = std::ceil(
+      float(var.get_total_elements()) /
+      inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
+  cmd_buff.dispatch(threads, 1, 1);
   cmd_buff.end();
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
 
