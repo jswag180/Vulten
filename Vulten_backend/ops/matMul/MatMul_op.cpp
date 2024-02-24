@@ -198,54 +198,86 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
   vk::DescriptorSet matMul_descriptor_set =
       matmul_descriptor_set_alloc.descriptor_set->vk_descriptor_set;
 
-  std::vector<vk::Semaphore> transpose_semaphores =
-      std::vector<vk::Semaphore>();
-  std::vector<vk::PipelineStageFlags> wait_stages =
-      std::vector<vk::PipelineStageFlags>();
-
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
-      queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary,
-      1 + (trans_a && !inline_transpose ? 1 : 0) +
-          (trans_b && !inline_transpose ? 1 : 0));
+      queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
   std::vector<vk::CommandBuffer> cmd_buffs =
       inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 
+  std::vector<vk::WriteDescriptorSet> writeDescriptorSets =
+      std::vector<vk::WriteDescriptorSet>();
+
   std::unique_ptr<vulten_backend::Device_buffer> trans_a_buffer;
+  vk::DescriptorBufferInfo transpose_a_buffer_info = vk::DescriptorBufferInfo();
+  vk::DescriptorBufferInfo transpose_a_out_buffer_info =
+      vk::DescriptorBufferInfo();
   if (trans_a && !inline_transpose) {
-    transpose_semaphores.push_back(
-        inst->logical_dev.createSemaphore(vk::SemaphoreCreateInfo()));
-    wait_stages.push_back(vk::PipelineStageFlagBits::eComputeShader);
     trans_a_buffer = std::unique_ptr<vulten_backend::Device_buffer>(
         inst->create_device_buffer(a.buffer->buffer_size));
 
-    vk::DescriptorBufferInfo transpose_a_buffer_info(a.buffer->vk_buffer, 0,
-                                                     a.buffer->buffer_size);
-    vk::DescriptorBufferInfo transpose_a_out_buffer_info(
+    transpose_a_buffer_info =
+        vk::DescriptorBufferInfo(a.buffer->vk_buffer, 0, a.buffer->buffer_size);
+    transpose_a_out_buffer_info = vk::DescriptorBufferInfo(
         trans_a_buffer.get()->vk_buffer, 0, a.buffer->buffer_size);
 
-    std::vector<vk::WriteDescriptorSet> transpose_a_WriteDescriptorSets =
-        std::vector<vk::WriteDescriptorSet>(2);
-    transpose_a_WriteDescriptorSets[0] = {transpose_a_descriptor_set,
-                                          0,
-                                          0,
-                                          1,
-                                          vk::DescriptorType::eStorageBuffer,
-                                          nullptr,
-                                          &transpose_a_buffer_info};
-    transpose_a_WriteDescriptorSets[1] = {transpose_a_descriptor_set,
-                                          1,
-                                          0,
-                                          1,
-                                          vk::DescriptorType::eStorageBuffer,
-                                          nullptr,
-                                          &transpose_a_out_buffer_info};
-    inst->logical_dev.updateDescriptorSets(transpose_a_WriteDescriptorSets, {});
+    writeDescriptorSets.push_back({transpose_a_descriptor_set, 0, 0, 1,
+                                   vk::DescriptorType::eStorageBuffer, nullptr,
+                                   &transpose_a_buffer_info});
+    writeDescriptorSets.push_back({transpose_a_descriptor_set, 1, 0, 1,
+                                   vk::DescriptorType::eStorageBuffer, nullptr,
+                                   &transpose_a_out_buffer_info});
+  }
 
-    int cmd_buff_indx = 0;
+  std::unique_ptr<vulten_backend::Device_buffer> trans_b_buffer;
+  vk::DescriptorBufferInfo transpose_b_buffer_info = vk::DescriptorBufferInfo();
+  vk::DescriptorBufferInfo transpose_b_out_buffer_info =
+      vk::DescriptorBufferInfo();
+  if (trans_b && !inline_transpose) {
+    trans_b_buffer = std::unique_ptr<vulten_backend::Device_buffer>(
+        inst->create_device_buffer(b.buffer->buffer_size));
 
-    cmd_buffs[cmd_buff_indx].begin(cmd_buff_begin_info);
+    transpose_b_buffer_info =
+        vk::DescriptorBufferInfo(b.buffer->vk_buffer, 0, b.buffer->buffer_size);
+    transpose_b_out_buffer_info = vk::DescriptorBufferInfo(
+        trans_b_buffer.get()->vk_buffer, 0, trans_b_buffer.get()->buffer_size);
+
+    writeDescriptorSets.push_back({transpose_b_descriptor_set, 0, 0, 1,
+                                   vk::DescriptorType::eStorageBuffer, nullptr,
+                                   &transpose_b_buffer_info});
+    writeDescriptorSets.push_back({transpose_b_descriptor_set, 1, 0, 1,
+                                   vk::DescriptorType::eStorageBuffer, nullptr,
+                                   &transpose_b_out_buffer_info});
+  }
+
+  vk::DescriptorBufferInfo a_buffer_info(trans_a && !inline_transpose
+                                             ? trans_a_buffer.get()->vk_buffer
+                                             : a.buffer->vk_buffer,
+                                         0, a.buffer->buffer_size);
+  vk::DescriptorBufferInfo b_buffer_info(trans_b && !inline_transpose
+                                             ? trans_b_buffer.get()->vk_buffer
+                                             : b.buffer->vk_buffer,
+                                         0, b.buffer->buffer_size);
+  vk::DescriptorBufferInfo output_buffer_info(output.buffer->vk_buffer, 0,
+                                              output.buffer->buffer_size);
+
+  writeDescriptorSets.push_back({matMul_descriptor_set, 0, 0, 1,
+                                 vk::DescriptorType::eStorageBuffer, nullptr,
+                                 &a_buffer_info});
+  writeDescriptorSets.push_back({matMul_descriptor_set, 1, 0, 1,
+                                 vk::DescriptorType::eStorageBuffer, nullptr,
+                                 &b_buffer_info});
+  writeDescriptorSets.push_back({matMul_descriptor_set, 2, 0, 1,
+                                 vk::DescriptorType::eStorageBuffer, nullptr,
+                                 &output_buffer_info});
+
+  inst->logical_dev.updateDescriptorSets(writeDescriptorSets, {});
+
+  int cmd_buff_indx = 0;
+
+  cmd_buffs[cmd_buff_indx].begin(cmd_buff_begin_info);
+
+  if (trans_a && !inline_transpose) {
     cmd_buffs[cmd_buff_indx].bindPipeline(vk::PipelineBindPoint::eCompute,
                                           transpose_pipeline->pipeline);
     cmd_buffs[cmd_buff_indx].bindDescriptorSets(
@@ -262,53 +294,9 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
         float(a.get_total_elements()) /
         inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
     cmd_buffs[cmd_buff_indx].dispatch(threads, 1, 1);
-    cmd_buffs[cmd_buff_indx].end();
-
-    vk::SubmitInfo SubmitInfo(
-        0,                                      // Num Wait Semaphores
-        nullptr,                                // Wait Semaphores
-        nullptr,                                // Pipeline Stage Flags
-        1,                                      // Num Command Buffers
-        &cmd_buffs[cmd_buff_indx],              // List of command buffers
-        1,                                      // Num Signal Semaphores
-        &transpose_semaphores[cmd_buff_indx]);  // Signal Semaphores
-    queue_alloc.queue->vk_queue.submit({SubmitInfo});
   }
 
-  std::unique_ptr<vulten_backend::Device_buffer> trans_b_buffer;
   if (trans_b && !inline_transpose) {
-    transpose_semaphores.push_back(
-        inst->logical_dev.createSemaphore(vk::SemaphoreCreateInfo()));
-    wait_stages.push_back(vk::PipelineStageFlagBits::eComputeShader);
-    trans_b_buffer = std::unique_ptr<vulten_backend::Device_buffer>(
-        inst->create_device_buffer(b.buffer->buffer_size));
-
-    vk::DescriptorBufferInfo transpose_b_buffer_info(b.buffer->vk_buffer, 0,
-                                                     b.buffer->buffer_size);
-    vk::DescriptorBufferInfo transpose_b_out_buffer_info(
-        trans_b_buffer.get()->vk_buffer, 0, trans_b_buffer.get()->buffer_size);
-
-    std::vector<vk::WriteDescriptorSet> transpose_b_WriteDescriptorSets =
-        std::vector<vk::WriteDescriptorSet>(2);
-    transpose_b_WriteDescriptorSets[0] = {transpose_b_descriptor_set,
-                                          0,
-                                          0,
-                                          1,
-                                          vk::DescriptorType::eStorageBuffer,
-                                          nullptr,
-                                          &transpose_b_buffer_info};
-    transpose_b_WriteDescriptorSets[1] = {transpose_b_descriptor_set,
-                                          1,
-                                          0,
-                                          1,
-                                          vk::DescriptorType::eStorageBuffer,
-                                          nullptr,
-                                          &transpose_b_out_buffer_info};
-    inst->logical_dev.updateDescriptorSets(transpose_b_WriteDescriptorSets, {});
-
-    int cmd_buff_indx = trans_a ? 1 : 0;
-
-    cmd_buffs[cmd_buff_indx].begin(cmd_buff_begin_info);
     cmd_buffs[cmd_buff_indx].bindPipeline(vk::PipelineBindPoint::eCompute,
                                           transpose_pipeline->pipeline);
     cmd_buffs[cmd_buff_indx].bindDescriptorSets(
@@ -325,42 +313,18 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
         float(b.get_total_elements()) /
         inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
     cmd_buffs[cmd_buff_indx].dispatch(threads, 1, 1);
-    cmd_buffs[cmd_buff_indx].end();
-
-    vk::SubmitInfo SubmitInfo(
-        0,                                      // Num Wait Semaphores
-        nullptr,                                // Wait Semaphores
-        nullptr,                                // Pipeline Stage Flags
-        1,                                      // Num Command Buffers
-        &cmd_buffs[cmd_buff_indx],              // List of command buffers
-        1,                                      // Num Signal Semaphores
-        &transpose_semaphores[cmd_buff_indx]);  // Signal Semaphores
-    queue_alloc.queue->vk_queue.submit({SubmitInfo});
   }
 
-  vk::DescriptorBufferInfo a_buffer_info(trans_a && !inline_transpose
-                                             ? trans_a_buffer.get()->vk_buffer
-                                             : a.buffer->vk_buffer,
-                                         0, a.buffer->buffer_size);
-  vk::DescriptorBufferInfo b_buffer_info(trans_b && !inline_transpose
-                                             ? trans_b_buffer.get()->vk_buffer
-                                             : b.buffer->vk_buffer,
-                                         0, b.buffer->buffer_size);
-  vk::DescriptorBufferInfo output_buffer_info(output.buffer->vk_buffer, 0,
-                                              output.buffer->buffer_size);
-  std::vector<vk::WriteDescriptorSet> WriteDescriptorSets = {
-      {matMul_descriptor_set, 0, 0, 1, vk::DescriptorType::eStorageBuffer,
-       nullptr, &a_buffer_info},
-      {matMul_descriptor_set, 1, 0, 1, vk::DescriptorType::eStorageBuffer,
-       nullptr, &b_buffer_info},
-      {matMul_descriptor_set, 2, 0, 1, vk::DescriptorType::eStorageBuffer,
-       nullptr, &output_buffer_info},
-  };
-  inst->logical_dev.updateDescriptorSets(WriteDescriptorSets, {});
+  if ((trans_a && !inline_transpose) || (trans_b && !inline_transpose)) {
+    vk::MemoryBarrier mem_bar = vk::MemoryBarrier(
+        vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead,
+        vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead);
+    cmd_buffs[cmd_buff_indx].pipelineBarrier(
+        vk::PipelineStageFlagBits::eComputeShader,
+        vk::PipelineStageFlagBits::eComputeShader, vk::DependencyFlags(),
+        mem_bar, nullptr, nullptr);
+  }
 
-  int cmd_buff_indx = cmd_buffs.size() - 1;
-
-  cmd_buffs[cmd_buff_indx].begin(cmd_buff_begin_info);
   cmd_buffs[cmd_buff_indx].bindPipeline(vk::PipelineBindPoint::eCompute,
                                         matmul_pipeline->pipeline);
   cmd_buffs[cmd_buff_indx].bindDescriptorSets(
@@ -373,10 +337,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
   cmd_buffs[cmd_buff_indx].fillBuffer(output.buffer->vk_buffer, 0,
                                       VK_WHOLE_SIZE, 0);
   vk::MemoryBarrier mem_bar = vk::MemoryBarrier(
-      vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead,
+      vk::AccessFlagBits::eTransferWrite,
       vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead);
   cmd_buffs[cmd_buff_indx].pipelineBarrier(
-      vk::PipelineStageFlagBits::eComputeShader,
+      vk::PipelineStageFlagBits::eTransfer,
       vk::PipelineStageFlagBits::eComputeShader, vk::DependencyFlags(), mem_bar,
       nullptr, nullptr);
 
@@ -395,20 +359,17 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
 
   vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
   vk::SubmitInfo SubmitInfo(
-      transpose_semaphores.size(),  // Num Wait Semaphores
-      transpose_semaphores.data(),  // Wait Semaphores
-      wait_stages.data(),           // Pipeline Stage Flags
-      1,                            // Num Command Buffers
-      &cmd_buffs[cmd_buff_indx]);   // List of command buffers
+      0,                           // Num Wait Semaphores
+      nullptr,                     // Wait Semaphores
+      nullptr,                     // Pipeline Stage Flags
+      1,                           // Num Command Buffers
+      &cmd_buffs[cmd_buff_indx]);  // List of command buffers
   queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence);
   vk::Result fenceRes =
       inst->logical_dev.waitForFences({fence},        // List of fences
                                       true,           // Wait All
                                       uint64_t(-1));  // Timeout
 
-  for (vk::Semaphore seamphore : transpose_semaphores) {
-    inst->logical_dev.destroySemaphore(seamphore);
-  }
   inst->logical_dev.destroyFence(fence);
   inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buffs);
 }
