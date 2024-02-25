@@ -121,6 +121,9 @@ void RegisterDeviceBasicOps(const char* device_type) {
 
   CALL_COMPLEX(REGISTER_COMPLEX_KERNEL)
 
-  RegisterBasicOpKernels<TF_BOOL, OP_LOGICAL_AND>(device_type);
-  RegisterBasicOpKernels<TF_BOOL, OP_LOGICAL_OR>(device_type);
+#define REGISTER_BOOL_KERNEL(T)                           \
+  RegisterBasicOpKernels<T, OP_LOGICAL_AND>(device_type); \
+  RegisterBasicOpKernels<T, OP_LOGICAL_OR>(device_type);
+
+  CALL_BOOL(REGISTER_BOOL_KERNEL)
 }

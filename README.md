@@ -49,6 +49,14 @@ with tf.device('VULK:0'):
     tensorRelu = tf.nn.relu(tensor)
 ```
 
+# Env Variables
+- VULTEN_DUMP_SPV=(true/false)
+- VULTEN_DISABLE_FLOAT64=(true/false)
+- VULTEN_DISABLE_FLOAT16=(true/false)
+- VULTEN_DISABLE_INT64=(true/false)
+- VULTEN_DISABLE_INT16=(true/false)
+- VULTEN_DISABLE_INT8=(true/false)
+
 # Build dependencies
 - Python 3.10 with venv
 - Vulkan SDK
