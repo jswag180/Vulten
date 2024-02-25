@@ -1,4 +1,5 @@
 #include "Vulten_backend/ops/cast/Cast_op.h"
+#include "Vulten_backend/Vulten_utills.h"
 #include "absl/container/inlined_vector.h"
 #include "scope_timer.h"
 #include "tensor_utills.h"
@@ -50,23 +51,37 @@ void RegisterCastOpKernel(const char* device_type) {
 }
 
 void RegisterDeviceCast(const char* device_type) {
-#define REGISTER_TYPE(s)                               \
-  RegisterCastOpKernel<s, TF_FLOAT>(device_type);      \
-  RegisterCastOpKernel<s, TF_INT32>(device_type);      \
-  RegisterCastOpKernel<s, TF_UINT32>(device_type);     \
-  RegisterCastOpKernel<s, TF_INT64>(device_type);      \
-  RegisterCastOpKernel<s, TF_UINT64>(device_type);     \
-  RegisterCastOpKernel<s, TF_INT8>(device_type);       \
-  RegisterCastOpKernel<s, TF_UINT8>(device_type);      \
-  RegisterCastOpKernel<s, TF_DOUBLE>(device_type);     \
-  RegisterCastOpKernel<s, TF_HALF>(device_type);       \
-  RegisterCastOpKernel<s, TF_INT16>(device_type);      \
-  RegisterCastOpKernel<s, TF_UINT16>(device_type);     \
-  RegisterCastOpKernel<s, TF_COMPLEX64>(device_type);  \
-  RegisterCastOpKernel<s, TF_COMPLEX128>(device_type); \
-  RegisterCastOpKernel<s, TF_BOOL>(device_type);
+#define REGISTER_TYPE_8BIT(s)                    \
+  RegisterCastOpKernel<s, TF_BOOL>(device_type); \
+  RegisterCastOpKernel<s, TF_INT8>(device_type); \
+  RegisterCastOpKernel<s, TF_UINT8>(device_type);
+#define REGISTER_TYPE_INT16(s)                    \
+  RegisterCastOpKernel<s, TF_INT16>(device_type); \
+  RegisterCastOpKernel<s, TF_UINT16>(device_type);
+#define REGISTER_TYPE_INT64(s)                    \
+  RegisterCastOpKernel<s, TF_INT64>(device_type); \
+  RegisterCastOpKernel<s, TF_UINT64>(device_type);
+#define REGISTER_TYPE_FLOAT16(s) RegisterCastOpKernel<s, TF_HALF>(device_type);
+#define REGISTER_TYPE_FLOAT64(s)                   \
+  RegisterCastOpKernel<s, TF_DOUBLE>(device_type); \
+  RegisterCastOpKernel<s, TF_COMPLEX128>(device_type);
+#define REGISTER_TYPE(s)                                               \
+  RegisterCastOpKernel<s, TF_FLOAT>(device_type);                      \
+  RegisterCastOpKernel<s, TF_INT32>(device_type);                      \
+  RegisterCastOpKernel<s, TF_UINT32>(device_type);                     \
+  RegisterCastOpKernel<s, TF_COMPLEX64>(device_type);                  \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT64))   \
+    REGISTER_TYPE_INT64(s)                                             \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_FLOAT64)) \
+    REGISTER_TYPE_FLOAT64(s)                                           \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_FLOAT16)) \
+    REGISTER_TYPE_FLOAT16(s)                                           \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT16))   \
+    REGISTER_TYPE_INT16(s)                                             \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT8))    \
+  REGISTER_TYPE_8BIT(s)
 
   CALL_ALL_TYPES(REGISTER_TYPE)
 
-  REGISTER_TYPE(TF_BOOL)
+  CALL_BOOL(REGISTER_TYPE)
 }

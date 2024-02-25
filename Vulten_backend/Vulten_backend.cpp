@@ -3,6 +3,7 @@
 #include <vulkan/vulkan_structs.hpp>
 #define VMA_IMPLEMENTATION
 #include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
+#include "Vulten_backend/Vulten_utills.h"
 
 namespace instance_utill {
 static vk::Instance instance;
@@ -198,41 +199,79 @@ Instance::Instance(uint32_t dev_num) {
 
   vk::PhysicalDeviceShaderFloat16Int8Features half_char_feat =
       vk::PhysicalDeviceShaderFloat16Int8Features();
-  half_char_feat.setShaderFloat16(true);
-  half_char_feat.setShaderInt8(true);
 
   vk::PhysicalDevice8BitStorageFeatures char_buffer_feat =
       vk::PhysicalDevice8BitStorageFeatures();
-  char_buffer_feat.setStoragePushConstant8(true);
-  char_buffer_feat.setStorageBuffer8BitAccess(true);
   char_buffer_feat.setPNext(&half_char_feat);
 
   vk::PhysicalDevice16BitStorageFeatures half_buffer_feat =
       vk::PhysicalDevice16BitStorageFeatures();
-  half_buffer_feat.setStorageBuffer16BitAccess(true);
-  half_buffer_feat.setStorageInputOutput16(true);
   half_buffer_feat.setPNext(&char_buffer_feat);
 
   vk::PhysicalDeviceShaderSubgroupExtendedTypesFeatures extend_sub =
       vk::PhysicalDeviceShaderSubgroupExtendedTypesFeatures();
-  extend_sub.setShaderSubgroupExtendedTypes(true);
   extend_sub.setPNext(&half_buffer_feat);
 
   vk::PhysicalDeviceScalarBlockLayoutFeaturesEXT scalar_block_feat =
       vk::PhysicalDeviceScalarBlockLayoutFeaturesEXT();
-  scalar_block_feat.setScalarBlockLayout(true);
   scalar_block_feat.setPNext(&extend_sub);
 
   vk::PhysicalDeviceCoherentMemoryFeaturesAMD amd_mem_feat =
       vk::PhysicalDeviceCoherentMemoryFeaturesAMD();
-  amd_mem_feat.setDeviceCoherentMemory(has_amd_mem);
   amd_mem_feat.setPNext(&scalar_block_feat);
 
   vk::PhysicalDeviceFeatures2 dev_features2 = vk::PhysicalDeviceFeatures2();
-  dev_features2.features.setShaderInt16(true);
-  dev_features2.features.setShaderInt64(true);
-  dev_features2.features.setShaderFloat64(true);
   dev_features2.setPNext(&amd_mem_feat);
+
+  physical_dev.getFeatures2(&dev_features2);
+
+  if (!half_char_feat.shaderFloat16 ||
+      !half_buffer_feat.storageBuffer16BitAccess ||
+      !half_buffer_feat.uniformAndStorageBuffer16BitAccess ||
+      !half_buffer_feat.storageInputOutput16 ||
+      !half_buffer_feat.storagePushConstant16) {
+    if (vulten_utills::get_env_bool(VULTEN_DISABLE_FLOAT16)) {
+      VULTEN_LOG_ERROR("A device does not support this feature. Please add "
+                       << VULTEN_DISABLE_FLOAT16 << "=true to env.")
+    }
+  }
+
+  if (!half_char_feat.shaderInt8 || !char_buffer_feat.storageBuffer8BitAccess ||
+      !char_buffer_feat.storagePushConstant8) {
+    if (vulten_utills::get_env_bool(VULTEN_DISABLE_INT8)) {
+      VULTEN_LOG_ERROR("A device does not support this feature. Please add "
+                       << VULTEN_DISABLE_INT8 << "=true to env.")
+    }
+  }
+
+  if (!dev_features2.features.shaderInt16 ||
+      !half_buffer_feat.storageBuffer16BitAccess ||
+      !half_buffer_feat.uniformAndStorageBuffer16BitAccess ||
+      !half_buffer_feat.storageInputOutput16 ||
+      !half_buffer_feat.storagePushConstant16) {
+    if (vulten_utills::get_env_bool(VULTEN_DISABLE_INT16)) {
+      VULTEN_LOG_ERROR("A device does not support this feature. Please add "
+                       << VULTEN_DISABLE_INT16 << "=true to env.")
+    }
+  }
+
+  if (!dev_features2.features.shaderInt64) {
+    if (vulten_utills::get_env_bool(VULTEN_DISABLE_INT64)) {
+      VULTEN_LOG_ERROR("A device does not support this feature. Please add "
+                       << VULTEN_DISABLE_INT64 << "=true to env.")
+    }
+  }
+
+  if (!dev_features2.features.shaderFloat64) {
+    if (vulten_utills::get_env_bool(VULTEN_DISABLE_FLOAT64)) {
+      VULTEN_LOG_ERROR("A device does not support this feature. Please add "
+                       << VULTEN_DISABLE_FLOAT64 << "=true to env.")
+    }
+  }
+
+  // We need this
+  extend_sub.setShaderSubgroupExtendedTypes(true);
+  scalar_block_feat.setScalarBlockLayout(true);
 
   auto dev_create_info = vk::DeviceCreateInfo(
       vk::DeviceCreateFlags(), queues_info.size(), queues_info.data(), 0, {},

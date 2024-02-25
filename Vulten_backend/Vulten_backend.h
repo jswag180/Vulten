@@ -11,16 +11,57 @@
 
 #include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
 #include "vulten_logger.h"
+#include "Vulten_backend/Vulten_utills.h"
+
+#define VULTEN_DISABLE_FLOAT16 "VULTEN_DISABLE_FLOAT16"
+#define VULTEN_DISABLE_FLOAT64 "VULTEN_DISABLE_FLOAT64"
+#define VULTEN_DISABLE_INT8 "VULTEN_DISABLE_INT8"
+#define VULTEN_DISABLE_INT16 "VULTEN_DISABLE_INT16"
+#define VULTEN_DISABLE_INT64 "VULTEN_DISABLE_INT64"
 
 #define VOID_TO_INSTANCE(X) static_cast<vulten_backend::Instance *>(X)
 #define VOID_TO_DEVICE_BUFFER(X) static_cast<vulten_backend::Device_buffer *>(X)
 #define VOID_TO_HOST_MAPPABLE_BUFFER(X) \
   static_cast<vulten_backend::Host_mappable_buffer *>(X)
-#define CALL_ALL_BASIC_TYPES(func)                                            \
-  func(TF_FLOAT) func(TF_HALF) func(TF_DOUBLE) func(TF_INT32) func(TF_UINT32) \
-      func(TF_INT8) func(TF_UINT8) func(TF_INT64) func(TF_UINT64)             \
-          func(TF_INT16) func(TF_UINT16)
-#define CALL_COMPLEX(func) func(TF_COMPLEX64) func(TF_COMPLEX128)
+#define CALL_HALF(func)                                                  \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_FLOAT16)) { \
+    func(TF_HALF)                                                        \
+  }
+#define CALL_DOUBLE(func)                                                \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_FLOAT64)) { \
+    func(TF_DOUBLE)                                                      \
+  }
+#define CALL_INT64(func)                                               \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT64)) { \
+    func(TF_INT64)                                                     \
+  }
+#define CALL_BOOL(func)                                               \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT8)) { \
+    func(TF_BOOL)                                                     \
+  }
+#define CALL_ALL_BASIC_TYPES(func)                                       \
+  func(TF_FLOAT) func(TF_INT32)                                          \
+      func(TF_UINT32) if (!vulten_utills::get_env_bool(       \
+                              VULTEN_DISABLE_FLOAT16)) {                 \
+    func(TF_HALF)                                                        \
+  }                                                                      \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT16)) {   \
+    func(TF_INT16) func(TF_UINT16)                                       \
+  }                                                                      \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT8)) {    \
+    func(TF_INT8) func(TF_UINT8)                                         \
+  }                                                                      \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_FLOAT64)) { \
+    func(TF_DOUBLE)                                                      \
+  }                                                                      \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT64)) {   \
+    func(TF_INT64) func(TF_UINT64)                                       \
+  }
+#define CALL_COMPLEX(func)                                        \
+  func(TF_COMPLEX64) if (!vulten_utills::get_env_bool( \
+                             VULTEN_DISABLE_FLOAT64)) {           \
+    func(TF_COMPLEX128)                                           \
+  }
 #define CALL_ALL_TYPES(func) CALL_ALL_BASIC_TYPES(func) CALL_COMPLEX(func)
 
 namespace vulten_backend {
