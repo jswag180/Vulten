@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -35,14 +36,14 @@ inline std::vector<uint32_t> calculate_adj_strides(int64_t*
 }
 // clang-format on
 
-static inline bool get_env_bool(const char *var) {
-    auto env_var = std::getenv(var);
-    if (env_var != nullptr) {
-      if (std::string(env_var) == "true") {
-        return true;
-      }
+static inline bool get_env_bool(const char* var) {
+  auto env_var = std::getenv(var);
+  if (env_var != nullptr) {
+    if (std::string(env_var) == "true") {
+      return true;
     }
-    return false;
   }
+  return false;
+}
 
 };  // namespace vulten_utills

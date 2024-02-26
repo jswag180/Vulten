@@ -1,5 +1,5 @@
-#include "Vulten_backend/ops/cast/Cast_op.h"
 #include "Vulten_backend/Vulten_utills.h"
+#include "Vulten_backend/ops/cast/Cast_op.h"
 #include "absl/container/inlined_vector.h"
 #include "scope_timer.h"
 #include "tensor_utills.h"
@@ -65,21 +65,20 @@ void RegisterDeviceCast(const char* device_type) {
 #define REGISTER_TYPE_FLOAT64(s)                   \
   RegisterCastOpKernel<s, TF_DOUBLE>(device_type); \
   RegisterCastOpKernel<s, TF_COMPLEX128>(device_type);
-#define REGISTER_TYPE(s)                                               \
-  RegisterCastOpKernel<s, TF_FLOAT>(device_type);                      \
-  RegisterCastOpKernel<s, TF_INT32>(device_type);                      \
-  RegisterCastOpKernel<s, TF_UINT32>(device_type);                     \
-  RegisterCastOpKernel<s, TF_COMPLEX64>(device_type);                  \
+#define REGISTER_TYPE(s)                                    \
+  RegisterCastOpKernel<s, TF_FLOAT>(device_type);           \
+  RegisterCastOpKernel<s, TF_INT32>(device_type);           \
+  RegisterCastOpKernel<s, TF_UINT32>(device_type);          \
+  RegisterCastOpKernel<s, TF_COMPLEX64>(device_type);       \
   if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT64))   \
-    REGISTER_TYPE_INT64(s)                                             \
+    REGISTER_TYPE_INT64(s)                                  \
   if (!vulten_utills::get_env_bool(VULTEN_DISABLE_FLOAT64)) \
-    REGISTER_TYPE_FLOAT64(s)                                           \
+    REGISTER_TYPE_FLOAT64(s)                                \
   if (!vulten_utills::get_env_bool(VULTEN_DISABLE_FLOAT16)) \
-    REGISTER_TYPE_FLOAT16(s)                                           \
+    REGISTER_TYPE_FLOAT16(s)                                \
   if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT16))   \
-    REGISTER_TYPE_INT16(s)                                             \
-  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT8))    \
-  REGISTER_TYPE_8BIT(s)
+    REGISTER_TYPE_INT16(s)                                  \
+  if (!vulten_utills::get_env_bool(VULTEN_DISABLE_INT8)) REGISTER_TYPE_8BIT(s)
 
   CALL_ALL_TYPES(REGISTER_TYPE)
 
