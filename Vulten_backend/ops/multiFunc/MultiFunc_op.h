@@ -6,6 +6,7 @@
 #define OP_EXP 1
 #define OP_LOG 2
 #define OP_SQUARE 3
+#define OP_NEG 4
 
 namespace vulten_ops {
 namespace multiFunc {

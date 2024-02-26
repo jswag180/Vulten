@@ -16,6 +16,7 @@ layout(set = 0, binding = 1) buffer b { writeonly TYPE_0 outData[]; };
 #define OP_EXP    1
 #define OP_LOG    2
 #define OP_SQUARE 3
+#define OP_NEG    4
 layout(push_constant) uniform PushConstants {
 	uint op;
 } push_const;
@@ -33,6 +34,9 @@ void main(){
             break;
         case OP_SQUARE:
             outData[gl_GlobalInvocationID.x] = inData[gl_GlobalInvocationID.x] * inData[gl_GlobalInvocationID.x];
+            break;
+        case OP_NEG:
+            outData[gl_GlobalInvocationID.x] = -inData[gl_GlobalInvocationID.x];
             break;
     }
 }

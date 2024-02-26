@@ -52,11 +52,12 @@ void RegisterMultiFuncOpKernel(const char* device_type) {
 }
 
 void RegisterDeviceMultiFunc(const char* device_type) {
-#define REGISTER_KERNEL(T)                            \
-  RegisterMultiFuncOpKernel<T, OP_SQRT>(device_type); \
-  RegisterMultiFuncOpKernel<T, OP_EXP>(device_type);  \
-  RegisterMultiFuncOpKernel<T, OP_LOG>(device_type);  \
-  RegisterMultiFuncOpKernel<T, OP_SQUARE>(device_type);
+#define REGISTER_KERNEL(T)                              \
+  RegisterMultiFuncOpKernel<T, OP_SQRT>(device_type);   \
+  RegisterMultiFuncOpKernel<T, OP_EXP>(device_type);    \
+  RegisterMultiFuncOpKernel<T, OP_LOG>(device_type);    \
+  RegisterMultiFuncOpKernel<T, OP_SQUARE>(device_type); \
+  RegisterMultiFuncOpKernel<T, OP_NEG>(device_type);
 
   // Sqrt is hard with compute shaders with the lack of native
   // pow, exp, cos, and sin in extended types.

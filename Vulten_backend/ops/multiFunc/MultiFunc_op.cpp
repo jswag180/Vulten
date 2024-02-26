@@ -21,6 +21,9 @@ std::string op_as_str(uint32_t op) {
     case OP_SQUARE:
       return "Square";
       break;
+    case OP_NEG:
+      return "Neg";
+      break;
     default:
       return "INVALID";
   }
