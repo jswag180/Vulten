@@ -1,6 +1,9 @@
 #include "Vulten_backend.h"
 
+#include <tuple>
 #include <vulkan/vulkan_structs.hpp>
+
+#include "Vulten_backend/vulten_logger.h"
 #define VMA_IMPLEMENTATION
 #include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
 #include "Vulten_backend/Vulten_utills.h"
@@ -56,7 +59,9 @@ Vk_instance::Vk_instance() {
         instExtend.data());  // Instance extentions
 
 #endif
-    instance_utill::instance = vk::createInstance(InstanceCreateInfo);
+    auto [res, inst] = vk::createInstance(InstanceCreateInfo);
+    RES_CHECK_SUCCESS_ONLY(res)
+    instance_utill::instance = inst;
     instance = &instance_utill::instance;
     instance_utill::is_initialized = true;
   }
@@ -75,7 +80,18 @@ Device_propertys::Device_propertys() {
     VULTEN_LOG_INFO("Populating Device_propertys")
     Vk_instance vk_inst = Vk_instance();
 
-    auto physicalDevices = vk_inst.instance->enumeratePhysicalDevices();
+    auto [res, physicalDevices] = vk_inst.instance->enumeratePhysicalDevices();
+    switch (res) {
+      case vk::Result::eIncomplete:
+      case vk::Result::eSuccess:
+        break;
+      default:
+        VULTEN_LOG_ERROR(
+            "enumerating physical devices got unexpected error code: "
+            << static_cast<int>(res))
+        exit(-1);
+        break;
+    }
 
     if (physicalDevices.size() <= 0) {
       VULTEN_LOG_ERROR("enumeratePhysicalDevices returned no devices")
@@ -130,8 +146,21 @@ Device_propertys::Device_propertys() {
       dev_prop.mem_props = physicalDevices[i].getMemoryProperties();
 
       std::vector<std::string> extens;
-      auto exten_props =
+      auto [res, exten_props] =
           physicalDevices[i].enumerateDeviceExtensionProperties();
+      switch (res) {
+        case vk::Result::eIncomplete:
+        case vk::Result::eSuccess:
+          break;
+        default:
+          VULTEN_LOG_ERROR(
+              "enumerating device extension properties got unexpected error "
+              "code: "
+              << static_cast<int>(res))
+          exit(-1);
+          break;
+      }
+
       for (uint32_t i = 0; i < exten_props.size(); i++) {
         extens.push_back(std::string(
             static_cast<const char *>(exten_props[i].extensionName)));
@@ -161,10 +190,14 @@ bool enable_if_avaliable(const char *exten_name,
 Instance::Instance(uint32_t dev_num) {
   VULTEN_LOG_INFO("Creating vulten_backend::Instance")
 
+  vk::Result vk_res = vk::Result::eSuccess;
+
   device_num = dev_num;
   {
     Vk_instance inst = Vk_instance();
-    physical_dev = inst.instance->enumeratePhysicalDevices()[device_num];
+    auto [res, phy_devs] = inst.instance->enumeratePhysicalDevices();
+    RES_CHECK_SUCCESS_ONLY(res)
+    physical_dev = phy_devs[device_num];
   }
 
   vulten_backend::Device_propertys dev_props =
@@ -277,10 +310,12 @@ Instance::Instance(uint32_t dev_num) {
       vk::DeviceCreateFlags(), queues_info.size(), queues_info.data(), 0, {},
       extens.size(), extens.data(), nullptr, &dev_features2);
 
-  logical_dev = physical_dev.createDevice(dev_create_info);
+  std::tie(vk_res, logical_dev) = physical_dev.createDevice(dev_create_info);
+  RES_CHECK_SUCCESS_ONLY(vk_res)
 
-  pipeline_cache =
+  std::tie(vk_res, pipeline_cache) =
       logical_dev.createPipelineCache(vk::PipelineCacheCreateInfo());
+  RES_CHECK_SUCCESS_ONLY(vk_res)
 
   for (int i = 0; i < queues_info.size(); i++) {
     for (int j = 0; j < queues_info[i].queueCount; j++) {
@@ -291,8 +326,9 @@ Instance::Instance(uint32_t dev_num) {
           vk::CommandPoolCreateFlagBits::eTransient |
               vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
           queues_info[i].queueFamilyIndex);
-      queues[i + j].cmd_pool =
+      std::tie(vk_res, queues[i + j].cmd_pool) =
           logical_dev.createCommandPool(cmd_pool_create_info);
+      RES_CHECK_SUCCESS_ONLY(vk_res)
       queues[i + j].graphics = device_propertys.queue_props[i].hasGraphics;
       queues[i + j].compute = device_propertys.queue_props[i].hasCompute;
       queues[i + j].transfer = device_propertys.queue_props[i].hasTransfer;
@@ -328,8 +364,9 @@ Instance::Instance(uint32_t dev_num) {
       vk::DescriptorType::eStorageBuffer, 32);
   vk::DescriptorPoolCreateInfo descriptor_pool_create_info(
       vk::DescriptorPoolCreateFlags(), 32, descriptor_pool_size);
-  descriptor_pool =
+  std::tie(vk_res, descriptor_pool) =
       logical_dev.createDescriptorPool(descriptor_pool_create_info);
+  RES_CHECK_SUCCESS_ONLY(vk_res)
 }
 
 Host_mappable_buffer *Instance::create_host_mappable_buffer(
@@ -347,14 +384,17 @@ Device_buffer *Instance::create_device_buffer(uint32_t size, bool trans_src,
 void Instance::copy_buffer(Buffer *src, Buffer *dest, uint32_t size) {
   Queue_alloc queue_alloc = get_queue(false, false, true, false);
 
+  vk::Result vk_res = vk::Result::eSuccess;
+
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
-  vk::CommandBuffer cmd_buff =
-      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
+  auto [res, cmd_buff] =
+      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
+  RES_CHECK_SUCCESS_ONLY(res)
 
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-  cmd_buff.begin(cmd_buff_begin_info);
+  RES_CHECK_SUCCESS_ONLY(cmd_buff[0].begin(cmd_buff_begin_info));
 
   vk::BufferCopy buff_copy;
   if (size > 0) {
@@ -363,13 +403,13 @@ void Instance::copy_buffer(Buffer *src, Buffer *dest, uint32_t size) {
     buff_copy =
         vk::BufferCopy(0, 0, std::min(src->buffer_size, dest->buffer_size));
   }
-  cmd_buff.copyBuffer(src->vk_buffer, dest->vk_buffer, buff_copy);
+  cmd_buff[0].copyBuffer(src->vk_buffer, dest->vk_buffer, buff_copy);
 
-  cmd_buff.end();
+  RES_CHECK_SUCCESS_ONLY(cmd_buff[0].end());
 
-  vk::SubmitInfo submit_info({}, {}, {}, 1, &cmd_buff);
-  queue_alloc.queue->vk_queue.submit(submit_info, {});
-  queue_alloc.queue->vk_queue.waitIdle();
+  vk::SubmitInfo submit_info({}, {}, cmd_buff);
+  RES_CHECK_SUCCESS_ONLY(queue_alloc.queue->vk_queue.submit(submit_info, {}));
+  RES_CHECK_SUCCESS_ONLY(queue_alloc.queue->vk_queue.waitIdle());
   logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buff);
 }
 
@@ -377,12 +417,13 @@ void Instance::copy_buffer(Queue_alloc *queue_alloc, Buffer *src, Buffer *dest,
                            uint32_t size) {
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       queue_alloc->queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
-  vk::CommandBuffer cmd_buff =
-      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
+  auto [res, cmd_buff] =
+      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
+  RES_CHECK_SUCCESS_ONLY(res)
 
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-  cmd_buff.begin(cmd_buff_begin_info);
+  RES_CHECK_SUCCESS_ONLY(cmd_buff[0].begin(cmd_buff_begin_info));
 
   vk::BufferCopy buff_copy;
   if (size > 0) {
@@ -391,13 +432,13 @@ void Instance::copy_buffer(Queue_alloc *queue_alloc, Buffer *src, Buffer *dest,
     buff_copy =
         vk::BufferCopy(0, 0, std::min(src->buffer_size, dest->buffer_size));
   }
-  cmd_buff.copyBuffer(src->vk_buffer, dest->vk_buffer, buff_copy);
+  cmd_buff[0].copyBuffer(src->vk_buffer, dest->vk_buffer, buff_copy);
 
-  cmd_buff.end();
+  RES_CHECK_SUCCESS_ONLY(cmd_buff[0].end());
 
-  vk::SubmitInfo submit_info({}, {}, {}, 1, &cmd_buff);
-  queue_alloc->queue->vk_queue.submit(submit_info, {});
-  queue_alloc->queue->vk_queue.waitIdle();
+  vk::SubmitInfo submit_info({}, {}, cmd_buff);
+  RES_CHECK_SUCCESS_ONLY(queue_alloc->queue->vk_queue.submit(submit_info, {}));
+  RES_CHECK_SUCCESS_ONLY(queue_alloc->queue->vk_queue.waitIdle());
   logical_dev.freeCommandBuffers(queue_alloc->queue->cmd_pool, cmd_buff);
 }
 
@@ -407,20 +448,21 @@ void Instance::fill_buffer(Buffer *dstBuffer, uint64_t offset, uint64_t size,
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
-  vk::CommandBuffer cmd_buff =
-      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
+  auto [res, cmd_buff] =
+      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
+  RES_CHECK_SUCCESS_ONLY(res)
 
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-  cmd_buff.begin(cmd_buff_begin_info);
+  RES_CHECK_SUCCESS_ONLY(cmd_buff[0].begin(cmd_buff_begin_info));
 
-  cmd_buff.fillBuffer(dstBuffer->vk_buffer, offset, size, data);
+  cmd_buff[0].fillBuffer(dstBuffer->vk_buffer, offset, size, data);
 
-  cmd_buff.end();
+  RES_CHECK_SUCCESS_ONLY(cmd_buff[0].end());
 
-  vk::SubmitInfo submit_info({}, {}, {}, 1, &cmd_buff);
-  queue_alloc.queue->vk_queue.submit(submit_info, {});
-  queue_alloc.queue->vk_queue.waitIdle();
+  vk::SubmitInfo submit_info({}, {}, cmd_buff);
+  RES_CHECK_SUCCESS_ONLY(queue_alloc.queue->vk_queue.submit(submit_info, {}));
+  RES_CHECK_SUCCESS_ONLY(queue_alloc.queue->vk_queue.waitIdle());
   logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buff);
 }
 
@@ -428,20 +470,21 @@ void Instance::fill_buffer(Queue_alloc *queue_alloc, Buffer *dstBuffer,
                            uint64_t offset, uint64_t size, uint32_t data) {
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       queue_alloc->queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
-  vk::CommandBuffer cmd_buff =
-      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
+  auto [res, cmd_buff] =
+      logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
+  RES_CHECK_SUCCESS_ONLY(res)
 
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-  cmd_buff.begin(cmd_buff_begin_info);
+  RES_CHECK_SUCCESS_ONLY(cmd_buff[0].begin(cmd_buff_begin_info));
 
-  cmd_buff.fillBuffer(dstBuffer->vk_buffer, offset, size, data);
+  cmd_buff[0].fillBuffer(dstBuffer->vk_buffer, offset, size, data);
 
-  cmd_buff.end();
+  RES_CHECK_SUCCESS_ONLY(cmd_buff[0].end());
 
-  vk::SubmitInfo submit_info({}, {}, {}, 1, &cmd_buff);
-  queue_alloc->queue->vk_queue.submit(submit_info, {});
-  queue_alloc->queue->vk_queue.waitIdle();
+  vk::SubmitInfo submit_info({}, {}, cmd_buff);
+  RES_CHECK_SUCCESS_ONLY(queue_alloc->queue->vk_queue.submit(submit_info, {}));
+  RES_CHECK_SUCCESS_ONLY(queue_alloc->queue->vk_queue.waitIdle());
   logical_dev.freeCommandBuffers(queue_alloc->queue->cmd_pool, cmd_buff);
 }
 

@@ -26,6 +26,8 @@ elseif(VULTEN_LOG_LEVEL EQUAL "2")
     add_compile_definitions(VULTEN_LOG_LEVEL=2)
 endif()
 
+add_compile_definitions(VULKAN_HPP_NO_EXCEPTIONS)
+
 find_package(Vulkan REQUIRED)
 
 link_directories(${Vulkan_LIBRARIES})

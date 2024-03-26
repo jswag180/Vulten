@@ -1,3 +1,5 @@
+#include <tuple>
+
 #include "Vulten_backend.h"
 
 namespace vulten_backend {
@@ -9,10 +11,14 @@ Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance* instance,
                                  std::vector<vk::PushConstantRange> push_ranges)
     : inst(instance) {
   auto_clean = true;
+  vk::Result vk_res = vk::Result::eSuccess;
+
   vk::ShaderModuleCreateInfo shader_create_info(vk::ShaderModuleCreateFlags(),
                                                 shader_source.size() * 4,
                                                 shader_source.data());
-  shader = inst->logical_dev.createShaderModule(shader_create_info);
+  std::tie(vk_res, shader) =
+      inst->logical_dev.createShaderModule(shader_create_info);
+  RES_CHECK_SUCCESS_ONLY(vk_res)
 
   std::vector<vk::DescriptorSetLayoutBinding> descriptor_set_layout_binding =
       std::vector<vk::DescriptorSetLayoutBinding>(buffer_types.size());
@@ -22,14 +28,17 @@ Vulten_pipeline::Vulten_pipeline(vulten_backend::Instance* instance,
   }
   vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info(
       vk::DescriptorSetLayoutCreateFlags(), descriptor_set_layout_binding);
-  descriptor_set_layout = inst->logical_dev.createDescriptorSetLayout(
-      descriptor_set_layout_create_info);
+  std::tie(vk_res, descriptor_set_layout) =
+      inst->logical_dev.createDescriptorSetLayout(
+          descriptor_set_layout_create_info);
+  RES_CHECK_SUCCESS_ONLY(vk_res)
 
   vk::PipelineLayoutCreateInfo pipeline_layout_create_info(
       vk::PipelineLayoutCreateFlags(), descriptor_set_layout, push_ranges);
 
-  pipeline_layout =
+  std::tie(vk_res, pipeline_layout) =
       inst->logical_dev.createPipelineLayout(pipeline_layout_create_info);
+  RES_CHECK_SUCCESS_ONLY(vk_res)
 
   vk::PipelineShaderStageCreateInfo pipeline_shader_create_info(
       vk::PipelineShaderStageCreateFlags(),  // Flags

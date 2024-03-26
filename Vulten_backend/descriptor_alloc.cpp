@@ -27,13 +27,12 @@ Descriptor_set_alloc Instance::get_descriptor_sets(
   descriptor_set->descriptors = num_descriptors;
   vk::DescriptorSetAllocateInfo descriptor_set_alloc_info(descriptor_pool, 1,
                                                           &layout);
-  try {
-    descriptor_set->vk_descriptor_set =
-        logical_dev.allocateDescriptorSets(descriptor_set_alloc_info).front();
-  } catch (std::exception e) {
-    VULTEN_LOG_ERROR("Failed to allocate descriptor sets!")
-    exit(-1);
-  }
+  vk::Result vk_res = vk::Result::eSuccess;
+  auto [res, alloced_sets] =
+      logical_dev.allocateDescriptorSets(descriptor_set_alloc_info);
+  RES_CHECK_SUCCESS_ONLY(res)
+  descriptor_set->vk_descriptor_set = alloced_sets.front();
+
   descriptor_set->mutex->lock();
   descriptors.push_back(descriptor_set);
 

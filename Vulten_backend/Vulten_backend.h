@@ -63,6 +63,12 @@
   }
 #define CALL_ALL_TYPES(func) CALL_ALL_BASIC_TYPES(func) CALL_COMPLEX(func)
 
+#define RES_CHECK_SUCCESS_ONLY(res)                    \
+  if (res != vk::Result::eSuccess) {                   \
+    VULTEN_LOG_ERROR("got: " << static_cast<int>(res)) \
+    exit(-1);                                          \
+  }
+
 namespace vulten_backend {
 
 struct Device_queue_prop {

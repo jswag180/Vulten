@@ -3,17 +3,29 @@
 #include <mutex>
 #include <sstream>
 
-#if VULTEN_LOG_LEVEL == 0
+#define BASEFILE(x)                                              \
+  std::string_view(x).substr(std::string_view(x).rfind("/") + 1, \
+                             std::string_view(x).rfind('.'))
+
+#if VULTEN_LOG_LEVEL >= 1
+#define VULTEN_LOG_INFO(M)                                                \
+  VULTEN_LOG << "Vulten [INFO][" << BASEFILE(__FILE__) << ":" << __LINE__ \
+             << "]: " << M << "\n";
+#else
 #define VULTEN_LOG_INFO(M)
-#define VULTEN_LOG_DEBUG(M)
-#elif VULTEN_LOG_LEVEL == 1
-#define VULTEN_LOG_INFO(M) VULTEN_LOG << "Vulten [INFO]: " << M << "\n";
-#define VULTEN_LOG_DEBUG(M)
-#elif VULTEN_LOG_LEVEL == 2
-#define VULTEN_LOG_INFO(M) VULTEN_LOG << "Vulten [INFO]: " << M << "\n";
-#define VULTEN_LOG_DEBUG(M) VULTEN_LOG << "Vulten [DEBUG]: " << M << "\n";
 #endif
-#define VULTEN_LOG_ERROR(M) VULTEN_LOG << "Vulten [ERROR]: " << M << "\n";
+
+#if VULTEN_LOG_LEVEL >= 2
+#define VULTEN_LOG_DEBUG(M)                                                \
+  VULTEN_LOG << "Vulten [DEBUG][" << BASEFILE(__FILE__) << ":" << __LINE__ \
+             << "]: " << M << "\n";
+#else
+#define VULTEN_LOG_DEBUG(M)
+#endif
+
+#define VULTEN_LOG_ERROR(M)                                                \
+  VULTEN_LOG << "Vulten [ERROR][" << BASEFILE(__FILE__) << ":" << __LINE__ \
+             << "]: " << M << "\n";
 
 class Vulten_logger {
  public:

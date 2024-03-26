@@ -82,8 +82,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
-  vk::CommandBuffer cmd_buff =
-      inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info)[0];
+  auto [cmd_buff_res, cmd_buffs] =
+      inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
+  RES_CHECK_SUCCESS_ONLY(cmd_buff_res)
+  vk::CommandBuffer cmd_buff = cmd_buffs.front();
 
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
@@ -92,7 +94,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
       vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead,
       vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eShaderRead);
 
-  cmd_buff.begin(cmd_buff_begin_info);
+  RES_CHECK_SUCCESS_ONLY(cmd_buff.begin(cmd_buff_begin_info));
   cmd_buff.bindPipeline(vk::PipelineBindPoint::eCompute,
                         vulten_pipeline->pipeline);
   cmd_buff.bindDescriptorSets(
@@ -138,23 +140,22 @@ void run_op(vulten_backend::Instance *inst, Data_type dt,
     cmd_buff.dispatch(threads, 1, 1);
   }
 
-  cmd_buff.end();
+  RES_CHECK_SUCCESS_ONLY(cmd_buff.end());
 
-  vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
+  auto [fence_res, fence] =
+      inst->logical_dev.createFence(vk::FenceCreateInfo());
+  RES_CHECK_SUCCESS_ONLY(fence_res)
 
-  vk::SubmitInfo SubmitInfo(0,           // Num Wait Semaphores
-                            nullptr,     // Wait Semaphores
-                            nullptr,     // Pipeline Stage Flags
-                            1,           // Num Command Buffers
-                            &cmd_buff);  // List of command buffers
-  queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence);
-  vk::Result fenceRes =
-      inst->logical_dev.waitForFences({fence},        // List of fences
-                                      true,           // Wait All
-                                      uint64_t(-1));  // Timeout
+  vk::SubmitInfo SubmitInfo({}, {}, cmd_buffs);
+  RES_CHECK_SUCCESS_ONLY(
+      queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence));
+  RES_CHECK_SUCCESS_ONLY(
+      inst->logical_dev.waitForFences({fence},         // List of fences
+                                      true,            // Wait All
+                                      uint64_t(-1)));  // Timeout
 
   inst->logical_dev.destroyFence(fence);
-  inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buff);
+  inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buffs);
 }
 
 }  // namespace addn
