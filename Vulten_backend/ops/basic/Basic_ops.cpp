@@ -167,16 +167,18 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t op,
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
-  vk::CommandBuffer cmd_buffs =
-      inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info).front();
+  auto [cmd_buff_res, cmd_buffs] =
+      inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
+  RES_CHECK_SUCCESS_ONLY(cmd_buff_res)
+  vk::CommandBuffer cmd_buff = cmd_buffs.front();
 
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 
-  cmd_buffs.begin(cmd_buff_begin_info);
-  cmd_buffs.bindPipeline(vk::PipelineBindPoint::eCompute,
-                         vulten_pipeline->pipeline);
-  cmd_buffs.bindDescriptorSets(
+  RES_CHECK_SUCCESS_ONLY(cmd_buff.begin(cmd_buff_begin_info));
+  cmd_buff.bindPipeline(vk::PipelineBindPoint::eCompute,
+                        vulten_pipeline->pipeline);
+  cmd_buff.bindDescriptorSets(
       vk::PipelineBindPoint::eCompute,   // Bind point
       vulten_pipeline->pipeline_layout,  // Pipeline Layout
       0,                                 // First descriptor set
@@ -186,28 +188,27 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, uint32_t op,
 
   basic_shader::Push_const pushes = {uint32_t(x.num_dims), uint32_t(y.num_dims),
                                      uint32_t(output.num_dims)};
-  cmd_buffs.pushConstants(vulten_pipeline->pipeline_layout,
-                          vk::ShaderStageFlagBits::eCompute, 0,
-                          sizeof(basic_shader::Push_const), &pushes);
+  cmd_buff.pushConstants(vulten_pipeline->pipeline_layout,
+                         vk::ShaderStageFlagBits::eCompute, 0,
+                         sizeof(basic_shader::Push_const), &pushes);
   uint32_t threads = std::ceil(
       float(output.get_total_elements()) /
       inst->device_propertys.props.limits.maxComputeWorkGroupInvocations);
 
-  cmd_buffs.dispatch(threads, 1, 1);
-  cmd_buffs.end();
+  cmd_buff.dispatch(threads, 1, 1);
+  RES_CHECK_SUCCESS_ONLY(cmd_buff.end());
 
-  vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
+  auto [fence_res, fence] =
+      inst->logical_dev.createFence(vk::FenceCreateInfo());
+  RES_CHECK_SUCCESS_ONLY(fence_res)
 
-  vk::SubmitInfo SubmitInfo(0,            // Num Wait Semaphores
-                            nullptr,      // Wait Semaphores
-                            nullptr,      // Pipeline Stage Flags
-                            1,            // Num Command Buffers
-                            &cmd_buffs);  // List of command buffers
-  queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence);
-  vk::Result fenceRes =
-      inst->logical_dev.waitForFences({fence},        // List of fences
-                                      true,           // Wait All
-                                      uint64_t(-1));  // Timeout
+  vk::SubmitInfo SubmitInfo({}, {}, cmd_buffs);
+  RES_CHECK_SUCCESS_ONLY(
+      queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence));
+  RES_CHECK_SUCCESS_ONLY(
+      inst->logical_dev.waitForFences({fence},         // List of fences
+                                      true,            // Wait All
+                                      uint64_t(-1)));  // Timeout
 
   inst->logical_dev.destroyFence(fence);
   inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buffs);

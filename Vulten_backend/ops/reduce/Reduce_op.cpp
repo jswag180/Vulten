@@ -78,9 +78,11 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
 
   std::vector<vk::Semaphore> axis_semaphores =
       std::vector<vk::Semaphore>(axis.size() - 1);
+  vk::Result sema_res = vk::Result::eSuccess;
   for (uint32_t i = 0; i < axis_semaphores.size(); i++) {
-    axis_semaphores[i] =
+    std::tie(sema_res, axis_semaphores[i]) =
         inst->logical_dev.createSemaphore(vk::SemaphoreCreateInfo());
+    RES_CHECK_SUCCESS_ONLY(sema_res)
   }
   std::vector<vk::PipelineStageFlags> wait_stages =
       std::vector<vk::PipelineStageFlags>(
@@ -142,8 +144,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary,
       axis.size());
-  std::vector<vk::CommandBuffer> cmd_buffs =
+  auto [cmd_buff_res, cmd_buffs] =
       inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
+  RES_CHECK_SUCCESS_ONLY(cmd_buff_res)
+
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 
@@ -157,7 +161,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
   }
 
   for (uint32_t i = 0; i < cmd_buffs.size() - 1; i++) {
-    cmd_buffs[i].begin(cmd_buff_begin_info);
+    RES_CHECK_SUCCESS_ONLY(cmd_buffs[i].begin(cmd_buff_begin_info));
     cmd_buffs[i].bindPipeline(vk::PipelineBindPoint::eCompute,
                               vulten_pipeline->pipeline);
     cmd_buffs[i].bindDescriptorSets(
@@ -184,7 +188,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
             1,
         1, 1);
 
-    cmd_buffs[i].end();
+    RES_CHECK_SUCCESS_ONLY(cmd_buffs[i].end());
 
     vk::SubmitInfo SubmitInfo(
         i > 0 ? 1 : 0,                              // Num Wait Semaphores
@@ -193,12 +197,13 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
         1,                                          // Num Command Buffers
         &cmd_buffs[i],                              // List of command buffers
         1, &axis_semaphores[i]);
-    queue_alloc.queue->vk_queue.submit({SubmitInfo});
+    RES_CHECK_SUCCESS_ONLY(queue_alloc.queue->vk_queue.submit({SubmitInfo}));
   }
 
   uint32_t final_cmd_buffer_ind = cmd_buffs.size() - 1;
 
-  cmd_buffs[final_cmd_buffer_ind].begin(cmd_buff_begin_info);
+  RES_CHECK_SUCCESS_ONLY(
+      cmd_buffs[final_cmd_buffer_ind].begin(cmd_buff_begin_info));
   cmd_buffs[final_cmd_buffer_ind].bindPipeline(vk::PipelineBindPoint::eCompute,
                                                vulten_pipeline->pipeline);
   cmd_buffs[final_cmd_buffer_ind].bindDescriptorSets(
@@ -225,9 +230,11 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
           1,
       1, 1);
 
-  cmd_buffs[final_cmd_buffer_ind].end();
+  RES_CHECK_SUCCESS_ONLY(cmd_buffs[final_cmd_buffer_ind].end());
 
-  vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
+  auto [fence_res, fence] =
+      inst->logical_dev.createFence(vk::FenceCreateInfo());
+  RES_CHECK_SUCCESS_ONLY(fence_res)
 
   vk::SubmitInfo SubmitInfo(
       axis_semaphores.size() > 0 ? 1 : 0,            // Num Wait Semaphores
@@ -235,20 +242,18 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor input,
       wait_stages.data(),                            // Pipeline Stage Flags
       1,                                             // Num Command Buffers
       &cmd_buffs[final_cmd_buffer_ind]);             // List of command buffers
-  queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence);
-  vk::Result fenceRes =
-      inst->logical_dev.waitForFences({fence},        // List of fences
-                                      true,           // Wait All
-                                      uint64_t(-1));  // Timeout
+  RES_CHECK_SUCCESS_ONLY(
+      queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence));
+  RES_CHECK_SUCCESS_ONLY(
+      inst->logical_dev.waitForFences({fence},         // List of fences
+                                      true,            // Wait All
+                                      uint64_t(-1)));  // Timeout
 
   for (vk::Semaphore seamphore : axis_semaphores) {
     inst->logical_dev.destroySemaphore(seamphore);
   }
   inst->logical_dev.destroyFence(fence);
   inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buffs);
-  // inst->logical_dev.freeDescriptorSets(descriptor_pool, num_sets,
-  //                                      descriptor_sets.data());
-  // inst->logical_dev.destroyDescriptorPool(descriptor_pool);
 }
 
 }  // namespace reduce

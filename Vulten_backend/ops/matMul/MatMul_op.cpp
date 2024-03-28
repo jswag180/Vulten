@@ -200,8 +200,10 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
 
   vk::CommandBufferAllocateInfo cmd_buff_alloc_info(
       queue_alloc.queue->cmd_pool, vk::CommandBufferLevel::ePrimary, 1);
-  std::vector<vk::CommandBuffer> cmd_buffs =
+  auto [cmd_buff_res, cmd_buffs] =
       inst->logical_dev.allocateCommandBuffers(cmd_buff_alloc_info);
+  RES_CHECK_SUCCESS_ONLY(cmd_buff_res)
+
   vk::CommandBufferBeginInfo cmd_buff_begin_info(
       vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
 
@@ -275,7 +277,7 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
 
   int cmd_buff_indx = 0;
 
-  cmd_buffs[cmd_buff_indx].begin(cmd_buff_begin_info);
+  RES_CHECK_SUCCESS_ONLY(cmd_buffs[cmd_buff_indx].begin(cmd_buff_begin_info));
 
   if (trans_a && !inline_transpose) {
     cmd_buffs[cmd_buff_indx].bindPipeline(vk::PipelineBindPoint::eCompute,
@@ -355,20 +357,24 @@ void run_op(vulten_backend::Instance *inst, Data_type dt, Vulten_tensor a,
   uint32_t bkNumY = std::ceil(
       std::ceil(mat_size_b_post_trans.y / float(block_size_y)) / local_y);
   cmd_buffs[cmd_buff_indx].dispatch(bkNumX, bkNumY, 1);
-  cmd_buffs[cmd_buff_indx].end();
+  RES_CHECK_SUCCESS_ONLY(cmd_buffs[cmd_buff_indx].end());
 
-  vk::Fence fence = inst->logical_dev.createFence(vk::FenceCreateInfo());
+  auto [fence_res, fence] =
+      inst->logical_dev.createFence(vk::FenceCreateInfo());
+  RES_CHECK_SUCCESS_ONLY(fence_res)
+
   vk::SubmitInfo SubmitInfo(
       0,                           // Num Wait Semaphores
       nullptr,                     // Wait Semaphores
       nullptr,                     // Pipeline Stage Flags
       1,                           // Num Command Buffers
       &cmd_buffs[cmd_buff_indx]);  // List of command buffers
-  queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence);
-  vk::Result fenceRes =
-      inst->logical_dev.waitForFences({fence},        // List of fences
-                                      true,           // Wait All
-                                      uint64_t(-1));  // Timeout
+  RES_CHECK_SUCCESS_ONLY(
+      queue_alloc.queue->vk_queue.submit({SubmitInfo}, fence));
+  RES_CHECK_SUCCESS_ONLY(
+      inst->logical_dev.waitForFences({fence},         // List of fences
+                                      true,            // Wait All
+                                      uint64_t(-1)));  // Timeout
 
   inst->logical_dev.destroyFence(fence);
   inst->logical_dev.freeCommandBuffers(queue_alloc.queue->cmd_pool, cmd_buffs);
