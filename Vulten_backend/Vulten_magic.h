@@ -1,0 +1,4 @@
+#pragma once
+
+#define MAGIC_INSTANCE 1308579
+#define MAGIC_BUFFER 8489112

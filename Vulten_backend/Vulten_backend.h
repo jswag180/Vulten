@@ -11,6 +11,7 @@
 
 #include "VulkanMemoryAllocator/include/vk_mem_alloc.h"
 #include "Vulten_backend/Vulten_utills.h"
+#include "Vulten_magic.h"
 #include "vulten_logger.h"
 
 #define VULTEN_DISABLE_FLOAT16 "VULTEN_DISABLE_FLOAT16"
@@ -107,6 +108,7 @@ class Instance;
 struct alignas(64) Buffer {
  private:
  public:
+  uint64_t magic = MAGIC_BUFFER;
   Instance *inst;
   vk::Buffer vk_buffer;
   VmaAllocationInfo allocInfo;
@@ -219,6 +221,7 @@ class alignas(64) Instance {
  private:
   //
  public:
+  uint64_t magic = MAGIC_INSTANCE;
   uint32_t device_num;
   Device_property device_propertys;
   vk::PhysicalDevice physical_dev;
